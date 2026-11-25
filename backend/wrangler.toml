@@ -4,7 +4,7 @@ compatibility_date = "2026-11-01"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-APPLE_BUNDLE_ID = "com.sarrio.app"
+APPLE_BUNDLE_ID = "com.poves.sarrio"
 
 # Secretos (no van aquí): usa `wrangler secret put <NOMBRE>` en producción
 # y backend/.dev.vars en local. Ver .dev.vars.example.

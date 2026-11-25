@@ -1,6 +1,6 @@
 // Copia este archivo a Config.xcconfig (está en .gitignore) y rellena tus valores.
 SARRIO_TEAM_ID = ABCDE12345
-SARRIO_BUNDLE_ID = com.tunombre.sarrio
+SARRIO_BUNDLE_ID = com.poves.sarrio
 // Token PÚBLICO de Mapbox (pk.…): https://account.mapbox.com/access-tokens/
 MAPBOX_ACCESS_TOKEN = pk.xxxxxxxx
 // En xcconfig "//" inicia comentario: escapa la URL con $()
