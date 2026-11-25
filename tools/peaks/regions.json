@@ -1,0 +1,8 @@
+{
+  "pirineos": { "bbox": [42.0, -2.0, 43.4, 3.4], "range": "Pirineos" },
+  "sierra-nevada": { "bbox": [36.9, -3.7, 37.25, -2.6], "range": "Sierra Nevada" },
+  "picos-de-europa": { "bbox": [43.05, -5.2, 43.35, -4.5], "range": "Picos de Europa" },
+  "sistema-central": { "bbox": [40.1, -6.5, 41.2, -3.2], "range": "Sistema Central" },
+  "espana": { "bbox": [35.9, -9.4, 43.9, 4.4] },
+  "alpes": { "bbox": [43.6, 5.2, 48.2, 16.4], "range": "Alpes" }
+}

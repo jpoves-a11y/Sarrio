@@ -1,0 +1,9 @@
+# Copia este archivo a .dev.vars (está en .gitignore) para `wrangler dev`.
+# Local: `turso dev --db-file local.db` sirve libSQL en http://127.0.0.1:8080
+TURSO_DATABASE_URL=http://127.0.0.1:8080
+TURSO_AUTH_TOKEN=
+JWT_SECRET=cambia-esto-por-un-secreto-largo
+# openssl rand -base64 32
+TOKEN_ENCRYPTION_KEY=
+POLAR_CLIENT_ID=
+POLAR_CLIENT_SECRET=

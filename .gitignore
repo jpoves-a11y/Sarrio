@@ -1,0 +1,26 @@
+# macOS / Xcode
+.DS_Store
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+xcuserdata/
+DerivedData/
+.build/
+.swiftpm/
+*.xcuserstate
+
+# Configuración local con secretos
+ios/Config.xcconfig
+backend/.dev.vars
+.env
+.env.*
+
+# Node / Cloudflare
+node_modules/
+.wrangler/
+dist/
+
+# Bases de datos locales y SQL generado
+*.db
+*.db-shm
+*.db-wal
+peaks-*.sql

@@ -1,0 +1,6 @@
+{"elements":[
+ {"type":"node","id":1,"lat":42.6311,"lon":0.6569,"tags":{"natural":"peak","name":"Aneto","ele":"3404","wikidata":"Q205046"}},
+ {"type":"node","id":2,"lat":37.0531,"lon":-3.3114,"tags":{"natural":"peak","name":"Mulhacén","ele":"3.479 m"}},
+ {"type":"node","id":3,"lat":43.2,"lon":-4.8,"tags":{"natural":"peak","name":"Pico d'Urriellu","name:es":"Naranjo de Bulnes","ele":"2519"}},
+ {"type":"node","id":4,"lat":43.2,"lon":-4.8,"tags":{"natural":"peak"}}
+]}

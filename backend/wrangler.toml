@@ -1,0 +1,14 @@
+name = "sarrio-api"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "sarrio-files"
+
+[vars]
+APPLE_BUNDLE_ID = "com.sarrio.app"
+
+# Secretos (no van aquí): usa `wrangler secret put <NOMBRE>` en producción
+# y backend/.dev.vars en local. Ver .dev.vars.example.
