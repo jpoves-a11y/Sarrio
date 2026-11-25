@@ -1,0 +1,114 @@
+name: TestFlight
+
+# Compila, firma y sube la app a TestFlight desde un Mac de GitHub.
+# Se lanza a mano: Actions → TestFlight → Run workflow.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comprobar secretos
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          MAPBOX_TOKEN: ${{ secrets.MAPBOX_TOKEN }}
+          SARRIO_API_BASE_URL: ${{ secrets.SARRIO_API_BASE_URL }}
+        run: |
+          missing=0
+          for v in APPLE_TEAM_ID BUNDLE_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 MAPBOX_TOKEN SARRIO_API_BASE_URL; do
+            if [ -z "${!v}" ]; then echo "::error::Falta el secreto $v (Settings → Secrets and variables → Actions)"; missing=1; fi
+          done
+          exit $missing
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Configuración y proyecto
+        working-directory: ios
+        env:
+          MAPBOX_TOKEN: ${{ secrets.MAPBOX_TOKEN }}
+          SARRIO_API_BASE_URL: ${{ secrets.SARRIO_API_BASE_URL }}
+        run: |
+          # En xcconfig "//" empieza un comentario: se escapa como "/$()/".
+          API_URL_ESCAPED=$(printf '%s' "$SARRIO_API_BASE_URL" | sed 's#//#/$()/#')
+          {
+            echo "SARRIO_TEAM_ID = $APPLE_TEAM_ID"
+            echo "SARRIO_BUNDLE_ID = $BUNDLE_ID"
+            echo "MAPBOX_ACCESS_TOKEN = $MAPBOX_TOKEN"
+            echo "SARRIO_API_BASE_URL = $API_URL_ESCAPED"
+          } > Config.xcconfig
+          xcodegen
+
+      - name: Clave de App Store Connect
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8"
+
+      - name: Archivar (firma automática)
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Sarrio.xcodeproj \
+            -scheme Sarrio \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Sarrio.xcarchive" \
+            -clonedSourcePackagesDirPath .spm \
+            -skipPackagePluginValidation \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            | tee "$RUNNER_TEMP/archive.log" | grep -E "error:|warning: .*Sarrio/|\*\* ARCHIVE" || true
+          test -d "$RUNNER_TEMP/Sarrio.xcarchive"
+
+      - name: Exportar y subir a TestFlight
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Sarrio.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          echo "Build ${{ github.run_number }} subida. Aparecerá en TestFlight en 5-15 minutos." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Subir logs si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-logs
+          path: ${{ runner.temp }}/archive.log
