@@ -1,25 +1,84 @@
+import AuthenticationServices
 import SwiftUI
 
 struct OnboardingView: View {
     @Environment(SessionStore.self) private var session
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: Theme.Spacing.xl)
+
             Image(systemName: "mountain.2.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(.tint)
-            Text("Sarrio").font(.largeTitle.bold())
-            Text("Tu biblioteca de cumbres. Sincroniza tus salidas, revive cada ascensión en 3D y compártelas con tus amigos.")
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
+                .font(.system(size: 40, weight: .semibold))
+                .foregroundStyle(Theme.Colors.accent)
+                .padding(.bottom, Theme.Spacing.l)
+
+            Text("Cada cumbre,\nen un solo lugar.")
+                .font(.system(size: 36, weight: .heavy))
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .padding(.bottom, Theme.Spacing.m)
+
+            Text("Sarrio detecta los picos que subes y construye tu biblioteca de montaña.")
+                .font(.system(size: 17))
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .padding(.bottom, Theme.Spacing.xl)
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                FeatureRow(icon: "applewatch", title: "Sincroniza tus salidas",
+                           text: "Apple Health, Polar o tus archivos GPX.")
+                FeatureRow(icon: "cube.transparent", title: "Revívelas en 3D",
+                           text: "Tu ruta sobre el relieve, en satélite.")
+                FeatureRow(icon: "person.2", title: "Comparte con tus amigos",
+                           text: "Emblemas, retos, likes y comentarios.")
+            }
+
             Spacer()
-            // Fase 2: SignInWithAppleButton → POST /v1/auth/apple
-            Button("Continuar (modo desarrollo)") { session.continueAsGuest() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+
+            SignInWithAppleButton(.continue) { request in
+                MainActor.assumeIsolated { session.prepare(request) }
+            } onCompletion: { result in
+                Task { await session.handleAppleResult(result) }
+            }
+            .signInWithAppleButtonStyle(.black)
+            .frame(height: 52)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
+
+            Text("Al continuar aceptas los Términos y la Política de privacidad.")
+                .font(.footnote)
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+                .padding(.top, Theme.Spacing.m)
         }
-        .padding()
+        .padding(.horizontal, Theme.Spacing.l)
+        .padding(.bottom, Theme.Spacing.m)
+        .background(Theme.Colors.background)
+        .alert("No se pudo iniciar sesión", isPresented: Binding(
+            get: { session.errorMessage != nil },
+            set: { if !$0 { session.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(session.errorMessage ?? "")
+        }
+    }
+}
+
+private struct FeatureRow: View {
+    var icon: String
+    var title: String
+    var text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.m) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Theme.Colors.accent)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
+                Text(text).font(.system(size: 15)).foregroundStyle(Theme.Colors.textSecondary)
+            }
+        }
     }
 }

@@ -2,7 +2,12 @@ import SwiftUI
 
 struct ChallengesView: View {
     var body: some View {
-        ContentUnavailableView("Retos", systemImage: "flag.checkered", description: Text("Retos oficiales (tresmiles del Pirineo, techos de provincias…) y retos creados por tus amigos."))
-            .navigationTitle("Retos")
+        ScrollView {
+            EmptyStateView(icon: "flag.checkered", title: "Próximamente", message: "Tresmiles del Pirineo, techos de provincias y retos con tus amigos.")
+                .padding(.top, Theme.Spacing.xl)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Theme.Colors.groupedBackground)
+        .navigationTitle("Retos")
     }
 }

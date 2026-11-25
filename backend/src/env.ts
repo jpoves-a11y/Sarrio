@@ -1,4 +1,5 @@
-import type { DbEnv } from "./db/client";
+import type { Db, DbEnv } from "./db/client";
+import type { AppleIdentity } from "./auth/apple";
 
 export interface Env extends DbEnv {
   /** Bucket R2 para tracks, fotos y avatares. */
@@ -13,4 +14,13 @@ export interface Env extends DbEnv {
   POLAR_CLIENT_SECRET?: string;
 }
 
-export type AppBindings = { Bindings: Env };
+/** Dependencias inyectables (en tests se sustituyen por una BD en memoria y un verificador falso). */
+export interface Deps {
+  getDb: (env: Env) => Db;
+  verifyAppleToken: (identityToken: string, env: Env, nonce?: string) => Promise<AppleIdentity>;
+}
+
+export type AppBindings = {
+  Bindings: Env;
+  Variables: { db: Db; deps: Deps; userId: string };
+};

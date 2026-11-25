@@ -4,11 +4,17 @@ struct RootView: View {
     @Environment(SessionStore.self) private var session
 
     var body: some View {
-        if session.isSignedIn {
-            MainTabView()
-        } else {
-            OnboardingView()
+        Group {
+            switch session.state {
+            case .loading:
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            case .signedOut:
+                OnboardingView()
+            case .signedIn:
+                MainTabView()
+            }
         }
+        .animation(.easeInOut(duration: 0.2), value: session.state)
     }
 }
 

@@ -1,14 +1,21 @@
 import Foundation
 import SarrioKit
 
-enum APIError: Error, LocalizedError {
-    case http(status: Int, body: String)
-    case decoding(Error)
+enum APIError: Error, LocalizedError, Equatable {
+    case http(status: Int, code: String?)
+    case decoding(String)
+
+    var status: Int? { if case let .http(status, _) = self { status } else { nil } }
 
     var errorDescription: String? {
         switch self {
-        case let .http(status, body): "Error \(status) del servidor: \(body)"
-        case let .decoding(error): "Respuesta inesperada del servidor: \(error.localizedDescription)"
+        case .http(_, "username_taken"?): "Ese nombre de usuario ya está cogido."
+        case .http(_, "invalid_username"?): "El usuario debe tener entre 3 y 20 caracteres: letras, números, punto o guion bajo."
+        case .http(_, "invalid_display_name"?): "El nombre no puede estar vacío."
+        case .http(_, "invalid_bio"?): "La bio puede tener como máximo 280 caracteres."
+        case .http(401, _): "Tu sesión ha caducado. Vuelve a iniciar sesión."
+        case let .http(status, code): "Error del servidor (\(status)\(code.map { ": \($0)" } ?? ""))."
+        case .decoding: "Respuesta inesperada del servidor."
         }
     }
 }
@@ -17,27 +24,77 @@ enum APIError: Error, LocalizedError {
 struct APIClient: Sendable {
     let baseURL: URL
     var session: URLSession = .shared
-    /// JWT de sesión propio (se rellena en la fase 2 tras Sign in with Apple).
-    var bearerToken: (@Sendable () -> String?)? = nil
+    /// JWT de sesión, leído del Llavero en cada petición.
+    var bearerToken: @Sendable () -> String? = { KeychainStore.sessionToken }
 
     nonisolated(unsafe) private static let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.dateDecodingStrategy = .millisecondsSince1970
         return d
     }()
+    nonisolated(unsafe) private static let encoder = JSONEncoder()
+
+    private struct ErrorBody: Decodable { var error: String? }
+    private struct Empty: Encodable {}
 
     func get<T: Decodable>(_ path: String, as type: T.Type = T.self) async throws -> T {
+        try await send("GET", path, body: Optional<Empty>.none)
+    }
+
+    func post<T: Decodable>(_ path: String, body: some Encodable) async throws -> T {
+        try await send("POST", path, body: body)
+    }
+
+    func patch<T: Decodable>(_ path: String, body: some Encodable) async throws -> T {
+        try await send("PATCH", path, body: body)
+    }
+
+    func delete(_ path: String) async throws {
+        _ = try await raw("DELETE", path, body: Optional<Empty>.none)
+    }
+
+    private func send<T: Decodable, B: Encodable>(_ method: String, _ path: String, body: B?) async throws -> T {
+        let data = try await raw(method, path, body: body)
+        do { return try Self.decoder.decode(T.self, from: data) } catch { throw APIError.decoding(String(describing: error)) }
+    }
+
+    private func raw<B: Encodable>(_ method: String, _ path: String, body: B?) async throws -> Data {
         var request = URLRequest(url: baseURL.appending(path: path))
-        if let token = bearerToken?() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        request.httpMethod = method
+        if let token = bearerToken() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try Self.encoder.encode(body)
+        }
         let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
-            throw APIError.http(status: status, body: String(decoding: data, as: UTF8.self))
+            throw APIError.http(status: status, code: try? Self.decoder.decode(ErrorBody.self, from: data).error)
         }
-        do { return try Self.decoder.decode(T.self, from: data) } catch { throw APIError.decoding(error) }
+        return data
     }
+
+    // MARK: - Endpoints
 
     func peakPack(cell: String) async throws -> PeakPack {
         try await get("v1/peaks/pack/\(cell)")
     }
+
+    struct AppleSignInRequest: Encodable {
+        var identityToken: String
+        var nonce: String
+        var fullName: String?
+    }
+
+    func signInWithApple(_ request: AppleSignInRequest) async throws -> AuthResponse {
+        try await post("v1/auth/apple", body: request)
+    }
+
+    func me() async throws -> Me { try await get("v1/me") }
+
+    func updateMe(_ update: ProfileUpdate) async throws -> Me { try await patch("v1/me", body: update) }
+
+    func deleteAccount() async throws { try await delete("v1/me") }
+
+    func user(username: String) async throws -> PublicUser { try await get("v1/users/\(username)") }
 }

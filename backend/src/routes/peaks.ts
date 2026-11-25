@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { like } from "drizzle-orm";
 import type { AppBindings } from "../env";
-import { getDb } from "../db/client";
 import { peaks } from "../db/schema";
 import { isValidGeohash } from "../lib/geo";
 
@@ -17,8 +16,7 @@ peaksRoutes.get("/pack/:cell", async (c) => {
   if (cell.length !== 4 || !isValidGeohash(cell)) {
     return c.json({ error: "cell must be a 4-character geohash" }, 400);
   }
-  const db = getDb(c.env);
-  const rows = await db
+  const rows = await c.var.db
     .select({ id: peaks.id, name: peaks.name, nameEs: peaks.nameEs, ele: peaks.ele, lat: peaks.lat, lon: peaks.lon })
     .from(peaks)
     .where(like(peaks.geohash, `${cell}%`));

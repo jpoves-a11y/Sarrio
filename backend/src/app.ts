@@ -1,24 +1,41 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
-import type { AppBindings } from "./env";
+import type { AppBindings, Deps } from "./env";
+import { getDb } from "./db/client";
+import { verifyAppleIdentityToken } from "./auth/apple";
+import { authRoutes } from "./routes/auth";
+import { meRoutes } from "./routes/me";
 import { peaksRoutes } from "./routes/peaks";
+import { usersRoutes } from "./routes/users";
 
-export const app = new Hono<AppBindings>();
+export const defaultDeps: Deps = { getDb, verifyAppleToken: verifyAppleIdentityToken };
 
-app.use("*", logger());
+export function createApp(deps: Deps = defaultDeps) {
+  const app = new Hono<AppBindings>();
 
-app.get("/health", (c) => c.json({ ok: true, service: "sarrio-api" }));
+  app.use("*", logger());
+  app.use("*", async (c, next) => {
+    c.set("deps", deps);
+    c.set("db", deps.getDb(c.env));
+    await next();
+  });
 
-const v1 = new Hono<AppBindings>();
-v1.route("/peaks", peaksRoutes);
-// Fase 2: v1.route("/auth", authRoutes)  — Sign in with Apple → JWT
-// Fase 3: v1.route("/activities", …), v1.route("/ascents", …)
-// Fase 6: v1.route("/friends", …), v1.route("/feed", …), likes/comments
-// Fase 7: v1.route("/providers/polar", …) — OAuth + webhook
-app.route("/v1", v1);
+  app.get("/health", (c) => c.json({ ok: true, service: "sarrio-api" }));
 
-app.notFound((c) => c.json({ error: "not_found" }, 404));
-app.onError((err, c) => {
-  console.error(err);
-  return c.json({ error: "internal_error" }, 500);
-});
+  const v1 = new Hono<AppBindings>();
+  v1.route("/auth", authRoutes);
+  v1.route("/me", meRoutes);
+  v1.route("/users", usersRoutes);
+  v1.route("/peaks", peaksRoutes);
+  // Fase 3: /activities, /ascents
+  // Fase 6: /friends, /feed, likes, comments
+  // Fase 7: /providers/polar (OAuth + webhook)
+  app.route("/v1", v1);
+
+  app.notFound((c) => c.json({ error: "not_found" }, 404));
+  app.onError((err, c) => {
+    console.error(err);
+    return c.json({ error: "internal_error" }, 500);
+  });
+  return app;
+}

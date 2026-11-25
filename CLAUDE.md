@@ -22,5 +22,7 @@ El plan completo por fases está en el README.
 - Picos: `node tools/peaks/fetch-peaks.mjs <región> > peaks-<región>.sql`
 
 ## Convenciones
+- Estética clara, minimalista y profesional: usa siempre `Theme` y los componentes de `ios/Sarrio/Core/Design` (Card, StatRow, PrimaryButtonStyle, EmptyStateView…). Fondos blancos o gris muy suave, un único color de acento y cifras grandes en negrita.
+- Rutas del backend: dependencias inyectables con `createApp(deps)`. Los tests usan libSQL en memoria (`backend/test/helpers.ts`).
 - Los textos de la interfaz van en español.
 - La lógica pura (sin UIKit, HealthKit ni Mapbox) va en `SarrioKit` y lleva tests.

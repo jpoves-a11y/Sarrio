@@ -2,7 +2,12 @@ import SwiftUI
 
 struct FeedView: View {
     var body: some View {
-        ContentUnavailableView("Amigos", systemImage: "person.2", description: Text("Aquí verás las cumbres, emblemas y retos de tus amigos, con likes y comentarios."))
-            .navigationTitle("Amigos")
+        ScrollView {
+            EmptyStateView(icon: "person.2", title: "Próximamente", message: "Sigue a tus amigos para ver sus cumbres, emblemas y retos.")
+                .padding(.top, Theme.Spacing.xl)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Theme.Colors.groupedBackground)
+        .navigationTitle("Amigos")
     }
 }

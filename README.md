@@ -85,6 +85,8 @@ open Sarrio.xcodeproj
 ```
 Los tests de lógica se ejecutan sin Xcode: `cd ios/Packages/SarrioKit && swift test`.
 
+El CI compila y testea la app en los runners macOS de GitHub en cada push (job `ios`).
+
 ## Hoja de ruta
 
 - [x] **Fase 1**: esqueleto del repo. Incluye:
@@ -94,7 +96,7 @@ Los tests de lógica se ejecutan sin Xcode: `cd ios/Packages/SarrioKit && swift 
   - SarrioKit (geohash, Douglas-Peucker, GPX, detector de cumbres);
   - app con pestañas, importación de GPX y detección de cumbres;
   - CI.
-- [ ] **Fase 2**: Sign in with Apple → JWT, y perfil de usuario.
+- [x] **Fase 2**: Sign in with Apple → JWT propio (con nonce), perfil editable, borrado de cuenta, perfil público y sistema de diseño (`ios/Sarrio/Core/Design`).
 - [ ] **Fase 3**: HealthKit (histórico y observer), FIT/TCX, Share Extension, y subida de actividades y ascensiones.
 - [ ] **Fase 4**: detalle 3D con terreno y vuelo de cámara, perfil de elevación, y globo con clustering.
 - [ ] **Fase 5**: emblemas y retos (oficiales y de usuarios).
