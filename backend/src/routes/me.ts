@@ -61,6 +61,6 @@ meRoutes.patch("/", async (c) => {
 /** Borrado de cuenta (obligatorio en la App Store). Las tablas dependientes caen en cascada. */
 meRoutes.delete("/", async (c) => {
   await c.var.db.delete(users).where(eq(users.id, c.var.userId));
-  // TODO fase 3: borrar también los tracks y fotos del usuario en R2.
+  // Las rutas viven en la base de datos y se borran con el usuario (ON DELETE CASCADE).
   return c.body(null, 204);
 });

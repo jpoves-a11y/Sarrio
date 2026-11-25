@@ -7,8 +7,8 @@ El plan completo por fases está en el README.
 - **Sin Strava.** Su API Agreement prohíbe mostrar los datos de un usuario a otros. Fuentes: Apple Health, importar GPX/FIT, Polar AccessLink, y Garmin/Suunto/COROS cuando aprueben el acceso.
 - **Todo en planes gratuitos:**
   - Turso (libSQL) como base de datos;
-  - Cloudflare Workers (Hono + Drizzle) como API;
-  - R2 para archivos;
+  - Cloudflare Workers (Hono + Drizzle) como API, desplegada con Workers Builds en cada push (raíz `backend`);
+  - sin R2: las rutas se guardarán comprimidas en Turso;
   - Mapbox para mapas.
 - **La app nunca accede a Turso directamente:** todo pasa por la API, que aplica la visibilidad (`backend/src/services/visibility.ts`) y las zonas de privacidad (`applyPrivacyZones`).
 - **La detección de cumbres se hace en el iPhone** (`SarrioKit.PeakDetector`), con paquetes de picos por celda geohash de 4 caracteres (`GET /v1/peaks/pack/:cell`).

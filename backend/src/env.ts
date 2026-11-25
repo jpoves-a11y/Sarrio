@@ -2,8 +2,6 @@ import type { Db, DbEnv } from "./db/client";
 import type { AppleIdentity } from "./auth/apple";
 
 export interface Env extends DbEnv {
-  /** Bucket R2 para tracks, fotos y avatares. */
-  FILES: R2Bucket;
   /** Secreto HMAC para los JWT de sesión propios. */
   JWT_SECRET: string;
   /** Bundle ID de la app (audiencia del token de Sign in with Apple). */

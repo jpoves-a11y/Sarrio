@@ -1,0 +1,55 @@
+name: Importar picos
+
+# Aplica las migraciones en Turso e importa picos de OpenStreetMap.
+# El despliegue del Worker lo hace Cloudflare (Workers Builds) en cada push.
+# Se lanza a mano: Actions → Importar picos → Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: "Regiones (separadas por espacios). Ver tools/peaks/regions.json"
+        required: true
+        default: "pirineos sierra-nevada picos-de-europa sistema-central"
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    env:
+      TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+      TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Comprobar secretos
+        run: |
+          for v in TURSO_DATABASE_URL TURSO_AUTH_TOKEN; do
+            if [ -z "${!v}" ]; then echo "::error::Falta el secreto $v"; exit 1; fi
+          done
+
+      - run: npm ci
+
+      - name: Migraciones
+        run: npx drizzle-kit migrate
+
+      - name: Importar picos
+        run: |
+          for region in ${{ inputs.regions }}; do
+            node ../tools/peaks/fetch-peaks.mjs "$region" > "peaks-$region.sql"
+            REGION="$region" node --input-type=module -e "
+              import { createClient } from '@libsql/client';
+              import fs from 'node:fs';
+              const c = createClient({ url: process.env.TURSO_DATABASE_URL, authToken: process.env.TURSO_AUTH_TOKEN });
+              await c.executeMultiple(fs.readFileSync('peaks-' + process.env.REGION + '.sql', 'utf8'));
+              const n = (await c.execute('select count(*) as n from peaks')).rows[0].n;
+              console.log('Importada ' + process.env.REGION + ' · total de picos: ' + n);
+            "
+            sleep 5
+          done

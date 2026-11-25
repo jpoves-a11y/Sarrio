@@ -116,7 +116,7 @@ export const activities = sqliteTable(
     minLon: real("min_lon"),
     maxLat: real("max_lat"),
     maxLon: real("max_lon"),
-    /** Clave del track en R2 (JSON comprimido con [lat, lon, ele, t]). */
+    /** Reservado para la ruta (fase 3: se guardará comprimida en la propia base de datos, sin R2). */
     trackKey: text("track_key"),
     visibility: text("visibility", { enum: visibilityValues }).notNull().default("friends"),
     createdAt: createdAt(),

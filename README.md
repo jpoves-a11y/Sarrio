@@ -43,7 +43,7 @@ Strava queda descartado: su API Agreement (noviembre de 2024) no permite mostrar
 
 ### 1. Cuentas
 - **Turso**: https://turso.tech. Ejecuta `turso db create sarrio` y luego `turso db tokens create sarrio`.
-- **Cloudflare**: https://dash.cloudflare.com. Workers y R2. Crea el bucket con `npx wrangler r2 bucket create sarrio-files`.
+- **Cloudflare**: https://dash.cloudflare.com. Workers & Pages → Import a repository → este repo. Root directory `backend`, build `npm ci && npx drizzle-kit migrate`, deploy `npx wrangler deploy`. Variables de build: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`. Secretos del Worker: esos dos más `JWT_SECRET` y `TOKEN_ENCRYPTION_KEY`.
 - **Mapbox**: https://account.mapbox.com. Copia el token público (`pk.…`).
 - **Apple Developer**: crea un App ID con HealthKit, Sign in with Apple y Push Notifications.
 - **Polar AccessLink**: https://admin.polaraccesslink.com
