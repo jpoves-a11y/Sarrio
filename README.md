@@ -1,5 +1,7 @@
 # Sarrio
 
+<img src="brand/sarrio-logo.png" alt="Sarrio" width="260">
+
 Tu biblioteca de cumbres. Sarrio sincroniza tus salidas a la montaña y detecta los picos que has subido. Cada ascensión queda en tu biblioteca con:
 - la ruta en 3D sobre satélite;
 - un globo con todas tus cumbres;
@@ -21,6 +23,8 @@ backend/                   API: Cloudflare Worker (Hono + Drizzle + Turso/libSQL
   src/db/schema.ts         Esquema de la base de datos
   migrations/              SQL generado por drizzle-kit
 tools/peaks/               Importador de picos de OpenStreetMap (Overpass → SQL)
+brand/                     Logotipo, icono de la app y guía de marca
+site/                      Web pública (soporte, privacidad, términos) → GitHub Pages
 ```
 
 ## Fuentes de datos

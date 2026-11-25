@@ -42,7 +42,9 @@ targets:
       path: Sarrio/Info.plist
       properties:
         CFBundleDisplayName: Sarrio
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIImageName: LaunchMark
+          UIColorName: LaunchBackground
         UIApplicationSupportsIndirectInputEvents: true
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIBackgroundModes: [remote-notification]

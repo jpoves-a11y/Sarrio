@@ -8,10 +8,19 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer(minLength: Theme.Spacing.xl)
 
-            Image(systemName: "mountain.2.fill")
-                .font(.system(size: 40, weight: .semibold))
-                .foregroundStyle(Theme.Colors.accent)
-                .padding(.bottom, Theme.Spacing.l)
+            HStack(alignment: .center, spacing: 12) {
+                Image("SarrioMark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 52)
+                Image("Wordmark")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 30)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Sarrio")
+            .padding(.bottom, Theme.Spacing.xl)
 
             Text("Cada cumbre,\nen un solo lugar.")
                 .font(.system(size: 36, weight: .heavy))
