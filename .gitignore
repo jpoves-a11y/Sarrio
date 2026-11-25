@@ -24,3 +24,5 @@ dist/
 *.db-shm
 *.db-wal
 peaks-*.sql
+ios/.spm/
+ios/xcodebuild.log

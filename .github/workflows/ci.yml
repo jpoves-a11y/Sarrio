@@ -38,3 +38,46 @@ jobs:
         with:
           node-version: 22
       - run: node tools/peaks/fetch-peaks.mjs --from-file tools/peaks/fixture.json --range Test > /dev/null
+
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Versión de Xcode
+        run: xcodebuild -version
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+      - name: Generar proyecto
+        working-directory: ios
+        run: |
+          cp Config.example.xcconfig Config.xcconfig
+          xcodegen
+      - name: Caché de paquetes SPM
+        uses: actions/cache@v4
+        with:
+          path: ios/.spm
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
+      - name: Compilar y testear en simulador
+        working-directory: ios
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available -j \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k,v in d.items() if "iOS" in k for x in v if x["name"].startswith("iPhone")))')
+          echo "Simulador: $DEVICE_ID"
+          set +e
+          xcodebuild test \
+            -project Sarrio.xcodeproj \
+            -scheme Sarrio \
+            -destination "id=$DEVICE_ID" \
+            -clonedSourcePackagesDirPath .spm \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO > xcodebuild.log 2>&1
+          STATUS=$?
+          grep -E "error:|Test (Suite|Case)|Executed|passed|failed|\*\* (BUILD|TEST)" xcodebuild.log | tail -80
+          exit $STATUS
+      - name: Subir log si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: ios/xcodebuild.log
