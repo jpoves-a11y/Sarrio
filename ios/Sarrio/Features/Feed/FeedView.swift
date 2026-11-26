@@ -168,15 +168,11 @@ struct FeedCard: View {
     @ViewBuilder private var outing: some View {
         let peaks = item.ascents ?? []
         let card = VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            if let camera = RouteCamera(item.route) {
-                // La ruta en relieve 3D con las banderillas de las cimas
-                Terrain3DView(center: camera.center, distance: camera.distance, segments: camera.segments,
-                              summits: peaks.map(\.peak), orbit: false, interactive: false, pitch: 50, animated: false,
-                              fit: camera.segments.flatMap { $0 })
-                    .frame(height: 220)
+            if let camera = RouteCamera(item.route), let activity = item.activity {
+                // Imagen estática en 3D con el recorrido entero resaltado y las banderillas
+                FeedRouteSnapshot(activityId: activity.id, segments: camera.segments, peaks: peaks.map(\.peak))
                     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
                     .elevation(.medium)
-                    .allowsHitTesting(false)
                     .padding(.bottom, Theme.Spacing.xs)
             }
             if peaks.isEmpty, let activity = item.activity {

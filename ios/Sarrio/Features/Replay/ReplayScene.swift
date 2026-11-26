@@ -101,7 +101,7 @@ final class ReplayScene {
     }
 
     /// Relieve 3D (exagerado un poco: las montañas se leen mejor) en cualquier mapa de Mapbox.
-    static func addTerrain(to map: MapboxMap, exaggeration: Double = 1.3) {
+    static func addTerrain(to map: StyleManager, exaggeration: Double = 1.3) {
         if !map.sourceExists(withId: demSource) {
             var dem = RasterDemSource(id: demSource)
             dem.url = "mapbox://mapbox.mapbox-terrain-dem-v1"
