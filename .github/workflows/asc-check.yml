@@ -30,6 +30,10 @@ jobs:
           const hasBegin = p8.includes("-----BEGIN PRIVATE KEY-----"), hasEnd = p8.includes("-----END PRIVATE KEY-----");
           out.push(`${ok(hasBegin && hasEnd)} ASC_KEY_P8: cabecera BEGIN ${hasBegin ? "sí" : "NO"}, pie END ${hasEnd ? "sí" : "NO"}, ${p8.split("\n").length} líneas`);
           out.push(`${ok(/^[A-Z0-9]{10}$/.test(team.trim()))} APPLE_TEAM_ID: ${team.trim().length} caracteres (deben ser 10)`);
+          for (const [name, value] of Object.entries({ ASC_KEY_ID: kid, ASC_ISSUER_ID: iss, APPLE_TEAM_ID: team, BUNDLE_ID: bundle })) {
+            out.push(`${ok(value === value.trim())} ${name}: ${value === value.trim() ? "sin espacios ni saltos de línea alrededor" : "TIENE espacios o saltos de línea al principio o al final"}`);
+          }
+          out.push(`${ok(!p8.includes("\r"))} ASC_KEY_P8: ${p8.includes("\r") ? "TIENE retornos de carro (\\r, formato Windows)" : "sin retornos de carro"}`);
           out.push(`ℹ️ BUNDLE_ID termina en «${bundle.trim().split(".").pop()}»`);
 
           let key;
