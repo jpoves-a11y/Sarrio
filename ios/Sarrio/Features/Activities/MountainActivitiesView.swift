@@ -213,7 +213,7 @@ struct MountainActivityRow: View {
         }
         .foregroundStyle(summits > 0 ? .white : Theme.Colors.textSecondary)
         .padding(.horizontal, 9).padding(.vertical, 5)
-        .background(summits > 0 ? AnyShapeStyle(Theme.Colors.accent) : AnyShapeStyle(Theme.Colors.groupedBackground), in: Capsule())
+        .background(summits > 0 ? AnyShapeStyle(Theme.Colors.accent) : AnyShapeStyle(Theme.Colors.groupedBackground), in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
     }
 
     private func metric(_ value: String, _ unit: String?) -> some View {

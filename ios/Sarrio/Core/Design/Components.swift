@@ -23,8 +23,8 @@ struct Card<Content: View>: View {
 struct PressableCardStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .rotation3DEffect(.degrees(configuration.isPressed ? 4 : 0), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .rotation3DEffect(.degrees(configuration.isPressed ? 2 : 0), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
             .animation(Theme.Motion.snappy, value: configuration.isPressed)
             .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { _, pressed in pressed }
     }
@@ -136,15 +136,13 @@ struct StatRow: View {
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.sarrio(16, .semibold))
+            .font(.sarrio(15, .semibold))
+            .tracking(0.2)
             .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .background(
-                LinearGradient(colors: [Theme.Colors.accent.opacity(0.92), Theme.Colors.accent], startPoint: .top, endPoint: .bottom),
-                in: RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-            )
-            .shadow(color: Theme.Colors.accent.opacity(configuration.isPressed ? 0.15 : 0.32), radius: configuration.isPressed ? 4 : 12, y: configuration.isPressed ? 2 : 6)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(Theme.Colors.accent, in: RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
+            .opacity(configuration.isPressed ? 0.88 : 1)
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
             .animation(Theme.Motion.snappy, value: configuration.isPressed)
     }
 }
@@ -158,7 +156,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 50)
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
-                    .stroke(Theme.Colors.separator, lineWidth: 1.5)
+                    .stroke(Theme.Colors.textPrimary.opacity(0.18), lineWidth: 1)
             )
             .opacity(configuration.isPressed ? 0.6 : 1)
     }
@@ -197,13 +195,19 @@ struct AvatarView: View {
 }
 
 /// Cabecera de sección discreta.
+/// Encabezado de sección editorial: versalitas pequeñas con espaciado y un filo fino debajo.
 struct SectionHeader: View {
     var title: String
     var body: some View {
-        Text(title)
-            .font(.sarrio(17, .bold))
-            .foregroundStyle(Theme.Colors.textPrimary)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title.uppercased())
+                .font(.sarrio(12, .semibold))
+                .tracking(1.4)
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Rectangle().fill(Theme.Colors.separator).frame(height: 0.5)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

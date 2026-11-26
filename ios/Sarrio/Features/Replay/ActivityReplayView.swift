@@ -326,7 +326,7 @@ private struct ReplayChrome: View {
                     }
                 }
                 .padding(.horizontal, 14).padding(.vertical, 9)
-                .background(.ultraThinMaterial, in: Capsule())
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                 .environment(\.colorScheme, .dark)
                 Spacer()
                 if let onExpand {
@@ -357,7 +357,7 @@ private struct ReplayChrome: View {
                             .font(.sarrio(14, .semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 14).padding(.vertical, 9)
-                            .background(Theme.Colors.accent, in: Capsule())
+                            .background(Theme.Colors.accent, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                             .elevation(.medium)
                     }
                     .transition(.scale.combined(with: .opacity))
@@ -382,7 +382,7 @@ private struct ReplayChrome: View {
         Button(action: action) {
             Image(systemName: icon).font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
                 .frame(width: 36, height: 36)
-                .background(.ultraThinMaterial, in: Circle())
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                 .environment(\.colorScheme, .dark)
         }
     }

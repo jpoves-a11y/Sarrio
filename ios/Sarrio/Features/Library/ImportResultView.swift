@@ -9,21 +9,14 @@ struct ImportResultView: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.l) {
-            ZStack {
-                Circle()
-                    .fill(Theme.Colors.accent.opacity(0.08))
-                    .frame(width: 120, height: 120)
-                    .scaleEffect(revealed ? 1 : 0.6)
-                Circle()
-                    .fill(LinearGradient(colors: [Theme.Colors.accent.opacity(0.9), Theme.Colors.accent], startPoint: .top, endPoint: .bottom))
-                    .frame(width: 76, height: 76)
-                    .elevation(.high)
-                    .overlay(
-                        Image(systemName: outcome.ascents.isEmpty ? "figure.hiking" : "mountain.2.fill")
-                            .font(.system(size: 32, weight: .semibold))
-                            .foregroundStyle(.white)
-                    )
-                    .rotation3DEffect(.degrees(revealed ? 0 : 90), axis: (x: 0, y: 1, z: 0))
+            // Un símbolo fino que sube y aparece, con un filo debajo
+            VStack(spacing: 10) {
+                Image(systemName: outcome.ascents.isEmpty ? "figure.hiking" : "mountain.2")
+                    .font(.system(size: 44, weight: .ultraLight))
+                    .foregroundStyle(Theme.Colors.accent)
+                    .offset(y: revealed ? 0 : 14)
+                    .opacity(revealed ? 1 : 0)
+                Rectangle().fill(Theme.Colors.accent).frame(width: revealed ? 48 : 0, height: 1.5)
             }
             .padding(.top, Theme.Spacing.l)
 
@@ -48,9 +41,8 @@ struct ImportResultView: View {
                                 Text("\(ele.groupedInteger) m").font(.sarrio(17, .bold).monospacedDigit())
                             }
                         }
-                        .padding(Theme.Spacing.m)
-                        .background(Theme.Colors.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                        .elevation(.low)
+                        .padding(.vertical, Theme.Spacing.s)
+                        .overlay(alignment: .bottom) { Rectangle().fill(Theme.Colors.separator).frame(height: 0.5) }
                         .staggeredAppear(index + 2)
                     }
                 }

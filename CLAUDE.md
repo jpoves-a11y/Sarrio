@@ -29,7 +29,8 @@ El plan completo por fases está en el README.
   - tipografía Geist (`Shared/Typography.swift`): usa `.font(.sarrio(tamaño, peso))`, nunca `.system` para texto (solo para iconos SF Symbols); pesos hasta Bold;
   - ningún texto se corta con «…»: nada de `lineLimit(1)` en títulos o nombres; las cifras se encogen (`minimumScaleFactor`);
   - fondos blancos o gris muy suave, un único color de acento y cifras grandes en negrita;
-  - profundidad con `elevation(_:)` (sombras en capas), nunca bloques planos;
+  - estilo editorial y afilado: esquinas pequeñas (`Theme.Radius`, 4-10 pt), sin cápsulas ni degradados en iconos y botones, encabezados en versalitas con filo fino (`SectionHeader`), iconos en línea fina y color de acento;
+  - profundidad con `elevation(_:)` (sombras suaves en capas) en tarjetas, y la profundidad fuerte en los mapas 3D;
   - mapas en relieve 3D (`Terrain3DView`) como protagonistas;
   - interacción física: `.pressableCard`, `interactiveTilt()`, `scrollDepth()`, `staggeredAppear(_:)`, muelles de `Theme.Motion` y háptica.
 - Rutas del backend: dependencias inyectables con `createApp(deps)`. Los tests usan libSQL en memoria (`backend/test/helpers.ts`).

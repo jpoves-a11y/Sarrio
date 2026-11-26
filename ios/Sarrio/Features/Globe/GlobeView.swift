@@ -37,7 +37,7 @@ struct GlobeView: View {
                                     .font(.sarrio(14, .semibold))
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 14).padding(.vertical, 9)
-                                    .background(.ultraThinMaterial, in: Capsule())
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                                     .environment(\.colorScheme, .dark)
                             }
                         }
@@ -113,7 +113,6 @@ struct GlobeView: View {
                             .font(.system(size: 13, weight: .bold))
                             .foregroundStyle(Theme.Colors.accent)
                             .frame(width: 30, height: 30)
-                            .background(Theme.Colors.accent.opacity(0.1), in: Circle())
                         VStack(alignment: .leading, spacing: 1) {
                             Text(peak.displayName).font(.sarrio(16, .semibold)).foregroundStyle(Theme.Colors.textPrimary).fixedSize(horizontal: false, vertical: true)
                             Text(peak.range ?? (ascended.contains(peak.id) ? "Subido" : " "))
@@ -166,7 +165,7 @@ struct GlobeView: View {
             }
         }
         .padding(.horizontal, 14).padding(.vertical, 9)
-        .background(.ultraThinMaterial, in: Capsule())
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
         .environment(\.colorScheme, .dark)
     }
 
@@ -204,7 +203,7 @@ private struct PeakFlyCard: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Theme.Colors.textSecondary)
                         .frame(width: 28, height: 28)
-                        .background(Theme.Colors.groupedBackground, in: Circle())
+                        .background(Theme.Colors.groupedBackground, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 3) {
@@ -229,7 +228,7 @@ private struct PeakFlyCard: View {
                             .font(.sarrio(15, .semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 16).padding(.vertical, 10)
-                            .background(Theme.Colors.accent, in: Capsule())
+                            .background(Theme.Colors.accent, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                             .elevation(.medium)
                     }
                     .buttonStyle(.pressableCard)

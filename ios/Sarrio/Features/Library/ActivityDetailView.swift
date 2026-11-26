@@ -62,7 +62,7 @@ struct ActivityDetailView: View {
                     .ignoresSafeArea()
                     Button { showsMap = false } label: {
                         Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
-                            .frame(width: 36, height: 36).background(.ultraThinMaterial, in: Circle())
+                            .frame(width: 36, height: 36).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                             .environment(\.colorScheme, .dark)
                     }
                     .padding(.horizontal, Theme.Spacing.m)
@@ -137,7 +137,7 @@ struct ActivityDetailView: View {
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 48, height: 48)
-                    .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous).stroke(.white.opacity(0.35), lineWidth: 1))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Ver en el mapa 3D").font(.sarrio(18, .bold)).foregroundStyle(.white)
                     Text(detail == nil ? "Cargando la ruta…" : "Vuela la ruta sobre el relieve")
@@ -151,11 +151,8 @@ struct ActivityDetailView: View {
                 }
             }
             .padding(Theme.Spacing.m)
-            .background(
-                LinearGradient(colors: [Theme.Colors.accent.opacity(0.88), Theme.Colors.accent], startPoint: .topLeading, endPoint: .bottomTrailing),
-                in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-            )
-            .elevation(.high)
+            .background(Theme.Colors.accent, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .elevation(.medium)
         }
         .buttonStyle(.pressableCard)
         .disabled(detail == nil || detail?.segments.isEmpty == true)
@@ -195,7 +192,7 @@ struct ActivityDetailView: View {
                                 .font(.sarrio(13, .semibold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 12).padding(.vertical, 8)
-                                .background(Theme.Colors.accent, in: Capsule())
+                                .background(Theme.Colors.accent, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                                 .elevation(.low)
                                 .fixedSize()
                         }
@@ -286,21 +283,16 @@ struct ActivityDetailView: View {
     }
 }
 
-/// Icono del deporte con volumen: degradado de acento y sombra.
+/// Icono del deporte: el símbolo en línea fina y en el color de acento, sin fondo.
 struct SportBadge: View {
     var sport: SportType
     var size: CGFloat = 44
 
     var body: some View {
         Image(systemName: sport.symbol)
-            .font(.system(size: size * 0.42, weight: .semibold))
-            .foregroundStyle(.white)
+            .font(.system(size: size * 0.5, weight: .light))
+            .foregroundStyle(Theme.Colors.accent)
             .frame(width: size, height: size)
-            .background(
-                LinearGradient(colors: [Theme.Colors.accent.opacity(0.85), Theme.Colors.accent], startPoint: .top, endPoint: .bottom),
-                in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
-            )
-            .elevation(.low)
     }
 }
 
@@ -339,7 +331,7 @@ private struct SummitMapView: View {
                     Spacer()
                     Button { dismiss() } label: {
                         Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
-                            .frame(width: 36, height: 36).background(.ultraThinMaterial, in: Circle())
+                            .frame(width: 36, height: 36).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                             .environment(\.colorScheme, .dark)
                     }
                 }
@@ -351,7 +343,7 @@ private struct SummitMapView: View {
                         .font(.sarrio(13)).foregroundStyle(.white.opacity(0.75))
                 }
                 .padding(.horizontal, 16).padding(.vertical, 10)
-                .background(.ultraThinMaterial, in: Capsule())
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                 .environment(\.colorScheme, .dark)
             }
             .padding(Theme.Spacing.m)

@@ -401,14 +401,14 @@ final class SummitMarkerView: UIView {
         addSubview(content)
         let pill = UIView(frame: CGRect(x: 0, y: 0, width: width, height: height))
         pill.backgroundColor = .white
-        pill.layer.cornerRadius = height / 2
+        pill.layer.cornerRadius = 4
         pill.layer.shadowColor = UIColor.black.cgColor
         pill.layer.shadowOpacity = 0.22
         pill.layer.shadowRadius = 10
         pill.layer.shadowOffset = CGSize(width: 0, height: 5)
         content.addSubview(pill)
         badge.frame = CGRect(x: pad, y: (height - badgeSize) / 2, width: badgeSize, height: badgeSize)
-        badge.layer.cornerRadius = badgeSize / 2
+        badge.layer.cornerRadius = 3
         pill.addSubview(badge)
         icon.frame = badge.bounds.insetBy(dx: 5, dy: 5)
         icon.contentMode = .scaleAspectFit

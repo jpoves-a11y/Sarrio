@@ -261,31 +261,24 @@ private struct PeakCard: View {
 }
 
 /// Insignia del pico: un triángulo con volumen (degradado y luz) y el número de ascensiones.
+/// Distintivo del pico: un triángulo de línea fina en el color de acento y, si se ha subido
+/// varias veces, el número en pequeño a su lado (sin fondos ni degradados).
 struct PeakBadge: View {
     var count: Int
     var size: CGFloat = 44
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
-                .fill(LinearGradient(colors: [Theme.Colors.accent.opacity(0.18), Theme.Colors.accent.opacity(0.06)],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-            Image(systemName: "mountain.2.fill")
-                .font(.system(size: size * 0.42, weight: .semibold))
-                .foregroundStyle(LinearGradient(colors: [Theme.Colors.accent, Theme.Colors.accent.opacity(0.7)],
-                                                startPoint: .top, endPoint: .bottom))
-                .shadow(color: Theme.Colors.accent.opacity(0.3), radius: 3, y: 2)
+        HStack(alignment: .top, spacing: 1) {
+            Image(systemName: "triangle")
+                .font(.system(size: size * 0.46, weight: .light))
+                .foregroundStyle(Theme.Colors.accent)
             if count > 1 {
-                Text("\(count)")
-                    .font(.sarrio(11, .semibold).monospacedDigit())
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 5).padding(.vertical, 1)
-                    .background(Theme.Colors.accent, in: Capsule())
-                    .overlay(Capsule().stroke(.white, lineWidth: 1.5))
-                    .offset(x: size * 0.36, y: -size * 0.36)
+                Text("×\(count)")
+                    .font(.sarrio(size * 0.24, .semibold).monospacedDigit())
+                    .foregroundStyle(Theme.Colors.accent)
             }
         }
-        .frame(width: size, height: size)
+        .frame(width: size, height: size, alignment: .center)
     }
 }
 
@@ -325,14 +318,10 @@ private struct HealthConnectCard: View {
     var body: some View {
         Card(elevation: .medium) {
             HStack(alignment: .top, spacing: Theme.Spacing.m) {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(LinearGradient(colors: [Color(red: 1, green: 0.38, blue: 0.45), Color(red: 0.96, green: 0.2, blue: 0.33)],
-                                               startPoint: .top, endPoint: .bottom),
-                                in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .elevation(.low)
+                Image(systemName: "heart")
+                    .font(.system(size: 22, weight: .light))
+                    .foregroundStyle(Theme.Colors.accent)
+                    .frame(width: 32, height: 44)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Conecta Apple Health")
                         .font(.sarrio(17, .bold))
@@ -354,13 +343,9 @@ private struct PolarConnectCard: View {
         Card(elevation: .medium) {
             HStack(alignment: .top, spacing: Theme.Spacing.m) {
                 Image(systemName: "dot.radiowaves.left.and.right")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(LinearGradient(colors: [Color(red: 0.86, green: 0.1, blue: 0.2), Color(red: 0.7, green: 0.05, blue: 0.14)],
-                                               startPoint: .top, endPoint: .bottom),
-                                in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .elevation(.low)
+                    .font(.system(size: 21, weight: .light))
+                    .foregroundStyle(Theme.Colors.accent)
+                    .frame(width: 32, height: 44)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Conecta Polar")
                         .font(.sarrio(17, .bold))
@@ -384,7 +369,7 @@ private struct SyncStatusCard: View {
         Card(elevation: .medium) {
             HStack(spacing: Theme.Spacing.m) {
                 ZStack {
-                    Circle().fill(Theme.Colors.accent.opacity(0.12)).frame(width: 40, height: 40)
+                    Color.clear.frame(width: 28, height: 40)
                     if progress.phase == .done {
                         Image(systemName: "checkmark").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.Colors.accent)
                             .transition(.scale.combined(with: .opacity))
@@ -468,7 +453,7 @@ private struct SyncStatusCard: View {
         }
         .foregroundStyle(accent ? .white : Theme.Colors.textPrimary)
         .padding(.horizontal, 10).padding(.vertical, 5)
-        .background(accent ? AnyShapeStyle(Theme.Colors.accent) : AnyShapeStyle(Theme.Colors.groupedBackground), in: Capsule())
+        .background(accent ? AnyShapeStyle(Theme.Colors.accent) : AnyShapeStyle(Theme.Colors.groupedBackground), in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
     }
 }
 
@@ -482,7 +467,7 @@ private struct ProgressPill: View {
         }
         .padding(.horizontal, Theme.Spacing.m)
         .padding(.vertical, 10)
-        .background(.regularMaterial, in: Capsule())
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
         .elevation(.medium)
     }
 }

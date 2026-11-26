@@ -71,14 +71,14 @@ private struct ShareCard: View {
                 Button(action: close) {
                     Text("Hecho").font(.sarrio(16, .semibold)).foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                         .shadow(color: Color.accentColor.opacity(0.3), radius: 12, y: 6)
                 }
                 .disabled(isWorking)
                 .opacity(isWorking ? 0.4 : 1)
             }
             .padding(24)
-            .background(.white, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .background(.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .shadow(color: .black.opacity(0.06), radius: 3, y: 2)
             .shadow(color: .black.opacity(0.18), radius: 34, y: 20)
             .padding(16)
@@ -94,7 +94,7 @@ private struct ShareCard: View {
 
     @ViewBuilder private var icon: some View {
         ZStack {
-            Circle().fill(Color.accentColor.opacity(0.1)).frame(width: 84, height: 84)
+            Rectangle().fill(Color.accentColor.opacity(0.08)).frame(width: 64, height: 2).offset(y: 34)
             if isWorking {
                 ProgressView().controlSize(.large)
             } else {

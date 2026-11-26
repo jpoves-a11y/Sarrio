@@ -26,10 +26,13 @@ enum Theme {
         static let xl: CGFloat = 40
     }
 
+    /// Esquinas pequeñas y precisas (estilo editorial): nada de cápsulas ni tarjetas muy redondas.
     enum Radius {
-        static let card: CGFloat = 18
-        static let button: CGFloat = 14
-        static let hero: CGFloat = 26
+        static let card: CGFloat = 8
+        static let button: CGFloat = 8
+        static let hero: CGFloat = 10
+        /// Etiquetas, chips y botones pequeños.
+        static let chip: CGFloat = 4
     }
 
     /// Sombras en capas: una cercana y nítida y otra lejana y difusa dan sensación de altura real.
@@ -38,9 +41,10 @@ enum Theme {
 
         var layers: [(opacity: Double, radius: CGFloat, y: CGFloat)] {
             switch self {
-            case .low: [(0.04, 1, 1), (0.05, 8, 4)]
-            case .medium: [(0.05, 2, 1), (0.08, 18, 10)]
-            case .high: [(0.06, 3, 2), (0.14, 34, 20)]
+            // Las tarjetas apenas se levantan; la profundidad de verdad queda para los mapas 3D
+            case .low: [(0.03, 0.5, 0.5), (0.03, 4, 2)]
+            case .medium: [(0.04, 1, 1), (0.05, 10, 5)]
+            case .high: [(0.05, 2, 1), (0.12, 28, 16)]
             }
         }
     }
