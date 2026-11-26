@@ -2,16 +2,30 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(SessionStore.self) private var session
+    @Environment(LibraryStore.self) private var library
     @State private var confirmDelete = false
     @State private var errorMessage: String?
 
     var body: some View {
         List {
-            Section("Fuentes de datos") {
-                SourceRow(icon: "heart.fill", name: "Apple Health", status: "Próximamente")
-                SourceRow(icon: "doc", name: "Archivos GPX", status: "Disponible")
+            Section {
+                if HealthKitService.isAvailable {
+                    Toggle(isOn: Binding(
+                        get: { library.healthConnected },
+                        set: { on in
+                            if on { Task { await library.connectHealth() } } else { library.disconnectHealth() }
+                        }
+                    )) {
+                        Label("Apple Health", systemImage: "heart.fill")
+                    }
+                }
+                SourceRow(icon: "doc", name: "Archivos GPX, FIT y TCX", status: "Disponible")
                 SourceRow(icon: "dot.radiowaves.left.and.right", name: "Polar", status: "Próximamente")
                 SourceRow(icon: "clock", name: "Garmin · Suunto · COROS", status: "En solicitud")
+            } header: {
+                Text("Fuentes de datos")
+            } footer: {
+                Text("Con Apple Health conectado, los entrenos nuevos con GPS se suben solos, también con la app cerrada. Puedes compartir archivos a Sarrio desde cualquier app.")
             }
             Section("Privacidad") {
                 Label("Zonas privadas", systemImage: "eye.slash")

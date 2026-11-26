@@ -15,6 +15,8 @@ App nativa para iPhone (SwiftUI), con un backend gratuito en Cloudflare Workers 
 ```
 ios/
   project.yml              Proyecto Xcode (XcodeGen)
+  SarrioShare/             Share Extension (Compartir → Sarrio)
+  Shared/                  Código común de la app y la extensión (bandeja del App Group)
   Config.example.xcconfig  Claves locales: cópialo a Config.xcconfig
   Sarrio/                  App SwiftUI (App, Core, Features)
   SarrioTests/
@@ -31,9 +33,8 @@ site/                      Web pública (soporte, privacidad, términos) → Git
 
 | Fuente | Estado |
 |---|---|
-| Apple Health (entrenos y rutas) | Fase 3. Sin aprobación previa |
-| Importar GPX | ✅ Ya funciona (pantalla Cumbres → Importar) |
-| Importar FIT/TCX | Fase 3 |
+| Apple Health (entrenos y rutas) | ✅ Histórico y entrenos nuevos en segundo plano |
+| Importar GPX, FIT y TCX | ✅ Botón +, «Abrir con» y Compartir → Sarrio |
 | Polar AccessLink | Fase 7. Alta propia gratuita |
 | Garmin Connect, Suunto, COROS | Hay que solicitar acceso de partner ya, porque la aprobación tarda |
 
@@ -45,7 +46,7 @@ Strava queda descartado: su API Agreement (noviembre de 2024) no permite mostrar
 - **Turso**: https://turso.tech. Ejecuta `turso db create sarrio` y luego `turso db tokens create sarrio`.
 - **Cloudflare**: https://dash.cloudflare.com. Workers & Pages → Import a repository → este repo. Root directory `backend`, build `npm ci && npx drizzle-kit migrate`, deploy `npx wrangler deploy`. Variables de build: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`. Secretos del Worker: esos dos más `JWT_SECRET` y `TOKEN_ENCRYPTION_KEY`.
 - **Mapbox**: https://account.mapbox.com. Copia el token público (`pk.…`).
-- **Apple Developer**: crea un App ID con HealthKit, Sign in with Apple y Push Notifications.
+- **Apple Developer**: crea un App ID con HealthKit (con entrega en segundo plano), Sign in with Apple, Push Notifications y el App Group `group.com.poves.sarrio`. La Share Extension (`com.poves.sarrio.share`) usa el mismo App Group.
 - **Polar AccessLink**: https://admin.polaraccesslink.com
 - **Solicitudes de partner** (hazlo cuanto antes):
   - Garmin: https://developer.garmin.com/gc-developer-program/
@@ -106,7 +107,7 @@ El CI compila y testea la app en los runners macOS de GitHub en cada push (job `
   - app con pestañas, importación de GPX y detección de cumbres;
   - CI.
 - [x] **Fase 2**: Sign in with Apple → JWT propio (con nonce), perfil editable, borrado de cuenta, perfil público y sistema de diseño (`ios/Sarrio/Core/Design`).
-- [ ] **Fase 3**: HealthKit (histórico y observer), FIT/TCX, Share Extension, y subida de actividades y ascensiones.
+- [x] **Fase 3**: HealthKit (histórico y observer), FIT/TCX, Share Extension, y subida de actividades y ascensiones. Incluye biblioteca con relieve 3D (MapKit).
 - [ ] **Fase 4**: detalle 3D con terreno y vuelo de cámara, perfil de elevación, y globo con clustering.
 - [ ] **Fase 5**: emblemas y retos (oficiales y de usuarios).
 - [ ] **Fase 6**: social. Incluye:

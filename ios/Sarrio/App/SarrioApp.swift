@@ -2,27 +2,32 @@ import SwiftUI
 
 @main
 struct SarrioApp: App {
-    @State private var session: SessionStore
-    private let api: APIClient
-    private let peakPackStore: PeakPackStore
-
-    init() {
-        let api = APIClient(baseURL: AppConfig.apiBaseURL)
-        self.api = api
-        self.peakPackStore = PeakPackStore(api: api)
-        _session = State(initialValue: SessionStore(api: api))
-    }
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
+    private let services = AppServices.shared
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(session)
-                .environment(\.apiClient, api)
-                .environment(\.peakPackStore, peakPackStore)
+                .environment(services.session)
+                .environment(services.library)
+                .environment(\.apiClient, services.api)
+                .environment(\.peakPackStore, services.peakPackStore)
                 .tint(Theme.Colors.accent)
                 // Estética clara por decisión de diseño.
                 .preferredColorScheme(.light)
-                .task { await session.restore() }
+                .task { await services.session.restore() }
+                // GPX/FIT/TCX abiertos desde Archivos, Mail, AirDrop…
+                .onOpenURL { url in
+                    Task { await services.library.importFile(at: url) }
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    guard phase == .active, services.session.me != nil else { return }
+                    Task {
+                        await services.library.processSharedInbox()
+                        await services.library.syncHealth()
+                    }
+                }
         }
     }
 }

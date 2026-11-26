@@ -13,6 +13,8 @@ enum APIError: Error, LocalizedError, Equatable {
         case .http(_, "invalid_username"?): "El usuario debe tener entre 3 y 20 caracteres: letras, números, punto o guion bajo."
         case .http(_, "invalid_display_name"?): "El nombre no puede estar vacío."
         case .http(_, "invalid_bio"?): "La bio puede tener como máximo 280 caracteres."
+        case .http(_, "invalid_track"?): "La ruta del archivo no es válida."
+        case .http(413, _): "La actividad es demasiado grande."
         case .http(401, _): "Tu sesión ha caducado. Vuelve a iniciar sesión."
         case let .http(status, code): "Error del servidor (\(status)\(code.map { ": \($0)" } ?? ""))."
         case .decoding: "Respuesta inesperada del servidor."
@@ -59,7 +61,14 @@ struct APIClient: Sendable {
     }
 
     private func raw<B: Encodable>(_ method: String, _ path: String, body: B?) async throws -> Data {
-        var request = URLRequest(url: baseURL.appending(path: path))
+        // `appending(path:)` escaparía el "?": separamos la query a mano.
+        let parts = path.split(separator: "?", maxSplits: 1)
+        var url = baseURL.appending(path: String(parts[0]))
+        if parts.count > 1, var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            components.percentEncodedQuery = String(parts[1])
+            url = components.url ?? url
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = method
         if let token = bearerToken() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         if let body {
@@ -97,4 +106,30 @@ struct APIClient: Sendable {
     func deleteAccount() async throws { try await delete("v1/me") }
 
     func user(username: String) async throws -> PublicUser { try await get("v1/users/\(username)") }
+
+    // MARK: Actividades y ascensiones
+
+    func uploadActivity(_ upload: ActivityUpload) async throws -> ActivityWithAscents {
+        try await post("v1/activities", body: upload)
+    }
+
+    func activities(before: Date? = nil, limit: Int = 50) async throws -> ActivityPage {
+        var path = "v1/activities?limit=\(limit)"
+        if let before { path += "&before=\(Int64(before.timeIntervalSince1970 * 1000))" }
+        return try await get(path)
+    }
+
+    func activity(id: String) async throws -> ActivityDetail { try await get("v1/activities/\(id)") }
+
+    func updateActivity(id: String, _ update: ActivityUpdate) async throws -> ActivityWithAscents {
+        try await patch("v1/activities/\(id)", body: update)
+    }
+
+    func deleteActivity(id: String) async throws { try await delete("v1/activities/\(id)") }
+
+    func library() async throws -> Library { try await get("v1/ascents") }
+
+    func addAscent(_ ascent: ManualAscent) async throws -> Ascent { try await post("v1/ascents", body: ascent) }
+
+    func deleteAscent(id: String) async throws { try await delete("v1/ascents/\(id)") }
 }

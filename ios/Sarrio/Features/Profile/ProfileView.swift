@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @Environment(SessionStore.self) private var session
+    @Environment(LibraryStore.self) private var library
     @State private var editing = false
 
     var body: some View {
@@ -9,11 +10,11 @@ struct ProfileView: View {
             VStack(spacing: Theme.Spacing.m) {
                 if let me = session.me {
                     header(me)
-                    Card {
-                        // Fase 3-5: valores reales desde ascensiones y emblemas.
+                    Card(elevation: .medium) {
+                        // Emblemas: fase 5.
                         StatRow(stats: [
-                            ("Cumbres", "0", nil),
-                            ("Desnivel", "0", "m"),
+                            ("Cumbres", "\(library.library?.summary.uniquePeaks ?? 0)", nil),
+                            ("Desnivel", library.totalElevationGain.groupedInteger, "m"),
                             ("Emblemas", "0", nil),
                         ])
                     }
@@ -32,6 +33,7 @@ struct ProfileView: View {
         }
         .background(Theme.Colors.groupedBackground)
         .navigationTitle("Perfil")
+        .task { if library.library == nil { await library.load() } }
         .toolbar {
             Button("Editar") { editing = true }
         }

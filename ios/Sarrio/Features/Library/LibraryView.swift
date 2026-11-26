@@ -2,140 +2,335 @@ import SarrioKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Biblioteca de cumbres. De momento: importar un GPX y ver qué picos detecta.
-struct LibraryView: View {
-    @Environment(\.peakPackStore) private var peakPackStore
-    @State private var importing = false
-    @State private var isProcessing = false
-    @State private var lastImport: ImportResult?
-    @State private var errorMessage: String?
+extension UTType {
+    static let gpx = UTType(importedAs: "com.topografix.gpx")
+    static let fit = UTType(importedAs: "com.garmin.fit")
+    static let tcx = UTType(importedAs: "com.garmin.tcx")
+}
 
-    struct ImportResult {
-        var name: String
-        var date: Date?
-        var distanceKm: Double
-        var elevationGain: Double
-        var summits: [DetectedSummit]
-    }
+/// Biblioteca de cumbres: la cima más alta en 3D, los picos subidos y las actividades recientes.
+struct LibraryView: View {
+    @Environment(LibraryStore.self) private var store
+    @State private var importing = false
 
     var body: some View {
+        @Bindable var store = store
         ScrollView {
-            VStack(spacing: Theme.Spacing.m) {
-                if isProcessing {
-                    Card { HStack { ProgressView(); Text("Buscando cumbres…").foregroundStyle(Theme.Colors.textSecondary) } }
-                }
-                if let result = lastImport {
-                    importCard(result)
-                } else if !isProcessing {
-                    EmptyStateView(
-                        icon: "mountain.2",
-                        title: "Tu biblioteca está vacía",
-                        message: "Importa una actividad GPX y detectaremos las cumbres que subiste.",
-                        actionTitle: "Importar GPX",
-                        action: { importing = true }
-                    )
-                    .padding(.top, Theme.Spacing.xl)
+            LazyVStack(spacing: Theme.Spacing.l) {
+                if let library = store.library, !library.ascents.isEmpty {
+                    if let highest = library.summary.highestPeak {
+                        SummitHero(peak: highest, summary: library.summary, elevationGain: store.totalElevationGain)
+                            .staggeredAppear(0)
+                    }
+                    if !store.healthConnected && HealthKitService.isAvailable {
+                        HealthConnectCard { Task { await store.connectHealth() } }.staggeredAppear(1)
+                    }
+                    peaksSection.staggeredAppear(2)
+                    if !store.activities.isEmpty { activitiesSection.staggeredAppear(3) }
+                } else if store.isLoading && store.library == nil {
+                    ProgressView().padding(.top, 120)
+                } else {
+                    emptyState
                 }
             }
-            .padding(Theme.Spacing.m)
+            .padding(.horizontal, Theme.Spacing.m)
+            .padding(.bottom, Theme.Spacing.xl)
         }
         .background(Theme.Colors.groupedBackground)
         .navigationTitle("Cumbres")
+        .safeAreaInset(edge: .bottom) {
+            if store.isImporting || store.isSyncingHealth {
+                ProgressPill(text: store.isImporting ? "Buscando cumbres…" : "Sincronizando Apple Health…")
+                    .padding(.bottom, Theme.Spacing.s)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(Theme.Motion.spring, value: store.isImporting || store.isSyncingHealth)
         .toolbar {
-            Button { importing = true } label: { Image(systemName: "plus") }
-                .accessibilityLabel("Importar actividad")
+            Menu {
+                Button { importing = true } label: { Label("Importar archivo (GPX, FIT, TCX)", systemImage: "doc.badge.plus") }
+                if store.healthConnected {
+                    Button { Task { await store.syncHealth() } } label: { Label("Sincronizar Apple Health", systemImage: "arrow.triangle.2.circlepath") }
+                }
+            } label: {
+                Image(systemName: "plus").fontWeight(.semibold)
+            }
+            .accessibilityLabel("Añadir actividad")
         }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(filenameExtension: "gpx") ?? .xml]) { result in
-            Task { await handleImport(result) }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.gpx, .fit, .tcx, .xml], allowsMultipleSelection: false) { result in
+            if case let .success(urls) = result, let url = urls.first { Task { await store.importFile(at: url) } }
         }
-        .alert("No se pudo importar", isPresented: Binding(
-            get: { errorMessage != nil },
-            set: { if !$0 { errorMessage = nil } }
+        .sheet(item: $store.lastImport) { outcome in
+            ImportResultView(outcome: outcome)
+                .presentationDetents([.medium, .large])
+                .presentationCornerRadius(Theme.Radius.hero)
+        }
+        .alert("Algo no ha ido bien", isPresented: Binding(
+            get: { store.errorMessage != nil },
+            set: { if !$0 { store.errorMessage = nil } }
         )) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(errorMessage ?? "")
+            Text(store.errorMessage ?? "")
         }
+        .task { await store.load() }
+        .refreshable { await store.load() }
     }
 
-    private func importCard(_ result: ImportResult) -> some View {
-        Card {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(result.name)
-                    .font(.system(size: 19, weight: .bold))
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                if let date = result.date {
-                    Text(date.formatted(date: .long, time: .shortened))
-                        .font(.system(size: 14))
+    // MARK: Secciones
+
+    private var peaksSection: some View {
+        @Bindable var store = store
+        return VStack(spacing: Theme.Spacing.s) {
+            HStack {
+                SectionHeader(title: "Tus picos")
+                Menu {
+                    Picker("Orden", selection: $store.sortOrder) {
+                        ForEach(LibraryStore.SortOrder.allCases) { Text($0.title).tag($0) }
+                    }
+                } label: {
+                    Label(store.sortOrder.title, systemImage: "arrow.up.arrow.down")
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
-            StatRow(stats: [
-                ("Distancia", result.distanceKm.formatted(.number.precision(.fractionLength(1))), "km"),
-                ("Desnivel", result.elevationGain.groupedInteger, "m"),
-                ("Cumbres", "\(result.summits.count)", nil),
-            ])
-            .padding(.vertical, Theme.Spacing.s)
+            ForEach(store.peakGroups) { group in
+                NavigationLink { PeakDetailView(group: group) } label: { PeakCard(group: group) }
+                    .buttonStyle(.pressableCard)
+                    .scrollDepth()
+            }
+        }
+        .animation(Theme.Motion.spring, value: store.sortOrder)
+    }
 
-            if result.summits.isEmpty {
-                Text("No hemos detectado ninguna cumbre en esta actividad.")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.Colors.textSecondary)
-            } else {
-                Divider()
-                ForEach(result.summits, id: \.peak.id) { summit in
-                    SummitRow(summit: summit)
-                }
+    private var activitiesSection: some View {
+        VStack(spacing: Theme.Spacing.s) {
+            SectionHeader(title: "Actividades")
+            ForEach(store.activities.prefix(10)) { activity in
+                NavigationLink { ActivityDetailView(activity: activity) } label: { ActivityRow(activity: activity) }
+                    .buttonStyle(.pressableCard)
+                    .scrollDepth()
             }
         }
     }
 
-    private func handleImport(_ result: Result<URL, Error>) async {
-        isProcessing = true
-        defer { isProcessing = false }
-        do {
-            let track = try TrackImporter.parse(fileAt: try result.get())
-            let summits = try await peakPackStore.detectSummits(in: track.points)
-            lastImport = ImportResult(
-                name: track.name ?? "Actividad",
-                date: track.startDate,
-                distanceKm: track.distance / 1000,
-                elevationGain: track.elevationGain(),
-                summits: summits
+    private var emptyState: some View {
+        VStack(spacing: Theme.Spacing.l) {
+            EmptyStateView(
+                icon: "mountain.2",
+                title: "Tu biblioteca de cumbres",
+                message: "Conecta Apple Health o importa un GPX, FIT o TCX y detectaremos las cimas que has pisado."
             )
-        } catch {
-            errorMessage = error.localizedDescription
+            .padding(.top, Theme.Spacing.l)
+            if HealthKitService.isAvailable && !store.healthConnected {
+                HealthConnectCard { Task { await store.connectHealth() } }
+            }
+            Button { importing = true } label: { Label("Importar archivo", systemImage: "doc.badge.plus") }
+                .buttonStyle(.secondary)
         }
     }
 }
 
-private struct SummitRow: View {
-    var summit: DetectedSummit
+// MARK: - Héroe 3D
+
+/// La cima más alta del usuario en relieve 3D, girando despacio, con las cifras grandes encima.
+private struct SummitHero: View {
+    var peak: PeakRef
+    var summary: Library.Summary
+    var elevationGain: Double
 
     var body: some View {
-        HStack(spacing: Theme.Spacing.m) {
-            Image(systemName: "triangle.fill")
-                .font(.system(size: 14))
-                .foregroundStyle(Theme.Colors.accent)
-                .frame(width: 32, height: 32)
-                .background(Theme.Colors.accent.opacity(0.1), in: Circle())
-            VStack(alignment: .leading, spacing: 1) {
-                Text(summit.peak.displayName)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                if let time = summit.closestPoint.time {
-                    Text(time.formatted(date: .omitted, time: .shortened))
+        ZStack(alignment: .bottomLeading) {
+            Terrain3DView(center: peak.coordinate, distance: 3_200, summits: [peak], orbit: true, interactive: false)
+                .allowsHitTesting(false)
+            LinearGradient(colors: [.clear, .black.opacity(0.15), .black.opacity(0.72)], startPoint: .top, endPoint: .bottom)
+            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("TU CIMA MÁS ALTA")
+                        .font(.statLabel).tracking(1.2)
+                        .foregroundStyle(.white.opacity(0.75))
+                    Text(peak.displayName)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(.white)
+                    if let ele = peak.ele {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text(ele.groupedInteger).font(.heroValue).foregroundStyle(.white)
+                            Text("m").font(.system(size: 18, weight: .bold)).foregroundStyle(.white.opacity(0.8))
+                        }
+                        .contentTransition(.numericText())
+                    }
+                }
+                HStack(spacing: 0) {
+                    HeroStat(label: "Picos", value: "\(summary.uniquePeaks)")
+                    HeroStat(label: "Ascensiones", value: "\(summary.ascents)")
+                    HeroStat(label: "Desnivel", value: elevationGain.groupedInteger, unit: "m")
+                }
+                .padding(Theme.Spacing.m)
+                .background(.ultraThinMaterial.opacity(0.9), in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                .environment(\.colorScheme, .dark)
+            }
+            .padding(Theme.Spacing.m)
+        }
+        .frame(height: 400)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+        .elevation(.high)
+        .interactiveTilt(maxAngle: 6)
+        .frame(height: 400)
+        .padding(.top, Theme.Spacing.s)
+    }
+}
+
+private struct HeroStat: View {
+    var label: String
+    var value: String
+    var unit: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label.uppercased()).font(.statLabel).tracking(0.6).foregroundStyle(.white.opacity(0.7))
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value).font(.statValue).foregroundStyle(.white)
+                if let unit { Text(unit).font(.statUnit).foregroundStyle(.white.opacity(0.7)) }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Tarjetas
+
+private struct PeakCard: View {
+    var group: PeakGroup
+
+    var body: some View {
+        Card(elevation: .low) {
+            HStack(spacing: Theme.Spacing.m) {
+                PeakBadge(count: group.ascents.count)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(group.peak.displayName)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                        .lineLimit(1)
+                    Text(subtitle)
                         .font(.system(size: 13))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
-            }
-            Spacer()
-            if let ele = summit.peak.ele {
-                Text("\(ele.groupedInteger) m")
-                    .font(.system(size: 16, weight: .bold).monospacedDigit())
+                Spacer(minLength: 0)
+                if let ele = group.peak.ele {
+                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                        Text(ele.groupedInteger).font(.system(size: 20, weight: .bold).monospacedDigit())
+                        Text("m").font(.statUnit).foregroundStyle(Theme.Colors.textSecondary)
+                    }
                     .foregroundStyle(Theme.Colors.textPrimary)
+                }
             }
         }
-        .padding(.vertical, 2)
+    }
+
+    private var subtitle: String {
+        let last = group.lastAscent.formatted(date: .abbreviated, time: .omitted)
+        return group.ascents.count == 1 ? last : "\(group.ascents.count) veces · última \(last)"
+    }
+}
+
+/// Insignia del pico: un triángulo con volumen (degradado y luz) y el número de ascensiones.
+struct PeakBadge: View {
+    var count: Int
+    var size: CGFloat = 44
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
+                .fill(LinearGradient(colors: [Theme.Colors.accent.opacity(0.18), Theme.Colors.accent.opacity(0.06)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+            Image(systemName: "mountain.2.fill")
+                .font(.system(size: size * 0.42, weight: .semibold))
+                .foregroundStyle(LinearGradient(colors: [Theme.Colors.accent, Theme.Colors.accent.opacity(0.7)],
+                                                startPoint: .top, endPoint: .bottom))
+                .shadow(color: Theme.Colors.accent.opacity(0.3), radius: 3, y: 2)
+            if count > 1 {
+                Text("\(count)")
+                    .font(.system(size: 11, weight: .heavy).monospacedDigit())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    .background(Theme.Colors.accent, in: Capsule())
+                    .overlay(Capsule().stroke(.white, lineWidth: 1.5))
+                    .offset(x: size * 0.36, y: -size * 0.36)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+struct ActivityRow: View {
+    var activity: Activity
+
+    var body: some View {
+        Card(elevation: .low) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(activity.displayTitle)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                        .lineLimit(1)
+                    Text("\(activity.sport.title) · \(activity.startAt.formatted(date: .abbreviated, time: .omitted))")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+                Spacer()
+                Image(systemName: activity.visibility.icon)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+            StatRow(stats: [
+                ("Distancia", ((activity.distanceM ?? 0) / 1000).formatted(.number.precision(.fractionLength(1))), "km"),
+                ("Desnivel", (activity.elevGainM ?? 0).groupedInteger, "m"),
+                ("Cumbres", "\(activity.ascents?.count ?? 0)", nil),
+            ])
+            .padding(.top, Theme.Spacing.xs)
+        }
+    }
+}
+
+private struct HealthConnectCard: View {
+    var action: () -> Void
+
+    var body: some View {
+        Card(elevation: .medium) {
+            HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(LinearGradient(colors: [Color(red: 1, green: 0.38, blue: 0.45), Color(red: 0.96, green: 0.2, blue: 0.33)],
+                                               startPoint: .top, endPoint: .bottom),
+                                in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .elevation(.low)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Conecta Apple Health")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                    Text("Leemos tus entrenos con GPS, también los de tu Apple Watch, y añadimos solas las cumbres nuevas.")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+            }
+            Button("Conectar", action: action).buttonStyle(.primary).padding(.top, Theme.Spacing.xs)
+        }
+    }
+}
+
+private struct ProgressPill: View {
+    var text: String
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.s) {
+            ProgressView().controlSize(.small)
+            Text(text).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
+        }
+        .padding(.horizontal, Theme.Spacing.m)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: Capsule())
+        .elevation(.medium)
     }
 }

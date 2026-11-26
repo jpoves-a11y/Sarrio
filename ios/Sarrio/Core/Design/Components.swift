@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Bloque blanco con borde suave: la unidad visual básica de la app.
+/// Bloque blanco que flota sobre el fondo gris: la unidad visual básica de la app.
 struct Card<Content: View>: View {
     var padding: CGFloat = Theme.Spacing.m
+    var elevation: Theme.Elevation = .low
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -12,8 +13,78 @@ struct Card<Content: View>: View {
             .background(Theme.Colors.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                    .stroke(Theme.Colors.separator, lineWidth: 1)
+                    .stroke(Theme.Colors.separator, lineWidth: 0.5)
             )
+            .elevation(elevation)
+    }
+}
+
+/// Estilo de botón para tarjetas pulsables: se hunde e inclina en 3D al tocarla, con háptica.
+struct PressableCardStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .rotation3DEffect(.degrees(configuration.isPressed ? 4 : 0), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
+            .animation(Theme.Motion.snappy, value: configuration.isPressed)
+            .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { _, pressed in pressed }
+    }
+}
+
+extension ButtonStyle where Self == PressableCardStyle {
+    static var pressableCard: PressableCardStyle { PressableCardStyle() }
+}
+
+/// Inclinación 3D que sigue al dedo (como una tarjeta física) y vuelve con un muelle al soltar.
+struct InteractiveTilt: ViewModifier {
+    var maxAngle: Double = 8
+    @State private var tilt: CGSize = .zero
+
+    func body(content: Content) -> some View {
+        GeometryReader { geo in
+            content
+                .rotation3DEffect(.degrees(Double(-tilt.height) * maxAngle), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
+                .rotation3DEffect(.degrees(Double(tilt.width) * maxAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+                // Simultáneo, para no bloquear el desplazamiento de la pantalla.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            let w = max(geo.size.width, 1), h = max(geo.size.height, 1)
+                            tilt = CGSize(width: (value.location.x / w - 0.5) * 2, height: (value.location.y / h - 0.5) * 2)
+                        }
+                        .onEnded { _ in withAnimation(Theme.Motion.spring) { tilt = .zero } }
+                )
+        }
+    }
+}
+
+extension View {
+    func interactiveTilt(maxAngle: Double = 8) -> some View { modifier(InteractiveTilt(maxAngle: maxAngle)) }
+
+    /// Profundidad al desplazar: los elementos que entran y salen de pantalla se alejan en 3D.
+    func scrollDepth() -> some View {
+        scrollTransition(.interactive, axis: .vertical) { content, phase in
+            content
+                .scaleEffect(phase.isIdentity ? 1 : 0.94)
+                .opacity(phase.isIdentity ? 1 : 0.55)
+                .rotation3DEffect(.degrees(phase.value * -10), axis: (x: 1, y: 0, z: 0), perspective: 0.7)
+        }
+    }
+
+    /// Entrada escalonada: aparece desde abajo con un muelle (`index` marca el retraso).
+    func staggeredAppear(_ index: Int) -> some View { modifier(StaggeredAppear(index: index)) }
+}
+
+private struct StaggeredAppear: ViewModifier {
+    var index: Int
+    @State private var visible = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(visible ? 1 : 0)
+            .offset(y: visible ? 0 : 18)
+            .onAppear {
+                withAnimation(Theme.Motion.spring.delay(Double(min(index, 8)) * 0.05)) { visible = true }
+            }
     }
 }
 
@@ -63,8 +134,13 @@ struct PrimaryButtonStyle: ButtonStyle {
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 50)
-            .background(Theme.Colors.accent, in: RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
-            .opacity(configuration.isPressed ? 0.85 : 1)
+            .background(
+                LinearGradient(colors: [Theme.Colors.accent.opacity(0.92), Theme.Colors.accent], startPoint: .top, endPoint: .bottom),
+                in: RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous)
+            )
+            .shadow(color: Theme.Colors.accent.opacity(configuration.isPressed ? 0.15 : 0.32), radius: configuration.isPressed ? 4 : 12, y: configuration.isPressed ? 2 : 6)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(Theme.Motion.snappy, value: configuration.isPressed)
     }
 }
 

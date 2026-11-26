@@ -11,6 +11,7 @@ El plan completo por fases está en el README.
   - sin R2: las rutas se guardarán comprimidas en Turso;
   - Mapbox para mapas.
 - **La app nunca accede a Turso directamente:** todo pasa por la API, que aplica la visibilidad (`backend/src/services/visibility.ts`) y las zonas de privacidad (`applyPrivacyZones`).
+- **Rutas:** se guardan en `activity_tracks` como gzip de JSON (`gz-json-v1`). La app las simplifica antes de subirlas (`ActivityUpload`) y el servidor comprueba cada cumbre contra la ruta.
 - **La detección de cumbres se hace en el iPhone** (`SarrioKit.PeakDetector`), con paquetes de picos por celda geohash de 4 caracteres (`GET /v1/peaks/pack/:cell`).
 - **Geohash:** la implementación de Swift (`Geo.geohash`), la del backend (`lib/geo.ts`) y la del script de picos tienen que dar el mismo resultado. Los tests fijan el valor de referencia `sp86w` para el Aneto.
 
@@ -22,7 +23,12 @@ El plan completo por fases está en el README.
 - Picos: `node tools/peaks/fetch-peaks.mjs <región> > peaks-<región>.sql`
 
 ## Convenciones
-- Estética clara, minimalista y profesional: usa siempre `Theme` y los componentes de `ios/Sarrio/Core/Design` (Card, StatRow, PrimaryButtonStyle, EmptyStateView…). Fondos blancos o gris muy suave, un único color de acento y cifras grandes en negrita.
+- Estética limpia, profesional, minimalista e intuitiva, pero **interactiva, atractiva, 3D y con profundidad**:
+  - usa siempre `Theme` y los componentes de `ios/Sarrio/Core/Design` (Card, StatRow, PrimaryButtonStyle, EmptyStateView…);
+  - fondos blancos o gris muy suave, un único color de acento y cifras grandes en negrita;
+  - profundidad con `elevation(_:)` (sombras en capas), nunca bloques planos;
+  - mapas en relieve 3D (`Terrain3DView`) como protagonistas;
+  - interacción física: `.pressableCard`, `interactiveTilt()`, `scrollDepth()`, `staggeredAppear(_:)`, muelles de `Theme.Motion` y háptica.
 - Rutas del backend: dependencias inyectables con `createApp(deps)`. Los tests usan libSQL en memoria (`backend/test/helpers.ts`).
 - Los textos de la interfaz van en español.
 - La lógica pura (sin UIKit, HealthKit ni Mapbox) va en `SarrioKit` y lleva tests.

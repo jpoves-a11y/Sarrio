@@ -28,15 +28,20 @@ targets:
     platform: iOS
     sources:
       - path: Sarrio
+      - path: Shared
     dependencies:
       - package: SarrioKit
       - package: MapboxMaps
+      - target: SarrioShare
+        embed: true
     entitlements:
       path: Sarrio/Sarrio.entitlements
       properties:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
+        com.apple.developer.healthkit.background-delivery: true
         com.apple.developer.applesignin: [Default]
+        com.apple.security.application-groups: [group.$(SARRIO_BUNDLE_ID)]
         aps-environment: development
     info:
       path: Sarrio/Info.plist
@@ -51,13 +56,14 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         MBXAccessToken: $(MAPBOX_ACCESS_TOKEN)
         SarrioAPIBaseURL: $(SARRIO_API_BASE_URL)
+        SarrioAppGroup: group.$(SARRIO_BUNDLE_ID)
         NSHealthShareUsageDescription: >-
           Sarrio lee tus entrenamientos y sus rutas GPS para detectar las cumbres que has subido.
         LSSupportsOpeningDocumentsInPlace: false
         CFBundleDocumentTypes:
           - CFBundleTypeName: GPS track
             LSHandlerRank: Alternate
-            LSItemContentTypes: [com.topografix.gpx, com.garmin.fit]
+            LSItemContentTypes: [com.topografix.gpx, com.garmin.fit, com.garmin.tcx]
         UTImportedTypeDeclarations:
           - UTTypeIdentifier: com.topografix.gpx
             UTTypeDescription: GPX track
@@ -70,12 +76,50 @@ targets:
             UTTypeConformsTo: [public.data]
             UTTypeTagSpecification:
               public.filename-extension: [fit]
+          - UTTypeIdentifier: com.garmin.tcx
+            UTTypeDescription: TCX activity
+            UTTypeConformsTo: [public.xml]
+            UTTypeTagSpecification:
+              public.filename-extension: [tcx]
+              public.mime-type: [application/vnd.garmin.tcx+xml]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(SARRIO_BUNDLE_ID)
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
+  SarrioShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: SarrioShare
+      - path: Shared
+    entitlements:
+      path: SarrioShare/SarrioShare.entitlements
+      properties:
+        com.apple.security.application-groups: [group.$(SARRIO_BUNDLE_ID)]
+    info:
+      path: SarrioShare/Info.plist
+      properties:
+        CFBundleDisplayName: Sarrio
+        SarrioAppGroup: group.$(SARRIO_BUNDLE_ID)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            # Solo aparece con GPX, FIT o TCX (o XML/datos genéricos con esa extensión).
+            NSExtensionActivationRule: >-
+              SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $att,
+              ANY $att.registeredTypeIdentifiers UTI-CONFORMS-TO "com.topografix.gpx"
+              || ANY $att.registeredTypeIdentifiers UTI-CONFORMS-TO "com.garmin.fit"
+              || ANY $att.registeredTypeIdentifiers UTI-CONFORMS-TO "com.garmin.tcx"
+              ).@count > 0).@count > 0
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(SARRIO_BUNDLE_ID).share
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
   SarrioTests:
     type: bundle.unit-test
     platform: iOS
