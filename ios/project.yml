@@ -60,6 +60,9 @@ targets:
         SarrioAppGroup: group.$(SARRIO_BUNDLE_ID)
         NSHealthShareUsageDescription: >-
           Sarrio lee tus entrenamientos y sus rutas GPS para detectar las cumbres que has subido.
+        # Mapbox usa APIs de ubicación (el punto azul); Apple exige el texto aunque Sarrio no lo pida
+        NSLocationWhenInUseUsageDescription: >-
+          Sarrio puede mostrar dónde estás en el mapa para situarte entre tus cumbres.
         # Apple la exige con el permiso de HealthKit aunque Sarrio solo lee (nunca escribe en Salud)
         NSHealthUpdateUsageDescription: >-
           Sarrio no escribe en Salud: solo lee tus entrenamientos para detectar las cumbres que has subido.
