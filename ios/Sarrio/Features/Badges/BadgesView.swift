@@ -191,6 +191,7 @@ struct BadgeDetailView: View {
                                progress: badge.progress?.fraction, size: 220, shine: badge.isEarned)
                         .opacity(badge.tier == .legend && !badge.isEarned ? 0.6 : 1)
                         .elevation(badge.isEarned ? .high : .low)
+                        .motionSheen(enabled: badge.tier == .legend && badge.isEarned)
                         .interactiveTilt(maxAngle: 14)
                         .frame(width: 220, height: 220)
                         .background { if badge.tier == .legend { LegendAura(size: 220, intensity: badge.isEarned ? 1 : 0.4, onDark: false) } }

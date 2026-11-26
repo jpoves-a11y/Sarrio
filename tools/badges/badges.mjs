@@ -138,6 +138,7 @@ function snowflake(cx, cy, r) {
 
 /** SVG del emblema. `locked`: medallón en gris, sin brillo. */
 export function badgeSVG(badge, { locked = false, font = "Geist" } = {}) {
+  if (!locked && badge.tier === "legend") return legendSVG(badge, font);
   const c = locked ? { light: "#EEEFF1", mid: "#C9CCD1", dark: "#9DA1A8", ink: "#A9ADB3" } : TIERS[badge.tier];
   const id = `${badge.id}${locked ? "-l" : ""}`;
   const face = c.face ?? ["#FFFFFF", "#F6F5F2", "#E6E3DD"];
@@ -183,6 +184,91 @@ export function badgeSVG(badge, { locked = false, font = "Geist" } = {}) {
   </g>
   ${label}
   <path d="M14 52 A46 46 0 0 1 106 52 A50 34 0 0 0 14 52 Z" fill="url(#${id}-gloss)"/>
+</svg>`;
+}
+
+/**
+ * Medallón de Leyenda, como una pieza de joyería:
+ * - canto chapado en oro con estrías finas y biseles de luz y sombra;
+ * - esfera negra con guilloché de rayos de sol (como la esfera de un reloj) y un reflejo diagonal;
+ * - pista de minutos en oro;
+ * - grabado, laurel y cifra en oro en relieve, con luz especular real (filtro SVG).
+ */
+function legendSVG(badge, font) {
+  const id = `${badge.id}-lg`;
+  const P = (r, a) => [(60 + r * Math.cos(a)).toFixed(2), (60 + r * Math.sin(a)).toFixed(2)];
+  const knurl = Array.from({ length: 120 }, (_, i) => {
+    const a = (i / 120) * Math.PI * 2;
+    return `M${P(51.6, a)} L${P(56.4, a)}`;
+  }).join(" ");
+  const sunray = Array.from({ length: 180 }, (_, i) => {
+    const a = (i / 180) * Math.PI * 2;
+    return `M${P(13, a)} L${P(48.5, a)}`;
+  }).join(" ");
+  const minutes = Array.from({ length: 60 }, (_, i) => {
+    const a = (i / 60) * Math.PI * 2;
+    const [x, y] = P(45.2, a);
+    return `<circle cx="${x}" cy="${y}" r="${i % 5 === 0 ? 0.55 : 0.28}"/>`;
+  }).join("");
+  const label = badge.t
+    ? `<text x="60" y="97.5" text-anchor="middle" font-family="${font}" font-weight="700" font-size="${badge.t.length > 5 ? 11 : 12.5}" letter-spacing="1" fill="url(#${id}-gold)">${badge.t}</text>`
+    : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <linearGradient id="${id}-gold" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#FFF4CF"/><stop offset="0.3" stop-color="#F0CF7E"/><stop offset="0.62" stop-color="#C99A42"/><stop offset="1" stop-color="#7E5719"/>
+    </linearGradient>
+    <linearGradient id="${id}-rim" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#FFF0C4"/><stop offset="0.22" stop-color="#E7C06A"/><stop offset="0.5" stop-color="#A8792C"/>
+      <stop offset="0.72" stop-color="#E9C56F"/><stop offset="1" stop-color="#6E4A14"/>
+    </linearGradient>
+    <radialGradient id="${id}-face" cx="0.42" cy="0.36" r="0.75">
+      <stop offset="0" stop-color="#3A3A40"/><stop offset="0.55" stop-color="#1B1B1F"/><stop offset="1" stop-color="#0B0B0D"/>
+    </radialGradient>
+    <linearGradient id="${id}-sheen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0.25" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="0.42" stop-color="#FFFFFF" stop-opacity="0.10"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.02"/><stop offset="0.62" stop-color="#FFFFFF" stop-opacity="0.07"/><stop offset="0.75" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="${id}-dial"><circle cx="60" cy="60" r="49"/></clipPath>
+    <filter id="${id}-emboss" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.55" result="blur"/>
+      <feSpecularLighting in="blur" surfaceScale="2.2" specularConstant="1.1" specularExponent="22" lighting-color="#FFF6DA" result="spec">
+        <fePointLight x="30" y="10" z="70"/>
+      </feSpecularLighting>
+      <feComposite in="spec" in2="SourceAlpha" operator="in" result="specIn"/>
+      <feOffset in="SourceAlpha" dx="0.5" dy="0.8" result="off"/>
+      <feGaussianBlur in="off" stdDeviation="0.5" result="shadow"/>
+      <feFlood flood-color="#000" flood-opacity="0.75"/>
+      <feComposite in2="shadow" operator="in" result="shadowCol"/>
+      <feMerge><feMergeNode in="shadowCol"/><feMergeNode in="SourceGraphic"/><feMergeNode in="specIn"/></feMerge>
+    </filter>
+  </defs>
+  <circle cx="60" cy="62" r="57.5" fill="#000" opacity="0.28"/>
+  <!-- Canto de oro con estrías y biseles -->
+  <circle cx="60" cy="60" r="57.5" fill="url(#${id}-rim)"/>
+  <path d="${knurl}" stroke="#4A300A" stroke-width="0.45" opacity="0.45"/>
+  <circle cx="60" cy="60" r="57.1" fill="none" stroke="#FFF7DD" stroke-width="0.6" opacity="0.7"/>
+  <circle cx="60" cy="60" r="50.9" fill="none" stroke="#3B2706" stroke-width="1.4" opacity="0.8"/>
+  <!-- Esfera negra con guilloché de rayos -->
+  <circle cx="60" cy="60" r="49.6" fill="url(#${id}-face)"/>
+  <g clip-path="url(#${id}-dial)">
+    <path d="${sunray}" stroke="#FFFFFF" stroke-width="0.35" opacity="0.06"/>
+    <circle cx="60" cy="60" r="49" fill="url(#${id}-sheen)"/>
+  </g>
+  <circle cx="60" cy="60" r="49.6" fill="none" stroke="#000" stroke-width="1" opacity="0.6"/>
+  <!-- Pista de minutos -->
+  <g filter="url(#${id}-emboss)">
+    <circle cx="60" cy="60" r="47" fill="none" stroke="url(#${id}-gold)" stroke-width="0.8"/>
+    <circle cx="60" cy="60" r="43.4" fill="none" stroke="url(#${id}-gold)" stroke-width="0.45"/>
+    <g fill="url(#${id}-gold)">${minutes}</g>
+    <g fill="url(#${id}-gold)" stroke="url(#${id}-gold)" stroke-width="0.4">${laurel(1, 39.5).replaceAll('class="stem"', 'stroke-width="1"')}${laurel(-1, 39.5).replaceAll('class="stem"', 'stroke-width="1"')}</g>
+    <g fill="none" stroke="url(#${id}-gold)" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" transform="translate(60 ${badge.t ? 53 : 58}) scale(0.84) translate(-60 -60)">
+      ${badge.art.replaceAll('class="fill"', `fill="url(#${id}-gold)" stroke="none"`)}
+    </g>
+    ${label}
+  </g>
+  <!-- Brillo del cristal -->
+  <path d="M16 50 A45 45 0 0 1 104 50 A52 36 0 0 0 16 50 Z" fill="#FFFFFF" opacity="0.07"/>
 </svg>`;
 }
 

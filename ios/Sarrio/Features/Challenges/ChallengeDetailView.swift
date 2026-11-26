@@ -56,6 +56,7 @@ struct ChallengeDetailView: View {
                     BadgeMedal(icon: "badge-\(badgeId)", earned: true, size: 170, shine: current.progress?.done == true)
                         .opacity(current.progress?.done == true ? 1 : 0.75)
                         .elevation(.high)
+                        .motionSheen(enabled: current.progress?.done == true)
                         .interactiveTilt(maxAngle: 14)
                         .frame(width: 170, height: 170)
                         .legendAura(size: 170, intensity: current.progress?.done == true ? 1 : 0.4, onDark: false)

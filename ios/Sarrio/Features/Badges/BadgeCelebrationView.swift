@@ -24,6 +24,7 @@ struct BadgeCelebrationView: View {
                 .rotation3DEffect(.degrees(spin), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
                 .scaleEffect(landed ? 1 : 0.55)
                 .offset(y: landed ? 0 : -420)
+                .motionSheen(enabled: legend && settled)
                 .interactiveTilt(maxAngle: 12)
                 .frame(width: 230, height: 230)
                 // Las Leyendas se encienden al asentarse
