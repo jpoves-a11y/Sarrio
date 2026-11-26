@@ -31,6 +31,12 @@ final class HealthKitService: @unchecked Sendable {
 
     static var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
+    /// HealthKit no deja leer mientras el iPhone está bloqueado (los datos de Salud van cifrados):
+    /// «Protected health data is inaccessible». No es un fallo: se reintenta al desbloquear.
+    static func isLockedError(_ error: Error) -> Bool {
+        (error as? HKError)?.code == .errorDatabaseInaccessible
+    }
+
     /// Si el usuario ha conectado Apple Health desde Sarrio. HealthKit no dice si se concedió la lectura.
     var isConnected: Bool { defaults.bool(forKey: Self.connectedKey) }
 

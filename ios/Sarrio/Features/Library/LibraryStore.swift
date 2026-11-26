@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SarrioKit
+import UIKit
 
 /// Un pico de la biblioteca con todas sus ascensiones (la más reciente primero).
 struct PeakGroup: Identifiable, Hashable {
@@ -117,15 +118,26 @@ final class LibraryStore {
 
     func syncHealth() async {
         guard healthConnected else { return }
+        // Con el iPhone bloqueado (o aún desbloqueándose) Salud no deja leer: se espera al desbloqueo
+        guard UIApplication.shared.isProtectedDataAvailable else {
+            pendingHealthSync = true
+            return
+        }
+        pendingHealthSync = false
         isSyncingHealth = true
         defer { isSyncingHealth = false }
         do {
             try await sync.syncHealth()
+        } catch where HealthKitService.isLockedError(error) {
+            pendingHealthSync = true
         } catch {
             errorMessage = "No se pudieron sincronizar los entrenos de Apple Health: \(error.localizedDescription)"
         }
         await load()
     }
+
+    /// Hay una sincronización con Salud pendiente de que se desbloquee el iPhone.
+    private(set) var pendingHealthSync = false
 
     func disconnectHealth() {
         sync.healthKit.disconnect()

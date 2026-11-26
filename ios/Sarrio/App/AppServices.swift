@@ -25,7 +25,16 @@ final class AppServices {
         self.sync = sync
         self.session = SessionStore(api: api)
         self.library = LibraryStore(api: api, sync: sync)
+        // Al desbloquear el iPhone, la sincronización con Salud que quedó pendiente
+        let library = self.library
+        unlockTask = Task {
+            for await _ in NotificationCenter.default.notifications(named: UIApplication.protectedDataDidBecomeAvailableNotification) {
+                if library.pendingHealthSync, KeychainStore.sessionToken != nil { await library.syncHealth() }
+            }
+        }
     }
+
+    private var unlockTask: Task<Void, Never>?
 
     /// Observa Apple Health y sube los entrenos nuevos aunque la app esté cerrada.
     func startHealthObserver() {
