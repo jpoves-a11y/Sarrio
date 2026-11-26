@@ -41,6 +41,7 @@ targets:
         com.apple.developer.healthkit.access: []
         com.apple.developer.healthkit.background-delivery: true
         com.apple.developer.applesignin: [Default]
+        com.apple.developer.weatherkit: true
         com.apple.security.application-groups: [group.$(SARRIO_BUNDLE_ID)]
         aps-environment: development
     info:

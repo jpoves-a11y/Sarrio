@@ -12,6 +12,7 @@ El plan completo por fases está en el README.
   - Mapbox para mapas.
 - **La app nunca accede a Turso directamente:** todo pasa por la API, que aplica la visibilidad (`backend/src/services/visibility.ts`) y las zonas de privacidad (`applyPrivacyZones`).
 - **Rutas:** se guardan en `activity_tracks` como gzip de JSON (`gz-json-v1`). La app las simplifica antes de subirlas (`ActivityUpload`) y el servidor comprueba cada cumbre contra la ruta.
+- **Replay 3D:** el motor (`SarrioKit/Replay`: plan, cámara, tiempos, sol) sigue los tiempos y la cámara del replay de KM2 (repo `runna-io`), sin la bandera. Se reproduce en Mapbox (`Features/Replay`) con un CADisplayLink, precargando antes todas las vistas; el tiempo atmosférico sale de WeatherKit y se pinta sobre el cristal (`WetGlassView`).
 - **La detección de cumbres se hace en el iPhone** (`SarrioKit.PeakDetector`), con paquetes de picos por celda geohash de 4 caracteres (`GET /v1/peaks/pack/:cell`).
 - **Geohash:** la implementación de Swift (`Geo.geohash`), la del backend (`lib/geo.ts`) y la del script de picos tienen que dar el mismo resultado. Los tests fijan el valor de referencia `sp86w` para el Aneto.
 

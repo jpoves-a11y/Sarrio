@@ -1,4 +1,3 @@
-import MapKit
 import SarrioKit
 import SwiftUI
 
@@ -19,20 +18,7 @@ struct ActivityDetailView: View {
         _visibility = State(initialValue: activity.visibility)
     }
 
-    private var segments: [[CLLocationCoordinate2D]] {
-        (detail?.segments ?? []).map { $0.map(\.coordinate) }
-    }
-
     private var ascents: [Ascent] { detail?.ascents ?? activity.ascents ?? [] }
-
-    /// Centro de la vista: la cumbre más alta o, si no hay, el centro de la ruta.
-    private var focus: CLLocationCoordinate2D? {
-        if let top = ascents.max(by: { ($0.peak.ele ?? 0) < ($1.peak.ele ?? 0) }) { return top.peak.coordinate }
-        let all = segments.flatMap { $0 }
-        guard !all.isEmpty else { return nil }
-        return CLLocationCoordinate2D(latitude: all.map(\.latitude).reduce(0, +) / Double(all.count),
-                                      longitude: all.map(\.longitude).reduce(0, +) / Double(all.count))
-    }
 
     var body: some View {
         ScrollView {
@@ -50,15 +36,24 @@ struct ActivityDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .fullScreenCover(isPresented: $expandedMap) {
-            if let focus {
+            if let detail {
                 ZStack(alignment: .topTrailing) {
-                    Terrain3DView(center: focus, distance: 4_500, segments: segments, summits: ascents.map(\.peak), orbit: false, interactive: true)
-                        .ignoresSafeArea()
+                    ActivityReplayView(
+                        activityId: activity.id,
+                        segments: detail.segments,
+                        summits: ascents.map(\.peak),
+                        start: activity.startAt,
+                        end: endDate,
+                        height: nil
+                    )
+                    .ignoresSafeArea()
                     Button { expandedMap = false } label: {
-                        Image(systemName: "xmark").font(.system(size: 15, weight: .bold))
-                            .frame(width: 36, height: 36).background(.regularMaterial, in: Circle()).elevation(.medium)
+                        Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+                            .frame(width: 36, height: 36).background(.ultraThinMaterial, in: Circle())
+                            .environment(\.colorScheme, .dark)
                     }
-                    .padding(Theme.Spacing.m)
+                    .padding(.horizontal, Theme.Spacing.m)
+                    .padding(.top, 56)
                 }
             }
         }
@@ -77,26 +72,26 @@ struct ActivityDetailView: View {
         } message: { Text(errorMessage ?? "") }
     }
 
+    private var endDate: Date? { activity.durationS.map { activity.startAt.addingTimeInterval($0) } }
+
     @ViewBuilder private var mapHero: some View {
-        ZStack(alignment: .bottomTrailing) {
-            if let focus, detail != nil {
-                Terrain3DView(center: focus, distance: 4_000, segments: segments, summits: ascents.map(\.peak), orbit: true, interactive: false)
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
+        Group {
+            if let detail {
+                ActivityReplayView(
+                    activityId: activity.id,
+                    segments: detail.segments,
+                    summits: ascents.map(\.peak),
+                    start: activity.startAt,
+                    end: endDate,
+                    height: 400,
+                    onExpand: { expandedMap = true }
+                )
+                .transition(.opacity)
             } else {
-                Rectangle().fill(Theme.Colors.separator).overlay(ProgressView())
+                Rectangle().fill(Color(white: 0.1)).overlay(ProgressView().tint(.white))
             }
-            Button { expandedMap = true } label: {
-                Label("Explorar en 3D", systemImage: "view.3d")
-                    .font(.system(size: 14, weight: .semibold))
-                    .padding(.horizontal, 14).padding(.vertical, 9)
-                    .background(.regularMaterial, in: Capsule())
-                    .elevation(.medium)
-            }
-            .padding(Theme.Spacing.m)
-            .disabled(focus == nil)
         }
-        .frame(height: 340)
+        .frame(height: 400)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
         .elevation(.high)
         .padding(.top, Theme.Spacing.s)
