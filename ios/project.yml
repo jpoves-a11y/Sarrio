@@ -10,7 +10,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: $(SARRIO_TEAM_ID)
 packages:
@@ -48,6 +48,9 @@ targets:
       path: Sarrio/Info.plist
       properties:
         CFBundleDisplayName: Sarrio
+        # Versión y build desde los ajustes (el workflow de TestFlight sube el build en cada ejecución)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen:
           UIImageName: LaunchMark
           UIColorName: LaunchBackground
@@ -111,6 +114,8 @@ targets:
       path: SarrioShare/Info.plist
       properties:
         CFBundleDisplayName: Sarrio
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         SarrioAppGroup: group.$(SARRIO_BUNDLE_ID)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
