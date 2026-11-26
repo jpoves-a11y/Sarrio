@@ -145,6 +145,17 @@ activitiesRoutes.post("/", bodyLimit({ maxSize: 4 * 1024 * 1024 }), async (c) =>
   // Emblemas nuevos y retos cumplidos con esta actividad (la app enseña la celebración).
   const newBadges = await afterUpload(db, userId);
 
+  // Aviso a mis amigos: cimas recientes (no al importar el histórico) y Leyendas
+  if (visibility !== "private") {
+    const peakNames = inserted.map((a) => peakMap.get(a.peakId)!).map((p) => `${p.nameEs ?? p.name}${p.ele ? ` · ${Math.round(p.ele).toLocaleString("es-ES")} m` : ""}`);
+    if (peakNames.length && startAt > Date.now() - 48 * 3_600_000) {
+      c.var.push.toFriends(userId, (name) => ({ title: `${name} ha hecho cima`, body: peakNames.join(", "), data: { open: "feed" } }));
+    }
+    for (const b of newBadges.filter((b) => b.tier === "legend")) {
+      c.var.push.toFriends(userId, (name) => ({ title: `${name} es Leyenda`, body: b.name, data: { open: "feed" } }));
+    }
+  }
+
   return c.json(
     {
       activity: toActivity(activity!),

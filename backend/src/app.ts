@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import type { AppBindings, Deps } from "./env";
 import { getDb } from "./db/client";
+import { createPusher } from "./services/push";
 import { verifyAppleIdentityToken } from "./auth/apple";
 import { activitiesRoutes } from "./routes/activities";
 import { ascentsRoutes } from "./routes/ascents";
@@ -25,6 +26,15 @@ export function createApp(deps: Deps = defaultDeps) {
   app.use("*", async (c, next) => {
     c.set("deps", deps);
     c.set("db", deps.getDb(c.env));
+    // Notificaciones push: se envían sin hacer esperar la respuesta (en tests no hay executionCtx)
+    const waitUntil = (p: Promise<unknown>) => {
+      try {
+        c.executionCtx.waitUntil(p);
+      } catch {
+        void p;
+      }
+    };
+    c.set("push", createPusher(c.env, c.var.db, deps.fetch ?? fetch, waitUntil));
     await next();
   });
 

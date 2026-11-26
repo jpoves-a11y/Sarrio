@@ -36,6 +36,8 @@ export const users = sqliteTable(
     avatarKey: text("avatar_key"),
     bio: text("bio"),
     defaultVisibility: text("default_visibility", { enum: visibilityValues }).notNull().default("friends"),
+    /** Última vez que abrió la pestaña Amigos: lo de sus amigos posterior cuenta como novedad. */
+    feedSeenAt: integer("feed_seen_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("users_apple_sub_uq").on(t.appleSub), uniqueIndex("users_username_uq").on(t.username)],
@@ -341,7 +343,10 @@ export const feedItems = sqliteTable(
     kind: text("kind", { enum: ["activity", "ascent", "badge", "challenge_completed"] }).notNull(),
     refId: text("ref_id").notNull(),
     visibility: text("visibility", { enum: visibilityValues }).notNull(),
+    /** Cuándo pasó (la cima, la salida): ordena el feed. */
     createdAt: createdAt(),
+    /** Cuándo llegó a Sarrio: lo que cuenta como novedad (una cima de esta mañana subida por la noche). */
+    insertedAt: integer("inserted_at", { mode: "timestamp_ms" }),
   },
   (t) => [index("feed_actor_idx").on(t.actorId, t.createdAt)],
 );

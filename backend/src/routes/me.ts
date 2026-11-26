@@ -2,7 +2,9 @@ import { and, eq, ne } from "drizzle-orm";
 import { Hono } from "hono";
 import type { AppBindings } from "../env";
 import { requireAuth } from "../auth/session";
-import { users } from "../db/schema";
+import { devices, users } from "../db/schema";
+import { badgeCount } from "../services/badgeCount";
+import { sendToUser } from "../services/push";
 import { isValidUsername, isVisibility, normalizeUsername } from "../lib/validation";
 import { toMe } from "../services/users";
 
@@ -13,6 +15,42 @@ meRoutes.get("/", async (c) => {
   const user = await c.var.db.select().from(users).where(eq(users.id, c.var.userId)).get();
   if (!user) return c.json({ error: "not_found" }, 404);
   return c.json(toMe(user));
+});
+
+/** Novedades para el número del icono y de la pestaña Amigos. */
+meRoutes.get("/badge", async (c) => c.json(await badgeCount(c.var.db, c.var.userId)));
+
+/** Token de notificaciones push del iPhone (uno por dispositivo; si cambia de usuario, pasa al nuevo). */
+meRoutes.post("/devices", async (c) => {
+  const body = await c.req.json<Record<string, unknown>>().catch(() => null);
+  const token = typeof body?.token === "string" ? body.token.trim().toLowerCase() : "";
+  const environment = body?.environment === "sandbox" ? "sandbox" : "production";
+  if (!/^[0-9a-f]{32,200}$/.test(token)) return c.json({ error: "invalid_token" }, 400);
+  await c.var.db
+    .insert(devices)
+    .values({ token, userId: c.var.userId, environment })
+    .onConflictDoUpdate({ target: devices.token, set: { userId: c.var.userId, environment } });
+  return c.json({ registered: true });
+});
+
+/** Prueba de notificaciones: envía un push a mis iPhone y devuelve la respuesta de APNs. */
+meRoutes.post("/push-test", async (c) => {
+  if (!c.env.APNS_KEY || !c.env.APNS_KEY_ID || !c.env.APNS_TEAM_ID) return c.json({ error: "apns_not_configured" }, 503);
+  try {
+    const results = await sendToUser(c.env, c.var.db, c.var.deps.fetch ?? fetch, c.var.userId, {
+      title: "Sarrio",
+      body: "Las notificaciones funcionan ⛰️",
+      data: { open: "feed" },
+    });
+    return c.json({ results });
+  } catch (e) {
+    return c.json({ error: "push_failed", detail: String(e) }, 502);
+  }
+});
+
+meRoutes.delete("/devices/:token", async (c) => {
+  await c.var.db.delete(devices).where(and(eq(devices.token, c.req.param("token").toLowerCase()), eq(devices.userId, c.var.userId)));
+  return c.body(null, 204);
 });
 
 meRoutes.patch("/", async (c) => {

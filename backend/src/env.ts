@@ -12,6 +12,10 @@ export interface Env extends DbEnv {
   POLAR_CLIENT_SECRET?: string;
   /** Opcional: si no, `<origen de la API>/v1/providers/polar/callback` (tiene que coincidir con el registrado en Polar). */
   POLAR_REDIRECT_URI?: string;
+  /** Clave de APNs (.p8, contenido PEM o solo base64), su Key ID y el Team ID. Sin ellas no hay push. */
+  APNS_KEY?: string;
+  APNS_KEY_ID?: string;
+  APNS_TEAM_ID?: string;
 }
 
 /** Dependencias inyectables (en tests se sustituyen por una BD en memoria y un verificador falso). */
@@ -24,5 +28,5 @@ export interface Deps {
 
 export type AppBindings = {
   Bindings: Env;
-  Variables: { db: Db; deps: Deps; userId: string };
+  Variables: { db: Db; deps: Deps; userId: string; push: import("./services/push").Pusher };
 };

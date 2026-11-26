@@ -56,6 +56,10 @@ ascentsRoutes.post("/", async (c) => {
     .returning();
   await addFeedItem(db, { actorId: c.var.userId, kind: "ascent", refId: ascent!.id, visibility: ascent!.visibility, at: summitedAt });
   const newBadges = await afterUpload(db, c.var.userId);
+  if (ascent!.visibility !== "private" && summitedAt > Date.now() - 48 * 3_600_000) {
+    const what = `${peak.nameEs ?? peak.name}${peak.ele ? ` · ${Math.round(peak.ele).toLocaleString("es-ES")} m` : ""}`;
+    c.var.push.toFriends(c.var.userId, (name) => ({ title: `${name} ha hecho cima`, body: what, data: { open: "feed" } }));
+  }
   return c.json({ ...toAscent(ascent!, peak), newBadges }, 201);
 });
 

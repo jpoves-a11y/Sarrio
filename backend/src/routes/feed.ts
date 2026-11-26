@@ -3,11 +3,14 @@ import { Hono } from "hono";
 import type { AppBindings } from "../env";
 import type { Db } from "../db/client";
 import { requireAuth } from "../auth/session";
-import { activities, ascents, badges, challenges, comments, feedItems, likes } from "../db/schema";
+import { activities, activityTracks, ascents, badges, challenges, comments, feedItems, likes, privacyZones, users } from "../db/schema";
+import { badgeCount } from "../services/badgeCount";
+import { applyPrivacyZones } from "../lib/geo";
+import { decodeTrack } from "../lib/track";
 import { newId } from "../lib/ids";
 import { ascentsForActivities, ascentsWithPeaks, toActivity } from "../services/activities";
 import { getRelationship } from "../services/relationships";
-import { friendIds, notify, publicUsers } from "../services/social";
+import { displayName, friendIds, notify, publicUsers } from "../services/social";
 import { canView } from "../services/visibility";
 
 type FeedRow = typeof feedItems.$inferSelect;
@@ -23,6 +26,8 @@ export type FeedEntry = {
   commentCount: number;
   likedByMe: boolean;
   activity?: ReturnType<typeof toActivity>;
+  /** Vista previa de la ruta para el mapa 3D del feed: tramos de `[lat, lon]`, ya sin zonas privadas. */
+  route?: number[][][];
   ascents?: Awaited<ReturnType<typeof ascentsWithPeaks>>;
   badge?: { id: string; name: string; description: string; tier: string; category: string; icon: string };
   challenge?: { id: string; slug: string | null; title: string; kind: string; badgeId: string | null; official: boolean };
@@ -69,6 +74,7 @@ export async function hydrateFeed(db: Db, viewerId: string, items: FeedRow[]): P
       .where(and(eq(likes.userId, viewerId), eq(likes.targetType, "feed_item"), inArray(likes.targetId, items.map((i) => i.id)))),
   ]);
   const acts = new Map(actRows.map((a) => [a.id, a]));
+  const routes = await previewRoutes(db, viewerId, actRows);
   const manualMap = new Map(manual.map((a) => [a.id, a]));
   const badgeMap = new Map(badgeRows.map((b) => [b.id, b]));
   const challengeMap = new Map(challengeRows.map((c) => [c.id, c]));
@@ -93,7 +99,14 @@ export async function hydrateFeed(db: Db, viewerId: string, items: FeedRow[]): P
       case "activity": {
         const a = acts.get(item.refId);
         if (!a) return [];
-        return [{ ...base, activity: toActivity(a, { includeBox: a.userId === viewerId }), ascents: actAscents.filter((x) => x.activityId === a.id) }];
+        return [
+          {
+            ...base,
+            activity: toActivity(a, { includeBox: a.userId === viewerId }),
+            ascents: actAscents.filter((x) => x.activityId === a.id),
+            route: routes.get(a.id),
+          },
+        ];
       }
       case "ascent": {
         const a = manualMap.get(item.refId);
@@ -110,6 +123,38 @@ export async function hydrateFeed(db: Db, viewerId: string, items: FeedRow[]): P
     }
   });
 }
+
+const PREVIEW_POINTS = 150;
+
+/**
+ * Rutas ligeras para el feed: como mucho 150 puntos por actividad (uno de cada N), y a los demás
+ * sin el tramo dentro de las zonas de privacidad del autor (igual que en el detalle).
+ */
+async function previewRoutes(db: Db, viewerId: string, acts: { id: string; userId: string }[]) {
+  const out = new Map<string, number[][][]>();
+  if (!acts.length) return out;
+  const tracks = await db.select().from(activityTracks).where(inArray(activityTracks.activityId, acts.map((a) => a.id)));
+  const owners = [...new Set(acts.filter((a) => a.userId !== viewerId).map((a) => a.userId))];
+  const zones = owners.length
+    ? await db.select().from(privacyZones).where(inArray(privacyZones.userId, owners))
+    : [];
+  const ownerOf = new Map(acts.map((a) => [a.id, a.userId]));
+  for (const t of tracks) {
+    const points = await decodeTrack(t.data);
+    const owner = ownerOf.get(t.activityId)!;
+    const mine = zones.filter((z) => z.userId === owner);
+    const segments = owner === viewerId ? [points] : applyPrivacyZones(points, mine);
+    const total = segments.reduce((n, s) => n + s.length, 0);
+    const step = Math.max(1, Math.ceil(total / PREVIEW_POINTS));
+    const thin = segments
+      .map((seg) => seg.filter((_, i) => i % step === 0 || i === seg.length - 1).map((p) => [round(p[0]), round(p[1])]))
+      .filter((seg) => seg.length >= 2);
+    if (thin.length) out.set(t.activityId, thin);
+  }
+  return out;
+}
+
+const round = (v: number) => Math.round(v * 1e5) / 1e5;
 
 /** Una línea para avisos: «Aneto», «Tenzing», «Un Everest este año»… */
 export async function feedItemLabel(db: Db, item: FeedRow): Promise<string | null> {
@@ -148,6 +193,12 @@ feedRoutes.get("/", async (c) => {
   });
 });
 
+/** He abierto Amigos: lo anterior deja de contar como novedad. Devuelve las novedades que quedan. */
+feedRoutes.post("/seen", async (c) => {
+  await c.var.db.update(users).set({ feedSeenAt: new Date() }).where(eq(users.id, c.var.userId));
+  return c.json(await badgeCount(c.var.db, c.var.userId));
+});
+
 // ---------------------------------------------------------------------------
 // Likes y comentarios (sobre elementos del feed)
 // ---------------------------------------------------------------------------
@@ -164,7 +215,17 @@ likesRoutes.post("/feed_item/:id", async (c) => {
     .values({ userId: c.var.userId, targetType: "feed_item", targetId: item.id })
     .onConflictDoNothing()
     .returning();
-  if (inserted) await notify(db, { userId: item.actorId, actorId: c.var.userId, kind: "like", targetType: "feed_item", targetId: item.id });
+  if (inserted) {
+    await notify(db, { userId: item.actorId, actorId: c.var.userId, kind: "like", targetType: "feed_item", targetId: item.id });
+    if (item.actorId !== c.var.userId) {
+      const label = await feedItemLabel(db, item);
+      c.var.push.toUser(item.actorId, {
+        title: "Sarrio",
+        body: `A ${await displayName(db, c.var.userId)} le ha gustado ${label ? `«${label}»` : "tu salida"}`,
+        data: { open: "feed" },
+      });
+    }
+  }
   return c.json({ liked: true });
 });
 
@@ -207,6 +268,14 @@ commentsRoutes.post("/feed_item/:id", async (c) => {
     .values({ id: newId(), userId: c.var.userId, targetType: "feed_item", targetId: item.id, body: text })
     .returning();
   await notify(db, { userId: item.actorId, actorId: c.var.userId, kind: "comment", targetType: "feed_item", targetId: item.id });
+  if (item.actorId !== c.var.userId) {
+    const label = await feedItemLabel(db, item);
+    c.var.push.toUser(item.actorId, {
+      title: label ? `Comentario en «${label}»` : "Nuevo comentario",
+      body: `${await displayName(db, c.var.userId)}: ${text.slice(0, 120)}`,
+      data: { open: "feed" },
+    });
+  }
   const author = (await publicUsers(db, [c.var.userId])).get(c.var.userId)!;
   return c.json({ id: row!.id, body: row!.body, createdAt: row!.createdAt.getTime(), author }, 201);
 });

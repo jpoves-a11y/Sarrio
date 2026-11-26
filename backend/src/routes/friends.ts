@@ -4,7 +4,7 @@ import type { AppBindings } from "../env";
 import { requireAuth } from "../auth/session";
 import { blocks, friendships, reports, users } from "../db/schema";
 import { newId } from "../lib/ids";
-import { friendStatus, isBlockedEitherWay, notify, publicUsers } from "../services/social";
+import { displayName, friendStatus, isBlockedEitherWay, notify, publicUsers } from "../services/social";
 
 export const friendsRoutes = new Hono<AppBindings>();
 friendsRoutes.use("*", requireAuth);
@@ -54,10 +54,12 @@ friendsRoutes.post("/:userId", async (c) => {
       .set({ status: "accepted", respondedAt: new Date() })
       .where(and(eq(friendships.requesterId, other), eq(friendships.addresseeId, me)));
     await notify(db, { userId: other, actorId: me, kind: "friend_accepted", targetType: "user", targetId: me });
+    c.var.push.toUser(other, { title: "Sarrio", body: `${await displayName(db, me)} ha aceptado tu solicitud`, data: { open: "friends" } });
     return c.json({ status: "friends" });
   }
   await db.insert(friendships).values({ requesterId: me, addresseeId: other });
   await notify(db, { userId: other, actorId: me, kind: "friend_request", targetType: "user", targetId: me });
+  c.var.push.toUser(other, { title: "Solicitud de amistad", body: `${await displayName(db, me)} quiere ser tu amigo en Sarrio`, data: { open: "friends" } });
   return c.json({ status: "outgoing" }, 201);
 });
 
@@ -70,6 +72,7 @@ friendsRoutes.post("/:userId/accept", async (c) => {
   if (!pending) return c.json({ error: "not_found" }, 404);
   await db.update(friendships).set({ status: "accepted", respondedAt: new Date() }).where(where);
   await notify(db, { userId: other, actorId: me, kind: "friend_accepted", targetType: "user", targetId: me });
+  c.var.push.toUser(other, { title: "Sarrio", body: `${await displayName(db, me)} ha aceptado tu solicitud`, data: { open: "friends" } });
   return c.json({ status: "friends" });
 });
 

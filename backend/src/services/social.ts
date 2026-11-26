@@ -58,6 +58,11 @@ export const publicUserColumns = {
   avatarKey: users.avatarKey,
 };
 
+export async function displayName(db: Db, id: string) {
+  const row = await db.select({ name: users.displayName }).from(users).where(eq(users.id, id)).get();
+  return row?.name ?? "Alguien";
+}
+
 export async function publicUsers(db: Db, ids: string[]) {
   if (!ids.length) return new Map<string, { id: string; username: string; displayName: string; bio: string | null; avatarKey: string | null }>();
   const rows = await db.select(publicUserColumns).from(users).where(inArray(users.id, [...new Set(ids)]));
@@ -87,6 +92,7 @@ export async function addFeedItem(
     refId: item.refId,
     visibility: item.visibility,
     createdAt: new Date(item.at),
+    insertedAt: new Date(),
   });
 }
 
