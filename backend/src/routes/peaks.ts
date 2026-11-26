@@ -1,10 +1,20 @@
 import { Hono } from "hono";
-import { like } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import type { AppBindings } from "../env";
-import { peaks } from "../db/schema";
+import { peakMeta, peaks } from "../db/schema";
 import { isValidGeohash } from "../lib/geo";
 
 export const peaksRoutes = new Hono<AppBindings>();
+
+/**
+ * Versión del conjunto de picos. La app lleva una copia dentro; si esta es más nueva, pide al
+ * servidor los paquetes de las zonas que use (y los guarda) en lugar de fiarse de su copia.
+ */
+peaksRoutes.get("/version", async (c) => {
+  const row = await c.var.db.select().from(peakMeta).where(eq(peakMeta.key, "dataset_version")).get();
+  c.header("Cache-Control", "public, max-age=3600");
+  return c.json({ version: row ? Number(row.value) : null });
+});
 
 /**
  * Paquete de picos de una celda geohash de 4 caracteres (~39 × 19 km).

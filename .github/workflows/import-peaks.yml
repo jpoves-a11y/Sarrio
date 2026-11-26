@@ -53,3 +53,15 @@ jobs:
             "
             sleep 5
           done
+
+      - name: Versión del conjunto de picos
+        run: |
+          # La app lleva los picos dentro; con una versión más nueva aquí, pide los paquetes al servidor
+          node --input-type=module -e "
+            import { createClient } from '@libsql/client';
+            const c = createClient({ url: process.env.TURSO_DATABASE_URL, authToken: process.env.TURSO_AUTH_TOKEN });
+            const v = String(Date.now());
+            await c.execute({ sql: 'INSERT INTO peak_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', args: ['dataset_version', v] });
+            const n = (await c.execute('select count(*) as n from peaks')).rows[0].n;
+            console.log('dataset_version=' + v + ' · picos: ' + n);
+          "

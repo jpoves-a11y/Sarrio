@@ -99,6 +99,12 @@ export const peaks = sqliteTable(
   (t) => [index("peaks_geohash_idx").on(t.geohash), index("peaks_lat_lon_idx").on(t.lat, t.lon)],
 );
 
+/** Metadatos del conjunto de picos. `dataset_version` (ms) lo actualiza el workflow de importación. */
+export const peakMeta = sqliteTable("peak_meta", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
 export const activities = sqliteTable(
   "activities",
   {
