@@ -12,7 +12,14 @@ export const TIERS = {
   silver: { light: "#F4F6F8", mid: "#B9BFC7", dark: "#6E747D", ink: "#4A5058" },
   gold: { light: "#F7DE8F", mid: "#D2A23A", dark: "#86601A", ink: "#6B4A0E" },
   special: { light: "#F6A06A", mid: "#E66A29", dark: "#9C3A0E", ink: "#8A320B" },
+  // Leyendas: obsidiana mate con el grabado en oro
+  legend: {
+    light: "#5A5A60", mid: "#2A2A2E", dark: "#0A0A0B", ink: "#E2BC62",
+    face: ["#34343A", "#1E1E22", "#121214"], ring: "#C99A3E", tick: "#C99A3E",
+  },
 };
+
+const CROWN = "M46 40 L46 28 L53 34 L60 24 L67 34 L74 28 L74 40 Z";
 
 // Pictogramas: trazos en una caja de 60×60 centrada en (60,60) del medallón de 120.
 // `t` es el texto grabado opcional debajo del dibujo.
@@ -55,6 +62,12 @@ export const BADGES = [
   // Montañas
   { id: "faithful", name: "Fiel", tier: "bronze", category: "Montañas", art: `<path d="${P.peak}"/><path d="M42 40 A20 20 0 0 1 78 40"/><path d="M74 34 L78 40 L71 42"/>`, t: "×5", desc: "La misma cima cinco veces." },
   { id: "explorer", name: "Explorador", tier: "silver", category: "Montañas", art: `<circle cx="60" cy="58" r="20"/><path d="M60 42 L65 58 L60 74 L55 58 Z" class="fill"/><path d="M60 34 L60 38 M60 78 L60 82 M36 58 L40 58 M80 58 L84 58"/>`, desc: "Cimas en tres cordilleras distintas." },
+  // Leyendas
+  { id: "king-pyrenees", name: "Rey del Pirineo", tier: "legend", category: "Leyendas", art: `<path d="${CROWN}"/><circle cx="60" cy="24" r="1.8" class="fill"/><path d="M26 82 L40 60 L48 70 L60 50 L72 66 L80 58 L94 82"/>`, t: "3000", desc: "Todos los tresmiles del Pirineo." },
+  { id: "lord-alps", name: "Señor de los Alpes", tier: "legend", category: "Leyendas", art: `<path d="${CROWN}"/><circle cx="60" cy="24" r="1.8" class="fill"/><path d="M28 82 L50 60 L56 48 L62 44 L66 56 L92 82"/><path d="M56 48 L62 44 L64 52 L60 50 Z" class="fill"/>`, t: "4000", desc: "Todos los cuatromiles de los Alpes." },
+  { id: "iberian-slam", name: "Gran Slam Ibérico", tier: "legend", category: "Leyendas", art: `<path d="M26 82 L32 62 L37 70 L43 54 L48 66 L54 46 L59 62 L65 50 L70 64 L76 56 L81 66 L87 60 L94 82"/>` + [[32, 62], [43, 54], [54, 46], [65, 50], [76, 56], [87, 60]].map(([x, y]) => `<circle cx="${x}" cy="${y - 5}" r="2.2" class="fill"/>`).join(""), t: "6", desc: "El techo de cada gran cordillera." },
+  { id: "everesting", name: "Everesting", tier: "legend", category: "Leyendas", art: `<path d="M28 82 L60 38 L92 82"/><path d="M48 80 L60 73 L51 66 L63 59 L56 52 L60 46" stroke-dasharray="3 3.5"/><path d="M60 38 L60 29 L69 32 L60 35"/>`, t: "8849", desc: "8.849 m de desnivel positivo en una sola actividad." },
+  { id: "hundred-k", name: "Cien mil", tier: "legend", category: "Leyendas", art: `<circle cx="60" cy="58" r="22"/>` + Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<path d="M${(60 + 22 * Math.sin(a)).toFixed(1)} ${(58 - 22 * Math.cos(a)).toFixed(1)} L${(60 + 25.5 * Math.sin(a)).toFixed(1)} ${(58 - 25.5 * Math.cos(a)).toFixed(1)}"/>`; }).join("") + `<path d="M46 67 L55 52 L60 59 L66 46 L75 67"/>`, t: "100 000", desc: "100.000 m de desnivel positivo en un año." },
 ];
 
 function altitude(lines) {
@@ -100,6 +113,7 @@ function snowflake(cx, cy, r) {
 export function badgeSVG(badge, { locked = false, font = "Geist" } = {}) {
   const c = locked ? { light: "#EEEFF1", mid: "#C9CCD1", dark: "#9DA1A8", ink: "#A9ADB3" } : TIERS[badge.tier];
   const id = `${badge.id}${locked ? "-l" : ""}`;
+  const face = c.face ?? ["#FFFFFF", "#F6F5F2", "#E6E3DD"];
   const ticks = Array.from({ length: 48 }, (_, i) => {
     const a = (i / 48) * Math.PI * 2, r1 = 53.2, r2 = 55.6;
     return `M${(60 + r1 * Math.cos(a)).toFixed(2)} ${(60 + r1 * Math.sin(a)).toFixed(2)} L${(60 + r2 * Math.cos(a)).toFixed(2)} ${(60 + r2 * Math.sin(a)).toFixed(2)}`;
@@ -113,18 +127,18 @@ export function badgeSVG(badge, { locked = false, font = "Geist" } = {}) {
       <stop offset="0" stop-color="${c.light}"/><stop offset="0.45" stop-color="${c.mid}"/><stop offset="1" stop-color="${c.dark}"/>
     </linearGradient>
     <radialGradient id="${id}-face" cx="0.38" cy="0.32" r="0.8">
-      <stop offset="0" stop-color="#FFFFFF"/><stop offset="0.7" stop-color="#F6F5F2"/><stop offset="1" stop-color="#E6E3DD"/>
+      <stop offset="0" stop-color="${face[0]}"/><stop offset="0.7" stop-color="${face[1]}"/><stop offset="1" stop-color="${face[2]}"/>
     </radialGradient>
     <linearGradient id="${id}-gloss" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="${locked ? 0.15 : 0.55}"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="${locked ? 0.15 : c.face ? 0.22 : 0.55}"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
     </linearGradient>
   </defs>
   <circle cx="60" cy="61.5" r="57" fill="#000" opacity="0.10"/>
   <circle cx="60" cy="60" r="57" fill="url(#${id}-rim)"/>
-  <path d="${ticks}" stroke="${c.dark}" stroke-width="1" opacity="0.45"/>
+  <path d="${ticks}" stroke="${c.tick ?? c.dark}" stroke-width="1" opacity="${c.tick ? 0.6 : 0.45}"/>
   <circle cx="60" cy="60" r="50.5" fill="${c.dark}" opacity="0.55"/>
   <circle cx="60" cy="60" r="49" fill="url(#${id}-face)"/>
-  <circle cx="60" cy="60" r="45.5" fill="none" stroke="${c.mid}" stroke-width="0.8" opacity="0.7"/>
+  <circle cx="60" cy="60" r="45.5" fill="none" stroke="${c.ring ?? c.mid}" stroke-width="0.8" opacity="0.7"/>
   <g fill="none" stroke="${c.ink}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="art" transform="translate(60 ${badge.t ? 56 : 59}) scale(1.14) translate(-60 -60)">
     ${badge.art.replaceAll('class="fill"', `fill="${c.ink}" stroke="none"`)}
   </g>

@@ -1,8 +1,9 @@
 import Foundation
+import SwiftUI
 
 /// Nivel del emblema (el color del medallón).
 enum BadgeTier: String, Codable, Sendable {
-    case bronze, silver, gold, special
+    case bronze, silver, gold, special, legend
 
     var title: String {
         switch self {
@@ -10,8 +11,16 @@ enum BadgeTier: String, Codable, Sendable {
         case .silver: "Plata"
         case .gold: "Oro"
         case .special: "Especial"
+        case .legend: "Leyenda"
         }
     }
+}
+
+/// Colores de las Leyendas: obsidiana y oro (como su medallón).
+enum LegendColors {
+    static let ink = Color(red: 0.07, green: 0.07, blue: 0.08)
+    static let panel = Color(red: 0.12, green: 0.12, blue: 0.13)
+    static let gold = Color(red: 0.89, green: 0.74, blue: 0.38)
 }
 
 struct BadgeProgress: Codable, Hashable, Sendable {
@@ -47,7 +56,8 @@ struct Badge: Codable, Hashable, Sendable, Identifiable {
         let suffix: String
         switch id {
         case "km-100", "km-1000", "ultra": suffix = " km"
-        case "alt-2000", "alt-3000", "alt-4000", "gain-10k", "everest", "everest-10", "long-day": suffix = " m"
+        case "alt-2000", "alt-3000", "alt-4000", "gain-10k", "everest", "everest-10", "long-day", "everesting", "hundred-k": suffix = " m"
+        case "king-pyrenees", "lord-alps", "iberian-slam": suffix = " cimas"
         case "streak-4", "streak-12": suffix = " sem."
         default: suffix = ""
         }
@@ -84,6 +94,7 @@ enum ChallengeMetric: String, Codable, Sendable, CaseIterable, Identifiable {
     case activeWeeks = "active_weeks"
     case highSummits = "high_summits"
     case sunriseSummits = "sunrise_summits"
+    case maxActivityGain = "max_activity_gain"
 
     var id: String { rawValue }
 
@@ -100,12 +111,13 @@ enum ChallengeMetric: String, Codable, Sendable, CaseIterable, Identifiable {
         case .activeWeeks: "Semanas con salida"
         case .highSummits: "Cimas altas"
         case .sunriseSummits: "Cimas al amanecer"
+        case .maxActivityGain: "Desnivel en una actividad"
         }
     }
 
     var unit: String {
         switch self {
-        case .elevationGain: "m D+"
+        case .elevationGain, .maxActivityGain: "m D+"
         case .distance: "km"
         case .summits, .uniquePeaks, .highSummits, .sunriseSummits: "cimas"
         case .activities: "salidas"
@@ -154,6 +166,8 @@ struct Challenge: Codable, Hashable, Sendable, Identifiable {
     var minEle: Double?
     var recurrence: String
     var window: String?
+    /// Leyenda: el emblema que da completarlo (asset `badge-<id>`).
+    var badgeId: String?
     var startsAt: Date?
     var endsAt: Date?
     var peakCount: Int?
@@ -165,6 +179,7 @@ struct Challenge: Codable, Hashable, Sendable, Identifiable {
     var creator: ChallengeCreator?
 
     var isJoined: Bool { joined ?? false }
+    var isLegend: Bool { badgeId != nil }
 
     /// "6.200 / 8.849 m D+" o "4 / 15 cimas".
     var valueText: (value: String, target: String, unit: String) {

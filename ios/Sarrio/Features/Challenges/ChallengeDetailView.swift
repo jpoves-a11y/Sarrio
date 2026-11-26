@@ -49,10 +49,23 @@ struct ChallengeDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            Text((current.official ? "Reto de Sarrio" : "Reto de \(current.creator?.displayName ?? "un amigo")").uppercased())
+            if let badgeId = current.badgeId {
+                // Leyenda: el medallón en grande, que se inclina al dedo
+                HStack {
+                    Spacer()
+                    BadgeMedal(icon: "badge-\(badgeId)", earned: true, size: 170, shine: current.progress?.done == true)
+                        .opacity(current.progress?.done == true ? 1 : 0.75)
+                        .elevation(.high)
+                        .interactiveTilt(maxAngle: 14)
+                        .frame(width: 170, height: 170)
+                    Spacer()
+                }
+                .padding(.vertical, Theme.Spacing.m)
+            }
+            Text((current.isLegend ? "Leyenda" : current.official ? "Reto de Sarrio" : "Reto de \(current.creator?.displayName ?? "un amigo")").uppercased())
                 .font(.sarrio(12, .semibold))
                 .tracking(1.4)
-                .foregroundStyle(Theme.Colors.textSecondary)
+                .foregroundStyle(current.isLegend ? LegendColors.gold.opacity(0.9) : Theme.Colors.textSecondary)
             Text(current.title)
                 .font(.screenTitle)
                 .foregroundStyle(Theme.Colors.textPrimary)
@@ -77,7 +90,7 @@ struct ChallengeDetailView: View {
         let text = current.valueText
         let p = current.progress
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            SectionHeader(title: current.isJoined ? "Tu progreso" : "Llevarías")
+            SectionHeader(title: current.isJoined || current.isLegend ? "Tu progreso" : "Llevarías")
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(text.value)
                     .font(.sarrio(56, .semibold).monospacedDigit())
@@ -149,7 +162,12 @@ struct ChallengeDetailView: View {
             if let errorMessage {
                 Text(errorMessage).font(.sarrio(14)).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
-            if current.isJoined {
+            if current.isLegend {
+                Text("Las Leyendas cuentan solas: cuando la completes, el emblema aparecerá en tu perfil.")
+                    .font(.sarrio(14))
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if current.isJoined {
                 Button(isMine ? "Borrar reto" : "Salir del reto") {
                     if isMine { confirmDelete = true } else { Task { await setJoined(false) } }
                 }

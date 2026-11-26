@@ -13,13 +13,16 @@ struct BadgesView: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 if let catalog = store.catalog {
                     totals(catalog)
+                    if let legends = store.categories.first(where: { $0.name == "Leyendas" }) {
+                        legendsBand(legends.badges)
+                    }
                     if !store.earned.isEmpty {
                         strip(title: "Últimos conseguidos", badges: Array(store.earned.prefix(8)))
                     }
                     if !store.closest.isEmpty {
                         strip(title: "Muy cerca", badges: Array(store.closest.prefix(8)))
                     }
-                    ForEach(store.categories, id: \.name) { category in
+                    ForEach(store.categories.filter { $0.name != "Leyendas" }, id: \.name) { category in
                         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                             SectionHeader(title: category.name)
                             LazyVGrid(columns: columns, spacing: Theme.Spacing.l) {
@@ -64,6 +67,7 @@ struct BadgesView: View {
                 tierCount("Bronce", count(.bronze))
                 tierCount("Plata", count(.silver))
                 tierCount("Oro", count(.gold) + count(.special))
+                if count(.legend) > 0 { tierCount("Leyenda", count(.legend)) }
             }
             // Barra fina de todo el catálogo
             GeometryReader { geo in
@@ -76,6 +80,46 @@ struct BadgesView: View {
             .frame(height: 2)
             .padding(.top, Theme.Spacing.xs)
         }
+    }
+
+    /// Las Leyendas, en una banda de obsidiana: medallones en oro, apagados hasta conseguirlos.
+    private func legendsBand(_ badges: [Badge]) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            Text("LEYENDAS")
+                .font(.sarrio(12, .semibold))
+                .tracking(2)
+                .foregroundStyle(LegendColors.gold)
+                .padding(.horizontal, Theme.Spacing.m)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                    ForEach(badges) { badge in
+                        Button { selected = badge } label: {
+                            VStack(spacing: 6) {
+                                BadgeMedal(icon: badge.icon, earned: true, size: 80, shine: badge.isEarned)
+                                    .opacity(badge.isEarned ? 1 : 0.5)
+                                Text(badge.name)
+                                    .font(.sarrio(13, .semibold))
+                                    .foregroundStyle(badge.isEarned ? .white : .white.opacity(0.7))
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if let text = badge.progressText {
+                                    Text(text)
+                                        .font(.sarrio(11, .medium).monospacedDigit())
+                                        .foregroundStyle(LegendColors.gold)
+                                        .minimumScaleFactor(0.7)
+                                }
+                            }
+                            .frame(width: 100)
+                        }
+                        .buttonStyle(.pressableCard)
+                    }
+                }
+                .padding(.horizontal, Theme.Spacing.m)
+            }
+        }
+        .padding(.vertical, Theme.Spacing.l)
+        .background(LegendColors.ink, in: RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+        .elevation(.high)
     }
 
     private func tierCount(_ title: String, _ value: Int) -> some View {
@@ -139,7 +183,9 @@ struct BadgeDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: Theme.Spacing.l) {
-                    BadgeMedal(icon: badge.icon, earned: badge.isEarned, progress: badge.progress?.fraction, size: 220, shine: true)
+                    BadgeMedal(icon: badge.icon, earned: badge.isEarned || badge.tier == .legend,
+                               progress: badge.progress?.fraction, size: 220, shine: badge.isEarned)
+                        .opacity(badge.tier == .legend && !badge.isEarned ? 0.6 : 1)
                         .elevation(badge.isEarned ? .high : .low)
                         .interactiveTilt(maxAngle: 14)
                         .frame(width: 220, height: 220)

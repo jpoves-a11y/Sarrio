@@ -8,13 +8,15 @@ struct BadgeCelebrationView: View {
     @State private var spin: Double = 540
     @State private var settled = false
 
+    private var legend: Bool { badge.tier == .legend }
+
     var body: some View {
         VStack(spacing: Theme.Spacing.l) {
             Spacer(minLength: Theme.Spacing.l)
-            Text("NUEVO EMBLEMA")
+            Text(legend ? "ERES LEYENDA" : "NUEVO EMBLEMA")
                 .font(.sarrio(12, .semibold))
                 .tracking(1.6)
-                .foregroundStyle(Theme.Colors.accent)
+                .foregroundStyle(legend ? LegendColors.gold : Theme.Colors.accent)
                 .opacity(settled ? 1 : 0)
 
             BadgeMedal(icon: badge.icon, earned: true, size: 230, shine: settled)
@@ -28,12 +30,12 @@ struct BadgeCelebrationView: View {
             VStack(spacing: Theme.Spacing.s) {
                 Text(badge.name)
                     .font(.sarrio(32, .bold))
-                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .foregroundStyle(legend ? .white : Theme.Colors.textPrimary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(badge.description)
                     .font(.sarrio(16))
-                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .foregroundStyle(legend ? .white.opacity(0.65) : Theme.Colors.textSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 Text("\(badge.tier.title) · \(badge.category)".uppercased())
@@ -54,7 +56,7 @@ struct BadgeCelebrationView: View {
                 .opacity(settled ? 1 : 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.Colors.page)
+        .background(legend ? LegendColors.ink : Theme.Colors.page)
         .sensoryFeedback(.success, trigger: settled) { _, now in now }
         .task {
             // Cae girando…

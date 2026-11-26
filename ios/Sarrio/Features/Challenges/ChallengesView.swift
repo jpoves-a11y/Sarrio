@@ -7,8 +7,10 @@ struct ChallengesView: View {
     @State private var creating = false
 
     private var joinedIds: Set<String> { Set(store.joined.map(\.id)) }
-    private var seasonal: [Challenge] { store.featured.filter { $0.kind == .metric && !joinedIds.contains($0.id) } }
-    private var lists: [Challenge] { store.featured.filter { $0.kind == .peaks && !joinedIds.contains($0.id) } }
+    private var legends: [Challenge] { store.featured.filter(\.isLegend) }
+    private var inProgress: [Challenge] { store.joined.filter { !$0.isLegend } }
+    private var seasonal: [Challenge] { store.featured.filter { !$0.isLegend && $0.kind == .metric && !joinedIds.contains($0.id) } }
+    private var lists: [Challenge] { store.featured.filter { !$0.isLegend && $0.kind == .peaks && !joinedIds.contains($0.id) } }
 
     var body: some View {
         ScrollView {
@@ -22,15 +24,16 @@ struct ChallengesView: View {
                         ProgressView().frame(maxWidth: .infinity).padding(.top, Theme.Spacing.xl)
                     }
                 } else {
+                    if !legends.isEmpty { LegendsSection(legends: legends) }
                     section("En curso") {
-                        if store.joined.isEmpty {
+                        if inProgress.isEmpty {
                             Text("Únete a un reto de temporada o a una lista de cimas y verás aquí cómo vas.")
                                 .font(.sarrio(15))
                                 .foregroundStyle(Theme.Colors.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .padding(.vertical, Theme.Spacing.s)
                         }
-                        ForEach(Array(store.joined.enumerated()), id: \.element.id) { index, challenge in
+                        ForEach(Array(inProgress.enumerated()), id: \.element.id) { index, challenge in
                             NavigationLink { ChallengeDetailView(challenge: challenge) } label: {
                                 ActiveChallengeRow(challenge: challenge)
                             }
@@ -194,5 +197,74 @@ struct ChallengeIcon: View {
             .foregroundStyle(Theme.Colors.accent)
             .frame(width: size, height: size)
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous).stroke(Theme.Colors.separator, lineWidth: 1))
+    }
+}
+
+/// Leyendas: retos de toda una vida. Bloque en obsidiana y oro, desplazable en horizontal, con el
+/// medallón, el progreso y el título que da. Cuentan siempre, sin necesidad de unirse.
+struct LegendsSection: View {
+    var legends: [Challenge]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("LEYENDAS")
+                    .font(.sarrio(12, .semibold))
+                    .tracking(2)
+                    .foregroundStyle(LegendColors.gold)
+                Text("Retos de toda una vida. Cuentan solos: no hace falta unirse.")
+                    .font(.sarrio(14))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, Theme.Spacing.m)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Theme.Spacing.m) {
+                    ForEach(legends) { legend in
+                        NavigationLink { ChallengeDetailView(challenge: legend) } label: { LegendCard(challenge: legend) }
+                            .buttonStyle(.pressableCard)
+                    }
+                }
+                .padding(.horizontal, Theme.Spacing.m)
+            }
+        }
+        .padding(.vertical, Theme.Spacing.l)
+        .background(LegendColors.ink, in: RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+        .elevation(.high)
+    }
+}
+
+private struct LegendCard: View {
+    var challenge: Challenge
+
+    var body: some View {
+        let p = challenge.progress
+        let text = challenge.valueText
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            // Siempre en oro; apagado hasta conseguirlo
+            BadgeMedal(icon: "badge-\(challenge.badgeId ?? "")", earned: true, size: 92, shine: p?.done == true)
+                .opacity(p?.done == true ? 1 : 0.55)
+                .interactiveTilt(maxAngle: 10)
+                .frame(width: 92, height: 92)
+            Text(challenge.title)
+                .font(.sarrio(16, .bold))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(text.value).font(.sarrio(20, .semibold).monospacedDigit()).foregroundStyle(LegendColors.gold)
+                Text("/ \(text.target)").font(.sarrio(12, .medium)).foregroundStyle(.white.opacity(0.55))
+                    .minimumScaleFactor(0.7)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Rectangle().fill(.white.opacity(0.12))
+                    Rectangle().fill(LegendColors.gold).frame(width: geo.size.width * CGFloat(p?.fraction ?? 0))
+                }
+            }
+            .frame(height: 2)
+        }
+        .frame(width: 150, alignment: .leading)
+        .padding(Theme.Spacing.m)
+        .background(LegendColors.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
 }
