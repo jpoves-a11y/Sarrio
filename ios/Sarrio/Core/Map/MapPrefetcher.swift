@@ -56,7 +56,7 @@ final class MapPrefetcher {
         running = false
     }
 
-    private func load(region id: String, geometry: Geometry, zoom: ClosedRange<UInt8>) {
+    private func load(region id: String, geometry: MapboxMaps.Geometry, zoom: ClosedRange<UInt8>) {
         let descriptor = offline.createTilesetDescriptor(for: TilesetDescriptorOptions(
             styleURI: .standardSatellite,
             zoomRange: zoom,
