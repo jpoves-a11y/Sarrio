@@ -3,6 +3,8 @@ import SwiftUI
 /// Emblemas: los totales arriba sin marco, los últimos conseguidos, los más cerca de caer y
 /// todo el catálogo por categorías (conseguidos en metal, pendientes en gris con su progreso).
 struct BadgesView: View {
+    /// Dentro de Logros: sin título propio.
+    var embedded = false
     @Environment(AchievementsStore.self) private var store
     @State private var selected: Badge?
 
@@ -43,7 +45,7 @@ struct BadgesView: View {
             .padding(Theme.Spacing.m)
         }
         .background(Theme.Colors.page)
-        .navigationTitle("Emblemas")
+        .navigationTitle(ifNotEmbedded: embedded ? nil : "Emblemas")
         .task { await store.loadBadges() }
         .refreshable { await store.loadBadges() }
         .sheet(item: $selected) { badge in

@@ -48,21 +48,27 @@ struct ChallengeDetailView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            if let badgeId = current.badgeId {
-                // Leyenda: el medallón en grande, que se inclina al dedo
-                HStack {
-                    Spacer()
-                    BadgeMedal(icon: "badge-\(badgeId)", earned: true, size: 170, shine: current.progress?.done == true)
-                        .opacity(current.progress?.done == true ? 1 : 0.75)
+            // La medalla del reto en grande, que se inclina al dedo (gris con su progreso hasta completarlo)
+            HStack {
+                Spacer()
+                let done = current.progress?.done == true
+                if current.isLegend {
+                    BadgeMedal(icon: current.medalIcon, earned: true, size: 170, shine: done)
+                        .opacity(done ? 1 : 0.75)
                         .elevation(.high)
-                        .motionSheen(enabled: current.progress?.done == true)
+                        .motionSheen(enabled: done)
                         .interactiveTilt(maxAngle: 14)
                         .frame(width: 170, height: 170)
-                        .legendAura(size: 170, intensity: current.progress?.done == true ? 1 : 0.4, onDark: false)
-                    Spacer()
+                        .legendAura(size: 170, intensity: done ? 1 : 0.4, onDark: false)
+                } else {
+                    BadgeMedal(icon: current.medalIcon, earned: done, progress: current.progress?.fraction, size: 150, shine: done)
+                        .elevation(done ? .high : .low)
+                        .interactiveTilt(maxAngle: 14)
+                        .frame(width: 150, height: 150)
                 }
-                .padding(.vertical, Theme.Spacing.xl)
+                Spacer()
             }
+            .padding(.vertical, current.isLegend ? Theme.Spacing.xl : Theme.Spacing.m)
             Text(eyebrow.uppercased())
                 .font(.sarrio(12, .semibold))
                 .tracking(1.4)

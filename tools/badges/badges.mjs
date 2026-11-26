@@ -136,6 +136,45 @@ function snowflake(cx, cy, r) {
   return s;
 }
 
+// Medallas de los retos (asset `challenge-<slug>`): el metal va por categoría
+// (bronce del mes, plata de temporada, oro del año, especial las listas de cimas).
+const SUN = (cx, cy, r) =>
+  `<circle cx="${cx}" cy="${cy}" r="${r}"/>` +
+  Array.from({ length: 8 }, (_, i) => {
+    const a = (i / 8) * Math.PI * 2;
+    return `<path d="M${(cx + (r + 3) * Math.cos(a)).toFixed(1)} ${(cy + (r + 3) * Math.sin(a)).toFixed(1)} L${(cx + (r + 6.5) * Math.cos(a)).toFixed(1)} ${(cy + (r + 6.5) * Math.sin(a)).toFixed(1)}"/>`;
+  }).join("");
+const CAL = `<rect x="34" y="34" width="52" height="46" rx="3"/><path d="M34 44 L86 44 M46 30 L46 38 M74 30 L74 38"/>`;
+
+export const CHALLENGE_MEDALS = [
+  // Del mes · bronce
+  { id: "gain-month", tier: "bronze", art: CAL + `<path d="M48 72 L60 56 L72 72"/><path d="M60 56 L60 76 M54 62 L60 56 L66 62" />`, t: "5000" },
+  { id: "month-nonstop", tier: "bronze", art: CAL + [0, 1, 2, 3].map((i) => { const x = 41 + i * 11.5; return `<path d="M${x - 3} 62 L${x - 0.5} 65 L${x + 4} 58"/>`; }).join("") + `<path d="M40 73 L80 73" stroke-dasharray="1.5 3"/>` },
+  // De temporada · plata
+  { id: "summer-high", tier: "silver", art: SUN(76, 40, 6) + `<path d="M28 82 L48 54 L56 64 L66 50 L92 82"/>`, t: "3000" },
+  { id: "white-winter", tier: "silver", art: snowflake(60, 46, 14) + `<path d="M30 84 L52 66 L60 72 L70 62 L90 84"/>`, t: "10" },
+  { id: "summer-100k", tier: "silver", art: SUN(78, 40, 5) + `<path d="M32 80 C46 80 40 64 54 64 C68 64 62 52 74 52"/><circle cx="32" cy="80" r="2.6" class="fill"/>`, t: "100 km" },
+  // Del año · oro
+  { id: "everest-year", tier: "gold", art: `<circle cx="60" cy="58" r="26" stroke-dasharray="3 4"/><path d="M38 74 L54 48 L60 56 L66 44 L82 74"/><path d="M62 50 L66 44 L70 52 L67 50 L64 53 Z" class="fill"/>`, t: "8849" },
+  { id: "weeks-52", tier: "gold", art: `<rect x="32" y="34" width="56" height="44" rx="3"/>` + Array.from({ length: 24 }, (_, i) => `<circle cx="${39 + (i % 8) * 6}" cy="${44 + Math.floor(i / 8) * 10}" r="1.7" class="fill"/>`).join(""), t: "52" },
+  { id: "summits-30", tier: "gold", art: `<path d="M26 80 L40 58 L48 68 L60 44 L72 66 L80 56 L94 80"/><path d="M60 44 L60 34 L68 37 L60 40"/>`, t: "30" },
+  { id: "trail-vertical", tier: "gold", art: `<path d="M36 82 L52 82 L52 70 L64 70 L64 58 L76 58 L76 46 L88 46"/><path d="M80 36 L88 46 L78 50"/>`, t: "10 000" },
+  { id: "sunrises", tier: "gold", art: `<path d="M28 72 L92 72"/><path d="M42 72 A18 18 0 0 1 78 72"/><path d="M60 44 L60 38 M41 52 L37 48 M79 52 L83 48"/><path d="M36 84 L50 76 L60 82 L72 74 L86 84"/>`, t: "5" },
+  // Listas de cimas · especial
+  { id: "maladeta-3000", tier: "special", art: `<path d="M24 80 L36 62 L44 70 L54 48 L62 58 L70 46 L78 62 L84 56 L96 80"/><path d="M50 56 L54 48 L58 54 M66 52 L70 46 L74 54" />`, t: "3000" },
+  { id: "sierra-nevada-3000", tier: "special", art: `<path d="M24 80 L44 60 L52 64 L64 42 L76 56 L84 52 L96 80"/><path d="M58 52 L64 42 L70 50 L66 48 L62 52 Z" class="fill"/>`, t: "3000" },
+  { id: "picos-de-europa-2500", tier: "special", art: `<path d="M26 80 L36 80 L40 52 L46 60 L50 40 L56 56 L62 48 L66 80 L74 80 L78 56 L84 64 L88 80 L94 80"/>`, t: "2500" },
+  { id: "gredos-circo", tier: "special", art: `<path d="M24 64 L36 44 L48 52 L60 38 L72 52 L84 44 L96 64"/><path d="M36 64 C40 78 80 78 84 64"/><ellipse cx="60" cy="71" rx="11" ry="3.2"/>`, t: "2400" },
+  // Genéricas de los retos propios (acento)
+  { id: "generic-elevation_gain", tier: "special", art: `<path d="M44 74 L60 58 L76 74"/><path d="M44 60 L60 44 L76 60"/>` },
+  { id: "generic-distance", tier: "special", art: `<path d="M34 78 C48 78 40 62 56 62 C72 62 64 46 82 46"/><circle cx="34" cy="78" r="2.6" class="fill"/><path d="M82 46 L82 36 L90 39 L82 42"/>` },
+  { id: "generic-summits", tier: "special", art: `<path d="M36 78 L60 44 L84 78"/><path d="M60 44 L60 30 L72 34 L60 38"/>` },
+  { id: "generic-unique_peaks", tier: "special", art: `<path d="M28 80 L46 54 L56 66 L68 48 L92 80"/>` },
+  { id: "generic-activities", tier: "special", art: `<circle cx="60" cy="58" r="22"/><path d="M60 42 L65 58 L60 74 L55 58 Z" class="fill"/><path d="M60 32 L60 36 M60 80 L60 84 M34 58 L38 58 M82 58 L86 58"/>` },
+  { id: "generic-active_weeks", tier: "special", art: CAL + `<path d="M46 62 L56 70 L74 52"/>` },
+  { id: "generic-peaks", tier: "special", art: `<path d="M28 80 L44 56 L54 68 L66 48 L92 80"/><circle cx="44" cy="51" r="2.2" class="fill"/><circle cx="66" cy="43" r="2.2" class="fill"/>` },
+];
+
 /** SVG del emblema. `locked`: medallón en gris, sin brillo. */
 export function badgeSVG(badge, { locked = false, font = "Geist" } = {}) {
   if (!locked && badge.tier === "legend") return legendSVG(badge, font);

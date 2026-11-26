@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
-import { BADGES, badgeSVG } from "./badges.mjs";
+import { BADGES, CHALLENGE_MEDALS, badgeSVG } from "./badges.mjs";
 
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
@@ -27,11 +27,12 @@ const css = [face(400, "Geist-Regular.ttf"), face(500, "Geist-Medium.ttf"), face
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: SIZE, height: SIZE }, deviceScaleFactor: 1 });
-for (const badge of BADGES) {
+const items = [...BADGES.map((b) => ({ ...b, asset: `badge-${b.id}` })), ...CHALLENGE_MEDALS.map((c) => ({ ...c, asset: `challenge-${c.id}` }))];
+for (const badge of items) {
   const svg = badgeSVG(badge).replace('width="120" height="120"', `width="${SIZE}" height="${SIZE}"`);
   await page.setContent(`<html><head><style>${css}html,body{margin:0;background:transparent}</style></head><body>${svg}</body></html>`);
   await page.evaluate(() => document.fonts.ready);
-  const dir = path.join(out, `badge-${badge.id}.imageset`);
+  const dir = path.join(out, `${badge.asset}.imageset`);
   fs.mkdirSync(dir);
   await page.locator("svg").screenshot({ path: path.join(dir, `${badge.id}.png`), omitBackground: true });
   fs.writeFileSync(
@@ -49,4 +50,4 @@ from PIL import Image
 for f in glob.glob(sys.argv[1] + "/*/*.png"):
     Image.open(f).convert("RGBA").quantize(256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.FLOYDSTEINBERG).save(f, optimize=True)
 `, out]);
-console.log(`${BADGES.length} emblemas → ${path.relative(root, out)}`);
+console.log(`${BADGES.length} emblemas y ${CHALLENGE_MEDALS.length} medallas de retos → ${path.relative(root, out)}`);

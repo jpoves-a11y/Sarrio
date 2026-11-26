@@ -240,6 +240,16 @@ struct Challenge: Codable, Hashable, Sendable, Identifiable {
     var isJoined: Bool { joined ?? false }
     var isLegend: Bool { badgeId != nil }
 
+    /// Medalla del reto (asset): la Leyenda lleva su emblema, el oficial la suya y el propio una
+    /// genérica según lo que mide.
+    var medalIcon: String {
+        if let badgeId { return "badge-\(badgeId)" }
+        if official, let slug { return "challenge-\(slug)" }
+        if kind == .peaks { return "challenge-generic-peaks" }
+        let m = metric.flatMap { ChallengeMetric.creatable.contains($0) ? $0 : nil } ?? .summits
+        return "challenge-generic-\(m.rawValue)"
+    }
+
     /// "6.200 / 8.849 m D+" o "4 / 15 cimas".
     var valueText: (value: String, target: String, unit: String) {
         let p = progress ?? ChallengeProgress(value: 0, target: target ?? 0, fraction: 0, done: false, status: .active)

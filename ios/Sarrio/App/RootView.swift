@@ -30,8 +30,8 @@ struct MainTabView: View {
                 .tabItem { Label("Globo", systemImage: "globe.europe.africa.fill") }
             NavigationStack { FeedView() }
                 .tabItem { Label("Amigos", systemImage: "person.2.fill") }
-            NavigationStack { ChallengesView() }
-                .tabItem { Label("Retos", systemImage: "flag.checkered") }
+            NavigationStack { AchievementsView() }
+                .tabItem { Label("Logros", systemImage: "medal") }
             NavigationStack { ProfileView() }
                 .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
         }

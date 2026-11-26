@@ -31,6 +31,8 @@ enum ChallengeCategory: Int, CaseIterable, Comparable {
 /// fácil a más difícil. En cada una, primero lo que ya tienes o tienes más cerca. Una categoría
 /// casi completada baja al final, para que arriba quede siempre lo factible.
 struct ChallengesView: View {
+    /// Dentro de Logros: sin título ni barra propios.
+    var embedded = false
     @Environment(AchievementsStore.self) private var store
     @State private var creating = false
 
@@ -98,12 +100,14 @@ struct ChallengesView: View {
             .padding(Theme.Spacing.m)
         }
         .background(Theme.Colors.page)
-        .navigationTitle("Retos")
+        .navigationTitle(ifNotEmbedded: embedded ? nil : "Retos")
         .toolbar {
-            Button { creating = true } label: {
-                Image(systemName: "plus").font(.system(size: 17, weight: .regular))
+            if !embedded {
+                Button { creating = true } label: {
+                    Image(systemName: "plus").font(.system(size: 17, weight: .regular))
+                }
+                .accessibilityLabel("Crear reto")
             }
-            .accessibilityLabel("Crear reto")
         }
         .task { await store.loadChallenges() }
         .refreshable { await store.loadChallenges() }
@@ -120,7 +124,8 @@ struct ChallengeRow: View {
         let p = challenge.progress
         let done = p?.done == true
         HStack(alignment: .center, spacing: Theme.Spacing.m) {
-            ChallengeIcon(challenge: challenge, done: done)
+            BadgeMedal(icon: challenge.medalIcon, earned: done, progress: p?.fraction, size: 52)
+                .elevation(done ? .medium : .low)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(challenge.title)
