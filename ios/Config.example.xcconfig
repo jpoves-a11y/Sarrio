@@ -5,3 +5,5 @@ SARRIO_BUNDLE_ID = com.poves.sarrio
 MAPBOX_ACCESS_TOKEN = pk.xxxxxxxx
 // En xcconfig "//" inicia comentario: escapa la URL con $()
 SARRIO_API_BASE_URL = http:/$()/localhost:8787
+// Notificaciones push: development en local; el workflow de TestFlight pone production
+SARRIO_APS_ENVIRONMENT = development

@@ -2,6 +2,11 @@ name: TestFlight
 
 # Compila, firma y sube la app a TestFlight desde un Mac de GitHub.
 # Se lanza a mano: Actions → TestFlight → Run workflow.
+#
+# La firma no usa la automática de Xcode (falla con claves API: «Authentication failed … bearer
+# token»). tools/ci/asc-signing.mjs crea con la API de App Store Connect un certificado de
+# distribución temporal y los perfiles de App Store de la app y de la Share Extension; al terminar
+# revoca el certificado (las builds ya subidas no se ven afectadas).
 on:
   workflow_dispatch:
 
@@ -18,12 +23,13 @@ jobs:
       BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      KEYCHAIN: ${{ runner.temp }}/signing.keychain-db
     steps:
       - uses: actions/checkout@v4
 
       - name: Comprobar secretos
         env:
-          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           MAPBOX_TOKEN: ${{ secrets.MAPBOX_TOKEN }}
           SARRIO_API_BASE_URL: ${{ secrets.SARRIO_API_BASE_URL }}
         run: |
@@ -49,17 +55,46 @@ jobs:
             echo "SARRIO_BUNDLE_ID = $BUNDLE_ID"
             echo "MAPBOX_ACCESS_TOKEN = $MAPBOX_TOKEN"
             echo "SARRIO_API_BASE_URL = $API_URL_ESCAPED"
+            echo "SARRIO_APS_ENVIRONMENT = production"
           } > Config.xcconfig
           xcodegen
 
-      - name: Clave de App Store Connect
-        env:
-          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      - name: Certificado temporal y perfiles (API de App Store Connect)
         run: |
-          mkdir -p "$RUNNER_TEMP/keys"
-          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8"
+          set -euo pipefail
+          SIGN="$RUNNER_TEMP/signing"
+          mkdir -p "$SIGN"
+          # Clave y CSR nuevos en cada ejecución (con el OpenSSL del sistema: su .p12 lo lee el llavero)
+          /usr/bin/openssl req -new -newkey rsa:2048 -nodes -keyout "$SIGN/dist.key" \
+            -subj "/CN=Sarrio CI/O=Sarrio" -out "$SIGN/dist.csr" 2>/dev/null
+          node tools/ci/asc-signing.mjs prepare "$SIGN/dist.csr" "$SIGN"
+          cat "$SIGN/signing.env" >> "$GITHUB_ENV"
 
-      - name: Archivar (firma automática)
+          # Llavero temporal con el certificado
+          PASS=$(uuidgen)
+          /usr/bin/openssl x509 -inform DER -in "$SIGN/cert.cer" -out "$SIGN/cert.pem"
+          /usr/bin/openssl pkcs12 -export -inkey "$SIGN/dist.key" -in "$SIGN/cert.pem" -out "$SIGN/dist.p12" -passout "pass:$PASS"
+          security create-keychain -p "$PASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$PASS" "$KEYCHAIN"
+          curl -fsSL -o "$SIGN/wwdr.cer" https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer
+          security import "$SIGN/wwdr.cer" -k "$KEYCHAIN" -T /usr/bin/codesign || true
+          security import "$SIGN/dist.p12" -k "$KEYCHAIN" -P "$PASS" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$PASS" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm -f "$SIGN/dist.key" "$SIGN/dist.p12"
+
+          # Perfiles donde Xcode los busca
+          for dir in "$HOME/Library/MobileDevice/Provisioning Profiles" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+            mkdir -p "$dir"
+            for profile in app share; do
+              uuid=$(security cms -D -i "$SIGN/$profile.mobileprovision" | plutil -extract UUID raw -)
+              cp "$SIGN/$profile.mobileprovision" "$dir/$uuid.mobileprovision"
+            done
+          done
+          security find-identity -v -p codesigning "$KEYCHAIN"
+
+      - name: Archivar (firma manual)
         working-directory: ios
         run: |
           set -o pipefail
@@ -71,26 +106,34 @@ jobs:
             -archivePath "$RUNNER_TEMP/Sarrio.xcarchive" \
             -clonedSourcePackagesDirPath .spm \
             -skipPackagePluginValidation \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
-            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            SARRIO_APP_PROFILE="$APP_PROFILE" \
+            SARRIO_SHARE_PROFILE="$SHARE_PROFILE" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             | tee "$RUNNER_TEMP/archive.log" | grep -E "error:|warning: .*Sarrio/|\*\* ARCHIVE" || true
           test -d "$RUNNER_TEMP/Sarrio.xcarchive"
 
-      - name: Exportar y subir a TestFlight
+      - name: Exportar
         run: |
+          set -o pipefail
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>upload</string>
+            <key>destination</key><string>export</string>
             <key>teamID</key><string>$APPLE_TEAM_ID</string>
-            <key>signingStyle</key><string>automatic</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>$BUNDLE_ID</key><string>$APP_PROFILE</string>
+              <key>$BUNDLE_ID.share</key><string>$SHARE_PROFILE</string>
+            </dict>
             <key>uploadSymbols</key><true/>
             <key>manageAppVersionAndBuildNumber</key><false/>
           </dict>
@@ -99,16 +142,29 @@ jobs:
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/Sarrio.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
-            -exportPath "$RUNNER_TEMP/export" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+            -exportPath "$RUNNER_TEMP/export" | tee "$RUNNER_TEMP/export.log" | grep -E "error:|EXPORT" || true
+          ls "$RUNNER_TEMP"/export/*.ipa
+
+      - name: Subir a TestFlight
+        run: |
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          printf '%s\n' "$ASC_KEY_P8" > "$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8"
+          xcrun altool --upload-app -t ios -f "$(ls "$RUNNER_TEMP"/export/*.ipa | head -1)" \
+            --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
           echo "Build ${{ github.run_number }} subida. Aparecerá en TestFlight en 5-15 minutos." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Revocar el certificado temporal
+        if: always()
+        run: |
+          if [ -n "${CERT_ID:-}" ]; then node tools/ci/asc-signing.mjs cleanup "$CERT_ID"; fi
+          security delete-keychain "$KEYCHAIN" 2>/dev/null || true
+          rm -rf "$HOME/.appstoreconnect/private_keys"
 
       - name: Subir logs si falla
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: testflight-logs
-          path: ${{ runner.temp }}/archive.log
+          path: |
+            ${{ runner.temp }}/archive.log
+            ${{ runner.temp }}/export.log
