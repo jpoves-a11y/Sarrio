@@ -1,3 +1,4 @@
+import Observation
 import SwiftUI
 import UIKit
 
@@ -14,6 +15,8 @@ final class AppServices {
     let session: SessionStore
     let library: LibraryStore
     let achievements: AchievementsStore
+    let social: SocialStore
+    let deepLinks = DeepLinks()
 
     private init() {
         MapPrefetcher.configureCache()
@@ -28,6 +31,7 @@ final class AppServices {
         self.session = SessionStore(api: api)
         self.library = LibraryStore(api: api, sync: sync)
         self.achievements = AchievementsStore(api: api)
+        self.social = SocialStore(api: api)
         // Al desbloquear el iPhone, la sincronización con Salud que quedó pendiente
         let library = self.library
         unlockTask = Task {
@@ -64,4 +68,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         }
         return true
     }
+}
+
+/// Perfil a abrir desde un enlace `sarrio://u/<usuario>`.
+struct ProfileLink: Identifiable, Hashable {
+    var username: String
+    var id: String { username }
+}
+
+/// Enlaces que abren pantallas desde fuera (invitaciones de amigos).
+@MainActor
+@Observable
+final class DeepLinks {
+    var profile: ProfileLink?
 }

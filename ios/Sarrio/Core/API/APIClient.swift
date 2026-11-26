@@ -121,7 +121,10 @@ struct APIClient: Sendable {
 
     func deleteAccount() async throws { try await delete("v1/me") }
 
-    func user(username: String) async throws -> PublicUser { try await get("v1/users/\(username)") }
+    func user(username: String) async throws -> UserProfile {
+        let name = username.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? username
+        return try await get("v1/users/\(name)")
+    }
 
     // MARK: Actividades y ascensiones
 
@@ -217,4 +220,64 @@ struct APIClient: Sendable {
     func leaveChallenge(id: String) async throws { try await delete("v1/challenges/\(id)/join") }
 
     func deleteChallenge(id: String) async throws { try await delete("v1/challenges/\(id)") }
+
+    // MARK: Social
+
+    struct StatusBody: Decodable, Sendable { var status: FriendStatus }
+
+    func friends() async throws -> FriendsList { try await get("v1/friends") }
+
+    func searchUsers(_ query: String) async throws -> [Person] {
+        struct Body: Decodable { var users: [Person] }
+        let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+=?"))) ?? ""
+        return try await get("v1/users/search?q=\(q)", as: Body.self).users
+    }
+
+    func sendFriendRequest(to userId: String) async throws -> FriendStatus {
+        try await post("v1/friends/\(userId)", body: Empty(), as: StatusBody.self).status
+    }
+
+    func acceptFriend(_ userId: String) async throws -> FriendStatus {
+        try await post("v1/friends/\(userId)/accept", body: Empty(), as: StatusBody.self).status
+    }
+
+    func removeFriend(_ userId: String) async throws { try await delete("v1/friends/\(userId)") }
+
+    func block(_ userId: String) async throws { _ = try await raw("POST", "v1/blocks/\(userId)", body: Empty()) }
+
+    func unblock(_ userId: String) async throws { try await delete("v1/blocks/\(userId)") }
+
+    func blockedUsers() async throws -> [PublicUser] {
+        struct Body: Decodable { var blocked: [PublicUser] }
+        return try await get("v1/blocks", as: Body.self).blocked
+    }
+
+    func report(targetType: String, targetId: String, reason: String) async throws {
+        struct Body: Encodable { var targetType: String; var targetId: String; var reason: String }
+        _ = try await raw("POST", "v1/reports", body: Body(targetType: targetType, targetId: targetId, reason: reason))
+    }
+
+    func feed(before: Int64? = nil) async throws -> FeedPage {
+        try await get("v1/feed" + (before.map { "?before=\($0)" } ?? ""))
+    }
+
+    func like(_ itemId: String) async throws { _ = try await raw("POST", "v1/likes/feed_item/\(itemId)", body: Empty()) }
+
+    func unlike(_ itemId: String) async throws { try await delete("v1/likes/feed_item/\(itemId)") }
+
+    func comments(_ itemId: String) async throws -> [FeedComment] {
+        struct Body: Decodable { var comments: [FeedComment] }
+        return try await get("v1/comments/feed_item/\(itemId)", as: Body.self).comments
+    }
+
+    func addComment(_ itemId: String, body text: String) async throws -> FeedComment {
+        struct Body: Encodable { var body: String }
+        return try await post("v1/comments/feed_item/\(itemId)", body: Body(body: text))
+    }
+
+    func deleteComment(_ id: String) async throws { try await delete("v1/comments/\(id)") }
+
+    func notifications() async throws -> NotificationList { try await get("v1/notifications") }
+
+    func markNotificationsRead() async throws { _ = try await raw("POST", "v1/notifications/read", body: Empty()) }
 }

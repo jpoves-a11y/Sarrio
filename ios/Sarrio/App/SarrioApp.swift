@@ -24,6 +24,8 @@ struct SarrioApp: App {
                 .environment(services.session)
                 .environment(services.library)
                 .environment(services.achievements)
+                .environment(services.social)
+                .environment(services.deepLinks)
                 .environment(\.apiClient, services.api)
                 .environment(\.peakPackStore, services.peakPackStore)
                 .tint(Theme.Colors.accent)
@@ -32,7 +34,12 @@ struct SarrioApp: App {
                 .task { await services.session.restore() }
                 // GPX/FIT/TCX abiertos desde Archivos, Mail, AirDrop…
                 .onOpenURL { url in
-                    // sarrio://… son vueltas de inicio de sesión (Polar), no archivos
+                    // sarrio://u/<usuario>: el perfil de alguien (enlace de invitación)
+                    if url.scheme == "sarrio", url.host() == "u", let name = url.pathComponents.dropFirst().first {
+                        services.deepLinks.profile = ProfileLink(username: name)
+                        return
+                    }
+                    // El resto de sarrio://… son vueltas de inicio de sesión (Polar), no archivos
                     guard url.scheme != "sarrio" else { return }
                     Task { await services.library.importFile(at: url) }
                 }

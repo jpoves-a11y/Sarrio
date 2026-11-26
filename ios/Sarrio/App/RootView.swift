@@ -20,9 +20,11 @@ struct RootView: View {
 
 struct MainTabView: View {
     @Environment(AchievementsStore.self) private var achievements
+    @Environment(DeepLinks.self) private var deepLinks
 
     var body: some View {
         @Bindable var achievements = achievements
+        @Bindable var deepLinks = deepLinks
         TabView {
             NavigationStack { LibraryView() }
                 .tabItem { Label("Cumbres", systemImage: "mountain.2.fill") }
@@ -38,6 +40,10 @@ struct MainTabView: View {
         // Emblemas nuevos de cualquier subida (importación, Apple Health, Polar): uno detrás de otro
         .sheet(item: $achievements.celebration, onDismiss: { achievements.next() }) { badge in
             BadgeCelebrationView(badge: badge)
+        }
+        // Invitación de un amigo (sarrio://u/<usuario>)
+        .sheet(item: $deepLinks.profile) { link in
+            NavigationStack { UserProfileView(username: link.username) }
         }
     }
 }

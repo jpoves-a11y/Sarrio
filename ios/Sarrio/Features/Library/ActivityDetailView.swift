@@ -8,6 +8,7 @@ struct ActivityDetailView: View {
     var activity: Activity
     @Environment(\.apiClient) private var api
     @Environment(LibraryStore.self) private var store
+    @Environment(SessionStore.self) private var session
     @Environment(\.dismiss) private var dismiss
     @State private var detail: ActivityDetail?
     @State private var plan: ReplayPlan?
@@ -39,7 +40,8 @@ struct ActivityDetailView: View {
                 if let plan, plan.elevations.contains(where: { $0 != nil }) {
                     profileCard(plan).staggeredAppear(4)
                 }
-                settingsCard.staggeredAppear(5)
+                // Editar y borrar, solo en las mías (las de amigos llegan desde el feed)
+                if activity.userId == session.me?.id { settingsCard.staggeredAppear(5) }
             }
             .padding(.horizontal, Theme.Spacing.m)
             .padding(.top, Theme.Spacing.s)
