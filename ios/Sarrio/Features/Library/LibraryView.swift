@@ -357,7 +357,7 @@ private struct PolarConnectCard: View {
                     Text("Conecta Polar")
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(Theme.Colors.textPrimary)
-                    Text("Traemos tus entrenos con GPS de Polar Flow (los de los últimos 30 días) y buscamos sus cumbres.")
+                    Text("Traemos los entrenos con GPS que subas a Polar Flow a partir de ahora y buscamos sus cumbres. Los anteriores, expórtalos desde Flow e impórtalos con +.")
                         .font(.system(size: 14))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
@@ -437,7 +437,12 @@ private struct SyncStatusCard: View {
             guard let remaining = progress.remaining else { return now }
             return now + " · \(Self.duration(remaining))"
         case .done:
-            if progress.total == 0 { return "No hay entrenos nuevos con GPS" }
+            if progress.total == 0 {
+                // Polar solo entrega lo subido a Flow después de conectar Sarrio
+                return progress.source == .polar
+                    ? "Nada nuevo. Polar solo envía lo subido a Flow tras conectar Sarrio"
+                    : "No hay entrenos nuevos con GPS"
+            }
             return "\(progress.newActivities) actividades nuevas de \(progress.total) entrenos"
         }
     }

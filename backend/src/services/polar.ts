@@ -97,11 +97,13 @@ export async function listExercises(fetcher: Fetch, token: string): Promise<Pola
   return list.map((e) => ({
     id: String(e.id),
     startTime: String(e.start_time ?? e["start-time"] ?? ""),
+    // AccessLink usa a veces guiones (start-time, has-route): se aceptan ambas formas
     utcOffsetMinutes: typeof e.start_time_utc_offset === "number" ? e.start_time_utc_offset : null,
     durationS: isoDurationSeconds(e.duration),
     distanceM: typeof e.distance === "number" ? e.distance : null,
     sport: typeof e.sport === "string" ? e.sport : null,
-    detailedSport: typeof e.detailed_sport_info === "string" ? e.detailed_sport_info : null,
+    detailedSport:
+      typeof e.detailed_sport_info === "string" ? e.detailed_sport_info : typeof e["detailed-sport-info"] === "string" ? (e["detailed-sport-info"] as string) : null,
     hasRoute: e.has_route === true || e["has-route"] === true,
   }));
 }

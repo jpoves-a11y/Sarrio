@@ -154,6 +154,8 @@ providersRoutes.get("/polar/exercises", requireAuth, async (c) => {
   if ("error" in result) return result.error;
   try {
     const exercises = await listExercises(fetcher(c), result.token);
+    // Diagnóstico (sin datos personales): cuántos entrenos da Polar y cuántos con ruta
+    console.log(`polar exercises: ${exercises.length} (con ruta: ${exercises.filter((e) => e.hasRoute).length}; deportes: ${[...new Set(exercises.map((e) => e.sport))].join(",")})`);
     const imported = new Set(
       (
         await c.var.db
