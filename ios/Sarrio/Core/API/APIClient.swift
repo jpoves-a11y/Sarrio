@@ -280,4 +280,14 @@ struct APIClient: Sendable {
     func notifications() async throws -> NotificationList { try await get("v1/notifications") }
 
     func markNotificationsRead() async throws { _ = try await raw("POST", "v1/notifications/read", body: Empty()) }
+
+    func badgeCounts() async throws -> BadgeCounts { try await get("v1/me/badge") }
+
+    /// He abierto Amigos: devuelve las novedades que quedan.
+    func markFeedSeen() async throws -> BadgeCounts { try await post("v1/feed/seen", body: Empty()) }
+
+    func registerDevice(token: String, environment: String) async throws {
+        struct Body: Encodable { var token: String; var environment: String }
+        _ = try await raw("POST", "v1/me/devices", body: Body(token: token, environment: environment))
+    }
 }

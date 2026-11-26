@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftUI
+import UserNotifications
 
 /// Estado social: el feed, los avisos y los amigos.
 @MainActor
@@ -13,6 +14,8 @@ final class SocialStore {
     private(set) var notifications: [AppNotification] = []
     private(set) var unread = 0
     private(set) var friends: FriendsList?
+    /// Novedades (avisos sin leer + lo nuevo de mis amigos): el número de la pestaña y del icono.
+    private(set) var badgeTotal = 0
     var errorMessage: String?
 
     private let api: APIClient
@@ -42,6 +45,7 @@ final class SocialStore {
             unread = n.unread
             friends = f
             errorMessage = nil
+            await refreshBadge()
         } catch {
             if items.isEmpty { errorMessage = error.localizedDescription }
         }
@@ -87,6 +91,24 @@ final class SocialStore {
         guard unread > 0 else { return }
         unread = 0
         try? await api.markNotificationsRead()
+        await refreshBadge()
+    }
+
+    /// Pide al servidor las novedades y las pone en la pestaña y en el icono de la app.
+    func refreshBadge() async {
+        guard let counts = try? await api.badgeCounts() else { return }
+        apply(counts)
+    }
+
+    /// He abierto Amigos: lo de mis amigos deja de ser novedad.
+    func markFeedSeen() async {
+        guard let counts = try? await api.markFeedSeen() else { return }
+        apply(counts)
+    }
+
+    private func apply(_ counts: BadgeCounts) {
+        badgeTotal = counts.total
+        UNUserNotificationCenter.current().setBadgeCount(counts.total) { _ in }
     }
 
     // MARK: Amistad

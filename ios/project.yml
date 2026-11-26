@@ -69,6 +69,8 @@ targets:
         MBXAccessToken: $(MAPBOX_ACCESS_TOKEN)
         SarrioAPIBaseURL: $(SARRIO_API_BASE_URL)
         SarrioAppGroup: group.$(SARRIO_BUNDLE_ID)
+        # development → APNs de pruebas; production (TestFlight y App Store) → APNs real
+        SarrioAPSEnvironment: $(SARRIO_APS_ENVIRONMENT)
         NSHealthShareUsageDescription: >-
           Sarrio lee tus entrenamientos y sus rutas GPS para detectar las cumbres que has subido.
         # Mapbox usa APIs de ubicación (el punto azul); Apple exige el texto aunque Sarrio no lo pida

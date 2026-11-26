@@ -46,6 +46,7 @@ struct SarrioApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     guard phase == .active, services.session.me != nil else { return }
                     Task {
+                        await services.social.refreshBadge()
                         await services.library.processSharedInbox()
                         await services.library.syncHealth()
                         await services.library.syncPolar()

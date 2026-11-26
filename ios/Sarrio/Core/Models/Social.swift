@@ -117,6 +117,8 @@ struct FeedItem: Codable, Hashable, Sendable, Identifiable {
     var commentCount: Int
     var likedByMe: Bool
     var activity: Activity?
+    /// Vista previa de la ruta (tramos de `[lat, lon]`), para el mapa 3D.
+    var route: [[[Double]]]?
     var ascents: [Ascent]?
     var badge: FeedBadge?
     var challenge: FeedChallenge?
@@ -133,6 +135,13 @@ struct FeedPage: Decodable, Sendable {
         items = try c.decode(LossyArray<FeedItem>.self, forKey: .items).elements.filter { $0.kind != .unknown }
         nextBefore = try c.decodeIfPresent(Int64.self, forKey: .nextBefore)
     }
+}
+
+/// Novedades para el número del icono y de la pestaña Amigos.
+struct BadgeCounts: Decodable, Sendable {
+    var notifications: Int
+    var feed: Int
+    var total: Int
 }
 
 struct FeedComment: Codable, Hashable, Sendable, Identifiable {

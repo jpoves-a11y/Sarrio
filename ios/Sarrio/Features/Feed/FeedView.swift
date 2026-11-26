@@ -1,9 +1,11 @@
+import CoreLocation
 import SwiftUI
 
 /// Pestaña Amigos: lo que hacéis tú y tus amigos (salidas, cimas, emblemas y retos), con likes
 /// y comentarios. Arriba, los avisos y añadir amigos.
 struct FeedView: View {
     @Environment(SocialStore.self) private var social
+    @Environment(DeepLinks.self) private var deepLinks
     @State private var showNotifications = false
     @State private var showFriends = false
     @State private var commentsFor: FeedItem?
@@ -58,10 +60,22 @@ struct FeedView: View {
                 .accessibilityLabel(social.unread > 0 ? "Avisos, \(social.unread) sin leer" : "Avisos")
             }
         }
-        .task { await social.refresh() }
-        .refreshable { await social.refresh() }
+        .task {
+            await social.refresh()
+            await social.markFeedSeen()
+        }
+        .refreshable {
+            await social.refresh()
+            await social.markFeedSeen()
+        }
         .navigationDestination(isPresented: $showNotifications) { NotificationsView() }
         .navigationDestination(isPresented: $showFriends) { FriendsView() }
+        // Al tocar una notificación de solicitud
+        .onChange(of: deepLinks.showFriends, initial: true) { _, open in
+            guard open else { return }
+            showFriends = true
+            deepLinks.showFriends = false
+        }
         .sheet(item: $commentsFor) { item in
             CommentsSheet(item: item)
                 .presentationDetents([.medium, .large])
@@ -154,6 +168,16 @@ struct FeedCard: View {
     @ViewBuilder private var outing: some View {
         let peaks = item.ascents ?? []
         let card = VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            if let camera = RouteCamera(item.route) {
+                // La ruta en relieve 3D con las banderillas de las cimas
+                Terrain3DView(center: camera.center, distance: camera.distance, segments: camera.segments,
+                              summits: peaks.map(\.peak), orbit: false, interactive: false, pitch: 58)
+                    .frame(height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+                    .elevation(.medium)
+                    .allowsHitTesting(false)
+                    .padding(.bottom, Theme.Spacing.xs)
+            }
             if peaks.isEmpty, let activity = item.activity {
                 HStack(spacing: Theme.Spacing.s) {
                     SportBadge(sport: activity.sport, size: 30)
@@ -271,5 +295,32 @@ struct FeedCard: View {
             .accessibilityLabel("Comentarios")
             Spacer()
         }
+    }
+}
+
+/// Encuadre de la ruta para el mapa del feed: centro de su caja y una distancia de cámara que la
+/// deja entera a la vista (con aire), entre 1,5 y 30 km.
+struct RouteCamera {
+    var center: CLLocationCoordinate2D
+    var distance: CLLocationDistance
+    var segments: [[CLLocationCoordinate2D]]
+
+    init?(_ route: [[[Double]]]?) {
+        let segments = (route ?? []).map { seg in
+            seg.compactMap { p in p.count >= 2 ? CLLocationCoordinate2D(latitude: p[0], longitude: p[1]) : nil }
+        }.filter { $0.count >= 2 }
+        let all = segments.flatMap { $0 }
+        guard let first = all.first else { return nil }
+        var minLat = first.latitude, maxLat = first.latitude, minLon = first.longitude, maxLon = first.longitude
+        for c in all {
+            minLat = min(minLat, c.latitude); maxLat = max(maxLat, c.latitude)
+            minLon = min(minLon, c.longitude); maxLon = max(maxLon, c.longitude)
+        }
+        let midLat = (minLat + maxLat) / 2
+        let spanNS = (maxLat - minLat) * 111_000
+        let spanEW = (maxLon - minLon) * 111_000 * cos(midLat * .pi / 180)
+        self.center = CLLocationCoordinate2D(latitude: midLat, longitude: (minLon + maxLon) / 2)
+        self.distance = min(30_000, max(1_500, max(spanNS, spanEW) * 1.9))
+        self.segments = segments
     }
 }

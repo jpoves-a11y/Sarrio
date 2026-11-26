@@ -1,6 +1,7 @@
 import Observation
 import SwiftUI
 import UIKit
+import UserNotifications
 
 /// Servicios compartidos de la app. Se crean una sola vez, también cuando iOS despierta la app
 /// en segundo plano para entregar un entreno nuevo de Apple Health.
@@ -53,9 +54,10 @@ final class AppServices {
     }
 }
 
-final class AppDelegate: NSObject, UIApplicationDelegate {
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
         // Debe registrarse en cada arranque para que la entrega en segundo plano funcione.
         AppServices.shared.startHealthObserver()
         // Sincronizaciones que iOS cortó (iPhone bloqueado): siguen en segundo plano
@@ -67,6 +69,55 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             await services.library.syncHealth()
         }
         return true
+    }
+
+    // MARK: Notificaciones push
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let token = deviceToken.map { String(format: "%02x", $0) }.joined()
+        Task { @MainActor in await Push.register(token: token) }
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("Push: no se pudo registrar", error)
+    }
+
+    /// Con la app abierta: se enseña igual (banner y sonido) y se actualiza Amigos.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async
+        -> UNNotificationPresentationOptions {
+        await MainActor.run { Task { await AppServices.shared.social.refresh() } }
+        return [.banner, .list, .sound, .badge]
+    }
+
+    /// Al tocarla: a Amigos (o a las solicitudes).
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        let open = response.notification.request.content.userInfo["open"] as? String
+        await MainActor.run {
+            AppServices.shared.deepLinks.tab = .friends
+            if open == "friends" { AppServices.shared.deepLinks.showFriends = true }
+        }
+    }
+}
+
+/// Notificaciones push: permiso (una vez, tras iniciar sesión) y registro del token en el servidor.
+@MainActor
+enum Push {
+    /// Pide permiso si aún no se ha decidido, y registra el iPhone si está concedido.
+    static func setUp() async {
+        let center = UNUserNotificationCenter.current()
+        var status = await center.notificationSettings().authorizationStatus
+        if status == .notDetermined {
+            _ = try? await center.requestAuthorization(options: [.alert, .badge, .sound])
+            status = await center.notificationSettings().authorizationStatus
+        }
+        guard status == .authorized || status == .provisional else { return }
+        UIApplication.shared.registerForRemoteNotifications()
+    }
+
+    static func register(token: String) async {
+        guard KeychainStore.sessionToken != nil else { return }
+        let raw = Bundle.main.object(forInfoDictionaryKey: "SarrioAPSEnvironment") as? String ?? "production"
+        try? await AppServices.shared.api.registerDevice(token: token, environment: raw == "development" ? "sandbox" : "production")
     }
 }
 
@@ -81,4 +132,10 @@ struct ProfileLink: Identifiable, Hashable {
 @Observable
 final class DeepLinks {
     var profile: ProfileLink?
+    /// Pestaña elegida (las notificaciones llevan a Amigos).
+    var tab: AppTab = .summits
+    /// Abrir la pantalla de amigos (al tocar una solicitud).
+    var showFriends = false
 }
+
+enum AppTab: Hashable { case summits, globe, friends, achievements, profile }
