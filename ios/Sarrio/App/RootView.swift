@@ -23,7 +23,7 @@ struct MainTabView: View {
         TabView {
             NavigationStack { LibraryView() }
                 .tabItem { Label("Cumbres", systemImage: "mountain.2.fill") }
-            GlobeView()
+            NavigationStack { GlobeView() }
                 .tabItem { Label("Globo", systemImage: "globe.europe.africa.fill") }
             NavigationStack { FeedView() }
                 .tabItem { Label("Amigos", systemImage: "person.2.fill") }

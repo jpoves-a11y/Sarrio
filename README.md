@@ -108,7 +108,7 @@ El CI compila y testea la app en los runners macOS de GitHub en cada push (job `
   - CI.
 - [x] **Fase 2**: Sign in with Apple → JWT propio (con nonce), perfil editable, borrado de cuenta, perfil público y sistema de diseño (`ios/Sarrio/Core/Design`).
 - [x] **Fase 3**: HealthKit (histórico y observer), FIT/TCX, Share Extension, y subida de actividades y ascensiones. Incluye biblioteca con relieve 3D (MapKit).
-- [ ] **Fase 4**: detalle 3D con terreno y vuelo de cámara, perfil de elevación, y globo con clustering.
+- [x] **Fase 4**: detalle 3D con terreno y vuelo de cámara (replay), perfil de elevación, y globo 3D con agrupación y vuelo a cada cumbre.
 - [ ] **Fase 5**: emblemas y retos (oficiales y de usuarios).
 - [ ] **Fase 6**: social. Incluye:
   - amigos y feed;
