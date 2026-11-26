@@ -112,6 +112,36 @@ actor ActivitySync {
         return outcomes
     }
 
+    // MARK: - Polar
+
+    private var polarSyncRunning = false
+
+    /// Sube los entrenos de Polar con ruta que aún no estén en Sarrio (Polar da los últimos 30 días).
+    @discardableResult
+    func syncPolar() async throws -> [Outcome] {
+        guard !polarSyncRunning else { return [] }
+        polarSyncRunning = true
+        defer { polarSyncRunning = false }
+
+        var outcomes: [Outcome] = []
+        for exercise in try await api.polarExercises() where exercise.hasRoute && !exercise.imported {
+            let data = try await api.polarFIT(id: exercise.id)
+            let parsed: ParsedTrack
+            do { parsed = try FITParser.parse(data: data) } catch { continue } // sin GPS utilizable
+            guard parsed.points.count >= 2 else { continue }
+            outcomes.append(try await upload(
+                parsed,
+                source: .polar,
+                externalId: exercise.id,
+                title: nil,
+                duration: exercise.durationS,
+                distance: exercise.distanceM
+            ))
+        }
+        if outcomes.contains(where: \.isNew) { notifyChange() }
+        return outcomes
+    }
+
     // MARK: - Subida
 
     private func upload(

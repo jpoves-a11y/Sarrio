@@ -25,6 +25,9 @@ struct LibraryView: View {
                     if !store.healthConnected && HealthKitService.isAvailable {
                         HealthConnectCard { Task { await store.connectHealth() } }.staggeredAppear(1)
                     }
+                    if store.polarAvailable && !store.polarConnected {
+                        PolarConnectCard { Task { await store.connectPolar() } }.staggeredAppear(1)
+                    }
                     peaksSection.staggeredAppear(2)
                     if !store.activities.isEmpty { activitiesSection.staggeredAppear(3) }
                 } else if store.isLoading && store.library == nil {
@@ -39,18 +42,23 @@ struct LibraryView: View {
         .background(Theme.Colors.groupedBackground)
         .navigationTitle("Cumbres")
         .safeAreaInset(edge: .bottom) {
-            if store.isImporting || store.isSyncingHealth {
-                ProgressPill(text: store.isImporting ? "Buscando cumbres…" : "Sincronizando Apple Health…")
+            if store.isImporting || store.isSyncingHealth || store.isSyncingPolar {
+                ProgressPill(text: store.isImporting ? "Buscando cumbres…" : store.isSyncingPolar ? "Trayendo entrenos de Polar…" : "Sincronizando Apple Health…")
                     .padding(.bottom, Theme.Spacing.s)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(Theme.Motion.spring, value: store.isImporting || store.isSyncingHealth)
+        .animation(Theme.Motion.spring, value: store.isImporting || store.isSyncingHealth || store.isSyncingPolar)
         .toolbar {
             Menu {
                 Button { importing = true } label: { Label("Importar archivo (GPX, FIT, TCX)", systemImage: "doc.badge.plus") }
                 if store.healthConnected {
                     Button { Task { await store.syncHealth() } } label: { Label("Sincronizar Apple Health", systemImage: "arrow.triangle.2.circlepath") }
+                }
+                if store.polarConnected {
+                    Button { Task { await store.syncPolar() } } label: { Label("Traer entrenos de Polar", systemImage: "dot.radiowaves.left.and.right") }
+                } else if store.polarAvailable {
+                    Button { Task { await store.connectPolar() } } label: { Label("Conectar Polar", systemImage: "dot.radiowaves.left.and.right") }
                 }
             } label: {
                 Image(systemName: "plus").fontWeight(.semibold)
@@ -124,6 +132,9 @@ struct LibraryView: View {
             .padding(.top, Theme.Spacing.l)
             if HealthKitService.isAvailable && !store.healthConnected {
                 HealthConnectCard { Task { await store.connectHealth() } }
+            }
+            if store.polarAvailable && !store.polarConnected {
+                PolarConnectCard { Task { await store.connectPolar() } }
             }
             Button { importing = true } label: { Label("Importar archivo", systemImage: "doc.badge.plus") }
                 .buttonStyle(.secondary)
@@ -316,6 +327,34 @@ private struct HealthConnectCard: View {
                 }
             }
             Button("Conectar", action: action).buttonStyle(.primary).padding(.top, Theme.Spacing.xs)
+        }
+    }
+}
+
+private struct PolarConnectCard: View {
+    var action: () -> Void
+
+    var body: some View {
+        Card(elevation: .medium) {
+            HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(LinearGradient(colors: [Color(red: 0.86, green: 0.1, blue: 0.2), Color(red: 0.7, green: 0.05, blue: 0.14)],
+                                               startPoint: .top, endPoint: .bottom),
+                                in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .elevation(.low)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Conecta Polar")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                    Text("Traemos tus entrenos con GPS de Polar Flow (los de los últimos 30 días) y buscamos sus cumbres.")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                }
+            }
+            Button("Conectar con Polar", action: action).buttonStyle(.primary).padding(.top, Theme.Spacing.xs)
         }
     }
 }

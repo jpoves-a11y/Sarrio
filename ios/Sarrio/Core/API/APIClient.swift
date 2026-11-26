@@ -15,6 +15,10 @@ enum APIError: Error, LocalizedError, Equatable {
         case .http(_, "invalid_bio"?): "La bio puede tener como máximo 280 caracteres."
         case .http(_, "invalid_track"?): "La ruta del archivo no es válida."
         case .http(413, _): "La actividad es demasiado grande."
+        case .http(_, "polar_not_configured"?): "La conexión con Polar aún no está activada en el servidor."
+        case .http(_, "polar_revoked"?): "Polar ha retirado el acceso de Sarrio. Vuelve a conectar tu cuenta."
+        case .http(_, "polar_not_connected"?): "Conecta tu cuenta de Polar en Ajustes."
+        case .http(_, "polar_unavailable"?): "Polar no responde ahora mismo. Inténtalo más tarde."
         case .http(401, _): "Tu sesión ha caducado. Vuelve a iniciar sesión."
         case let .http(status, code): "Error del servidor (\(status)\(code.map { ": \($0)" } ?? ""))."
         case .decoding: "Respuesta inesperada del servidor."
@@ -130,6 +134,50 @@ struct APIClient: Sendable {
     func library() async throws -> Library { try await get("v1/ascents") }
 
     func addAscent(_ ascent: ManualAscent) async throws -> Ascent { try await post("v1/ascents", body: ascent) }
+
+    // MARK: Proveedores (Polar)
+
+    struct ProviderStatus: Decodable, Sendable {
+        var provider: String
+        var configured: Bool
+        var connected: Bool
+    }
+
+    struct ConnectResponse: Decodable, Sendable {
+        var url: URL
+        var callbackScheme: String
+    }
+
+    struct PolarExercise: Decodable, Sendable, Identifiable {
+        var id: String
+        var startTime: String
+        var durationS: Double?
+        var distanceM: Double?
+        var sport: String?
+        var hasRoute: Bool
+        var imported: Bool
+    }
+
+    func providers() async throws -> [ProviderStatus] {
+        struct Body: Decodable { var providers: [ProviderStatus] }
+        return try await get("v1/providers", as: Body.self).providers
+    }
+
+    func polarConnectURL() async throws -> ConnectResponse {
+        try await post("v1/providers/polar/connect", body: Empty())
+    }
+
+    func polarExercises() async throws -> [PolarExercise] {
+        struct Body: Decodable { var exercises: [PolarExercise] }
+        return try await get("v1/providers/polar/exercises", as: Body.self).exercises
+    }
+
+    /// El FIT de un entreno de Polar, tal cual.
+    func polarFIT(id: String) async throws -> Data {
+        try await raw("GET", "v1/providers/polar/exercises/\(id)/fit", body: Optional<Empty>.none)
+    }
+
+    func disconnectPolar() async throws { try await delete("v1/providers/polar") }
 
     func deleteAscent(id: String) async throws { try await delete("v1/ascents/\(id)") }
 }

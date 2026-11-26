@@ -78,6 +78,7 @@ final class LibraryStore {
             async let page = api.activities(limit: 100)
             library = try await lib
             activities = try await page.activities
+            await refreshProviders()
         } catch {
             if library == nil { errorMessage = error.localizedDescription }
         }
@@ -138,6 +139,55 @@ final class LibraryStore {
 
     /// Hay una sincronización con Salud pendiente de que se desbloquee el iPhone.
     private(set) var pendingHealthSync = false
+
+    // MARK: Polar
+
+    /// Polar: conectado y si el servidor tiene Polar configurado.
+    private(set) var polarConnected = false
+    private(set) var polarAvailable = false
+    private(set) var isSyncingPolar = false
+    private let polarConnector = PolarConnector()
+
+    func refreshProviders() async {
+        guard let polar = try? await api.providers().first(where: { $0.provider == "polar" }) else { return }
+        polarConnected = polar.connected
+        polarAvailable = polar.configured
+    }
+
+    func connectPolar() async {
+        do {
+            let target = try await api.polarConnectURL()
+            guard try await polarConnector.connect(url: target.url, callbackScheme: target.callbackScheme) else { return }
+            polarConnected = true
+            await syncPolar()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func syncPolar() async {
+        guard polarConnected else { return }
+        isSyncingPolar = true
+        defer { isSyncingPolar = false }
+        do {
+            try await sync.syncPolar()
+        } catch let error as APIError where error == .http(status: 409, code: "polar_revoked") || error == .http(status: 409, code: "polar_not_connected") {
+            polarConnected = false
+            errorMessage = error.localizedDescription
+        } catch {
+            errorMessage = "No se pudieron traer los entrenos de Polar: \(error.localizedDescription)"
+        }
+        await load()
+    }
+
+    func disconnectPolar() async {
+        do {
+            try await api.disconnectPolar()
+            polarConnected = false
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 
     func disconnectHealth() {
         sync.healthKit.disconnect()

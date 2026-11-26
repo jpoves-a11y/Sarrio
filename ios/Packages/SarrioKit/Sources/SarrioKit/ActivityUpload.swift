@@ -2,7 +2,7 @@ import Foundation
 
 /// Cuerpo de `POST /v1/activities`: la actividad, su ruta simplificada y las cumbres detectadas.
 public struct ActivityUpload: Codable, Sendable, Equatable {
-    public enum Source: String, Codable, Sendable { case healthkit, file, manual }
+    public enum Source: String, Codable, Sendable { case healthkit, file, manual, polar }
 
     public struct Ascent: Codable, Sendable, Equatable {
         public var peakId: Int64

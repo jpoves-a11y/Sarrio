@@ -20,7 +20,16 @@ struct SettingsView: View {
                     }
                 }
                 SourceRow(icon: "doc", name: "Archivos GPX, FIT y TCX", status: "Disponible")
-                SourceRow(icon: "dot.radiowaves.left.and.right", name: "Polar", status: "Próximamente")
+                if library.polarAvailable {
+                    Toggle(isOn: Binding(
+                        get: { library.polarConnected },
+                        set: { on in Task { if on { await library.connectPolar() } else { await library.disconnectPolar() } } }
+                    )) {
+                        Label("Polar", systemImage: "dot.radiowaves.left.and.right")
+                    }
+                } else {
+                    SourceRow(icon: "dot.radiowaves.left.and.right", name: "Polar", status: "Pendiente de activar")
+                }
                 SourceRow(icon: "clock", name: "Garmin · Suunto · COROS", status: "En solicitud")
             } header: {
                 Text("Fuentes de datos")
@@ -41,6 +50,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Ajustes")
+        .task { await library.refreshProviders() }
         .confirmationDialog(
             "¿Eliminar tu cuenta?",
             isPresented: $confirmDelete,

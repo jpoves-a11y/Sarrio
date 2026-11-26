@@ -19,6 +19,8 @@ struct SarrioApp: App {
                 .task { await services.session.restore() }
                 // GPX/FIT/TCX abiertos desde Archivos, Mail, AirDrop…
                 .onOpenURL { url in
+                    // sarrio://… son vueltas de inicio de sesión (Polar), no archivos
+                    guard url.scheme != "sarrio" else { return }
                     Task { await services.library.importFile(at: url) }
                 }
                 .onChange(of: scenePhase) { _, phase in
@@ -26,6 +28,7 @@ struct SarrioApp: App {
                     Task {
                         await services.library.processSharedInbox()
                         await services.library.syncHealth()
+                        await services.library.syncPolar()
                     }
                 }
         }

@@ -51,6 +51,10 @@ targets:
         # Versión y build desde los ajustes (el workflow de TestFlight sube el build en cada ejecución)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # sarrio://polar?status=… (vuelta del inicio de sesión con Polar)
+        CFBundleURLTypes:
+          - CFBundleURLName: $(SARRIO_BUNDLE_ID)
+            CFBundleURLSchemes: [sarrio]
         UILaunchScreen:
           UIImageName: LaunchMark
           UIColorName: LaunchBackground

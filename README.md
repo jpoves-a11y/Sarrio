@@ -35,7 +35,7 @@ site/                      Web pública (soporte, privacidad, términos) → Git
 |---|---|
 | Apple Health (entrenos y rutas) | ✅ Histórico y entrenos nuevos en segundo plano |
 | Importar GPX, FIT y TCX | ✅ Botón +, «Abrir con» y Compartir → Sarrio |
-| Polar AccessLink | Fase 7. Alta propia gratuita |
+| Polar AccessLink | ✅ OAuth desde Ajustes o la biblioteca; entrenos con GPS de los últimos 30 días |
 | Garmin Connect, Suunto, COROS | Hay que solicitar acceso de partner ya, porque la aprobación tarda |
 
 Strava queda descartado: su API Agreement (noviembre de 2024) no permite mostrar los datos de un usuario a otros usuarios, y eso es incompatible con la parte social.
