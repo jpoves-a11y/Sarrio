@@ -6,8 +6,22 @@ import FoundationXML
 public struct ParsedTrack: Sendable {
     public var name: String?
     public var points: [TrackPoint]
+    /// Deporte normalizado (`SportType`), si el archivo lo indica.
+    public var sport: SportType?
+
+    public init(name: String? = nil, points: [TrackPoint], sport: SportType? = nil) {
+        self.name = name
+        self.points = points
+        self.sport = sport
+    }
 
     public var startDate: Date? { points.first(where: { $0.time != nil })?.time }
+    public var endDate: Date? { points.last(where: { $0.time != nil })?.time }
+
+    public var duration: TimeInterval? {
+        guard let start = startDate, let end = endDate, end > start else { return nil }
+        return end.timeIntervalSince(start)
+    }
 
     public var distance: Double {
         zip(points, points.dropFirst()).reduce(0) { $0 + Geo.distance($1.0, $1.1) }
@@ -27,6 +41,8 @@ public struct ParsedTrack: Sendable {
 
 public enum TrackParseError: Error, Equatable {
     case invalidXML(String)
+    case invalidFIT(String)
+    case unsupportedFormat(String)
     case noPoints
 }
 

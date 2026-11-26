@@ -103,11 +103,13 @@ public enum Geo {
     }
 
     /// Simplificación Douglas-Peucker (tolerancia en metros, aproximación equirectangular local).
-    public static func simplify(_ points: [TrackPoint], tolerance: Double) -> [TrackPoint] {
+    /// Los índices de `keeping` se conservan siempre (p. ej. los puntos más cercanos a cada cumbre).
+    public static func simplify(_ points: [TrackPoint], tolerance: Double, keeping: Set<Int> = []) -> [TrackPoint] {
         guard points.count > 2 else { return points }
         var keep = [Bool](repeating: false, count: points.count)
-        keep[0] = true; keep[points.count - 1] = true
-        var stack = [(0, points.count - 1)]
+        let anchors = ([0, points.count - 1] + keeping.filter { points.indices.contains($0) }).sorted()
+        for i in anchors { keep[i] = true }
+        var stack: [(Int, Int)] = zip(anchors, anchors.dropFirst()).filter { $1 - $0 > 1 }.map { ($0, $1) }
         while let (start, end) = stack.popLast() {
             var maxDist = 0.0, index = start
             for i in (start + 1)..<end {
