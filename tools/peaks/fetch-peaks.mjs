@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Descarga picos (natural=peak con nombre) de OpenStreetMap vía Overpass y genera SQL para Turso.
+// Descarga picos (natural=peak o volcano con nombre: el Teide es un volcán) de OpenStreetMap vía Overpass y genera SQL para Turso.
 // Datos © OpenStreetMap contributors, licencia ODbL: la app debe mostrar la atribución.
 //
 // Uso:
@@ -59,7 +59,7 @@ export function toSql(elements, range) {
 }
 
 async function fetchRegion([south, west, north, east]) {
-  const query = `[out:json][timeout:180];node["natural"="peak"]["name"](${south},${west},${north},${east});out body;`;
+  const query = `[out:json][timeout:180];node["natural"~"^(peak|volcano)$"]["name"](${south},${west},${north},${east});out body;`;
   // Overpass es público y a veces está saturado (429/502/503/504): reintenta con espera exponencial.
   const retryable = new Set([429, 502, 503, 504]);
   for (let attempt = 0, wait = 15; ; attempt++, wait *= 2) {
