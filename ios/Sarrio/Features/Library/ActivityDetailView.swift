@@ -12,6 +12,7 @@ struct ActivityDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var detail: ActivityDetail?
     @State private var plan: ReplayPlan?
+    @State private var profileFraction: Double?
     @State private var visibility: Visibility
     @State private var confirmDelete = false
     @State private var errorMessage: String?
@@ -210,8 +211,8 @@ struct ActivityDetailView: View {
     private func profileCard(_ plan: ReplayPlan) -> some View {
         Card(elevation: .low) {
             SectionHeader(title: "Perfil")
-            ElevationProfileView(plan: plan, fraction: 1, baseColor: Theme.Colors.separator, showsMarker: false)
-                .frame(height: 90)
+            // Desliza el dedo por el perfil para ver la altitud, la distancia y el desnivel de cada punto
+            ScrubbableProfile(plan: plan, fraction: $profileFraction)
         }
     }
 

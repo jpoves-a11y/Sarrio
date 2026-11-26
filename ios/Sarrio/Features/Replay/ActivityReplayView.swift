@@ -89,6 +89,11 @@ private struct ReplayMapRepresentable: UIViewRepresentable {
 
     func makeUIView(context: Context) -> MapView {
         let mapView = ReplayScene.makeMapView(frame: .zero)
+        // Antes de reproducir se cargan todas las vistas de la ruta (unas 60). Con la caché de teselas
+        // por defecto (calculada para una sola pantalla) las primeras se expulsaban de memoria y, al
+        // llegar a ellas, se veían sin detalle mientras volvían a cargar: que quepa el recorrido entero.
+        // En teselas y no en MB: en MB, Mapbox comprime el satélite (ETC1) y pierde nitidez.
+        mapView.mapboxMap.setTileCacheBudget(size: .tiles(320))
         context.coordinator.attach(to: mapView)
         context.coordinator.play(plan: plan, summits: summits, start: start, end: end, reduceMotion: reduceMotion, on: mapView)
         context.coordinator.lastToken = playToken
@@ -335,11 +340,10 @@ private struct ReplayChrome: View {
             }
             Spacer()
             if plan.elevations.contains(where: { $0 != nil }) {
-                ElevationProfileView(plan: plan, fraction: progress.fraction)
-                    .frame(height: 54)
-                    .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                    .environment(\.colorScheme, .dark)
+                // Solo la línea, sin fondo ni marco: gruesa y con sombra para leerse sobre el mapa
+                ElevationProfileView(plan: plan, fraction: progress.fraction, baseColor: .white.opacity(0.55), filled: false, lineWidth: 3)
+                    .frame(height: 58)
+                    .shadow(color: .black.opacity(0.55), radius: 3, y: 1)
             }
             HStack {
                 if weather.hasWeather, let url = weather.legalURL {
@@ -396,11 +400,31 @@ struct ElevationProfileView: View {
     /// Color de lo que queda por recorrer (blanco sobre el mapa, gris sobre una tarjeta).
     var baseColor: Color = .white.opacity(0.3)
     var showsMarker = true
+    /// Relleno degradado bajo lo recorrido (en las tarjetas); sobre el mapa, solo la línea.
+    var filled = true
+    var lineWidth: CGFloat = 2.2
+
+    static let samples = 120
+
+    /// Alturas muestreadas a lo largo de la ruta (las mismas que dibuja la línea).
+    static func values(_ plan: ReplayPlan) -> [Double] {
+        (0...samples).map { plan.elevation(at: plan.length * Double($0) / Double(samples)) ?? 0 }
+    }
+
+    /// Punto de la línea para una fracción del recorrido, en un lienzo de `size`.
+    static func point(at fraction: Double, values: [Double], size: CGSize) -> CGPoint? {
+        guard let lo = values.min(), let hi = values.max(), hi > lo else { return nil }
+        let x = min(1, max(0, fraction)) * Double(samples)
+        let i = Int(x), j = min(samples, i + 1), t = x - Double(i)
+        let v = values[i] + (values[j] - values[i]) * t
+        return CGPoint(x: size.width * CGFloat(x / Double(samples)),
+                       y: size.height - 4 - (size.height - 10) * CGFloat((v - lo) / (hi - lo)))
+    }
 
     var body: some View {
         Canvas { context, size in
-            let samples = 120
-            let values = (0...samples).map { plan.elevation(at: plan.length * Double($0) / Double(samples)) ?? 0 }
+            let samples = Self.samples
+            let values = Self.values(plan)
             guard let lo = values.min(), let hi = values.max(), hi > lo else { return }
             func point(_ i: Int) -> CGPoint {
                 CGPoint(x: size.width * CGFloat(i) / CGFloat(samples),
@@ -409,19 +433,21 @@ struct ElevationProfileView: View {
             var full = Path()
             full.move(to: point(0))
             for i in 1...samples { full.addLine(to: point(i)) }
-            context.stroke(full, with: .color(baseColor), lineWidth: 1.2)
+            context.stroke(full, with: .color(baseColor), style: StrokeStyle(lineWidth: filled ? 1.2 : lineWidth * 0.75, lineCap: .round, lineJoin: .round))
 
             let done = max(1, Int((Double(samples) * min(1, max(0, fraction))).rounded()))
             var walked = Path()
             walked.move(to: point(0))
             for i in 1...done { walked.addLine(to: point(i)) }
-            var fill = walked
-            fill.addLine(to: CGPoint(x: point(done).x, y: size.height))
-            fill.addLine(to: CGPoint(x: 0, y: size.height))
-            fill.closeSubpath()
-            context.fill(fill, with: .linearGradient(Gradient(colors: [Theme.Colors.accent.opacity(0.55), Theme.Colors.accent.opacity(0)]),
-                                                     startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
-            context.stroke(walked, with: .color(Theme.Colors.accent), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+            if filled {
+                var fill = walked
+                fill.addLine(to: CGPoint(x: point(done).x, y: size.height))
+                fill.addLine(to: CGPoint(x: 0, y: size.height))
+                fill.closeSubpath()
+                context.fill(fill, with: .linearGradient(Gradient(colors: [Theme.Colors.accent.opacity(0.55), Theme.Colors.accent.opacity(0)]),
+                                                         startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
+            }
+            context.stroke(walked, with: .color(Theme.Colors.accent), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
             guard showsMarker else { return }
             let marker = point(done)
             context.fill(Path(ellipseIn: CGRect(x: marker.x - 4.5, y: marker.y - 4.5, width: 9, height: 9)), with: .color(.white))

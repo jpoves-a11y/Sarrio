@@ -20,6 +20,8 @@ struct Terrain3DView: UIViewRepresentable {
     var orbit = true
     var interactive = true
     var pitch: Double = 62
+    /// Sin animación (el feed): las banderillas ya clavadas y la ruta entera, sin que caigan.
+    var animated = true
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -129,7 +131,9 @@ struct Terrain3DView: UIViewRepresentable {
                 self.revealed = true
                 self.cover.hide()
                 // Las banderas caen y se clavan al aparecer el relieve, una tras otra
-                for (i, flag) in self.flags.enumerated() { flag.plant(delay: 0.35 + Double(i) * 0.25) }
+                if self.view?.animated != false {
+                    for (i, flag) in self.flags.enumerated() { flag.plant(delay: 0.35 + Double(i) * 0.25) }
+                }
                 if self.view?.orbit == true { self.startOrbit() }
             }
         }
@@ -166,9 +170,9 @@ struct Terrain3DView: UIViewRepresentable {
             }
             flags = view.summits.map { peak in
                 // Escondidas hasta que el relieve está cargado; entonces caen y se clavan
-                let flag = SummitFlagView(name: peak.displayName, elevation: peak.ele, scale: 1.25, planted: false)
+                let flag = SummitFlagView(name: peak.displayName, elevation: peak.ele, scale: view.animated ? 1.25 : 1.0, planted: !view.animated)
                 mapView.viewAnnotations.add(flag.annotation(at: CLLocationCoordinate2D(latitude: peak.lat, longitude: peak.lon)))
-                if revealed { flag.plant(delay: 0.2) }
+                if revealed && view.animated { flag.plant(delay: 0.2) }
                 return flag
             }
         }

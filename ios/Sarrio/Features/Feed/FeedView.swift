@@ -171,7 +171,7 @@ struct FeedCard: View {
             if let camera = RouteCamera(item.route) {
                 // La ruta en relieve 3D con las banderillas de las cimas
                 Terrain3DView(center: camera.center, distance: camera.distance, segments: camera.segments,
-                              summits: peaks.map(\.peak), orbit: false, interactive: false, pitch: 58)
+                              summits: peaks.map(\.peak), orbit: false, interactive: false, pitch: 58, animated: false)
                     .frame(height: 220)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
                     .elevation(.medium)
