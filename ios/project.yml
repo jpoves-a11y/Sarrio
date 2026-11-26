@@ -49,6 +49,8 @@ targets:
       path: Sarrio/Info.plist
       properties:
         CFBundleDisplayName: Sarrio
+        # Tipografía Geist (Resources/Fonts, licencia OFL)
+        UIAppFonts: [Geist-Regular.ttf, Geist-Medium.ttf, Geist-SemiBold.ttf, Geist-Bold.ttf]
         # Versión y build desde los ajustes (el workflow de TestFlight sube el build en cada ejecución)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -120,6 +122,7 @@ targets:
       path: SarrioShare/Info.plist
       properties:
         CFBundleDisplayName: Sarrio
+        UIAppFonts: [Geist-Regular.ttf, Geist-Medium.ttf, Geist-SemiBold.ttf, Geist-Bold.ttf]
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         SarrioAppGroup: group.$(SARRIO_BUNDLE_ID)

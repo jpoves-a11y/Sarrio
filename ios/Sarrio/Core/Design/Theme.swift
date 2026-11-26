@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Sistema de diseño de Sarrio: claro, minimalista y con mucho aire, pero con profundidad.
 /// - Un único color de acento (AccentColor en Assets) para acciones y datos destacados.
@@ -61,10 +62,10 @@ extension View {
 
 extension Font {
     /// Cifra grande de estadística (p. ej. "3.404").
-    static let statValue = Font.system(size: 24, weight: .bold).monospacedDigit()
-    static let statUnit = Font.system(size: 13, weight: .semibold)
-    static let statLabel = Font.system(size: 12, weight: .medium)
-    static let screenTitle = Font.system(size: 30, weight: .heavy)
+    static let statValue = Font.sarrio(24, .semibold).monospacedDigit()
+    static let statUnit = Font.sarrio(13, .medium)
+    static let statLabel = Font.sarrio(12, .medium)
+    static let screenTitle = Font.sarrio(30, .bold)
     /// Cifra protagonista (altitud de la cima más alta, total de cumbres…).
-    static let heroValue = Font.system(size: 46, weight: .heavy, design: .rounded).monospacedDigit()
+    static let heroValue = Font.sarrio(44, .semibold).monospacedDigit()
 }

@@ -381,11 +381,11 @@ final class SummitMarkerView: UIView {
         badge.backgroundColor = color
         let nameLabel = UILabel()
         nameLabel.text = name
-        nameLabel.font = .systemFont(ofSize: 13, weight: .bold)
+        nameLabel.font = .sarrio(13, .semibold)
         nameLabel.textColor = UIColor(white: 0.08, alpha: 1)
         let eleLabel = UILabel()
         eleLabel.text = elevation.map { "\(Int($0.rounded()).formatted()) m" }
-        eleLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        eleLabel.font = UIFont.sarrio(12, .medium).monospacedDigits
         eleLabel.textColor = UIColor(white: 0.42, alpha: 1)
 
         let height: CGFloat = 30, badgeSize: CGFloat = 20, pad: CGFloat = 6, gap: CGFloat = 6

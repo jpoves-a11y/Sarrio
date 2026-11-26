@@ -29,11 +29,11 @@ struct ImportResultView: View {
 
             VStack(spacing: 6) {
                 Text(title)
-                    .font(.system(size: 24, weight: .heavy))
+                    .font(.sarrio(24, .semibold))
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .multilineTextAlignment(.center)
                 Text(outcome.activity.displayTitle + " · " + outcome.activity.startAt.formatted(date: .abbreviated, time: .omitted))
-                    .font(.system(size: 15))
+                    .font(.sarrio(15))
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
 
@@ -42,10 +42,10 @@ struct ImportResultView: View {
                     ForEach(Array(outcome.ascents.enumerated()), id: \.element.id) { index, ascent in
                         HStack(spacing: Theme.Spacing.m) {
                             PeakBadge(count: 1, size: 38)
-                            Text(ascent.peak.displayName).font(.system(size: 17, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
+                            Text(ascent.peak.displayName).font(.sarrio(17, .semibold)).foregroundStyle(Theme.Colors.textPrimary)
                             Spacer()
                             if let ele = ascent.peak.ele {
-                                Text("\(ele.groupedInteger) m").font(.system(size: 17, weight: .bold).monospacedDigit())
+                                Text("\(ele.groupedInteger) m").font(.sarrio(17, .bold).monospacedDigit())
                             }
                         }
                         .padding(Theme.Spacing.m)

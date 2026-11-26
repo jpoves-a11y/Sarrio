@@ -26,6 +26,8 @@ El plan completo por fases está en el README.
 ## Convenciones
 - Estética limpia, profesional, minimalista e intuitiva, pero **interactiva, atractiva, 3D y con profundidad**:
   - usa siempre `Theme` y los componentes de `ios/Sarrio/Core/Design` (Card, StatRow, PrimaryButtonStyle, EmptyStateView…);
+  - tipografía Geist (`Shared/Typography.swift`): usa `.font(.sarrio(tamaño, peso))`, nunca `.system` para texto (solo para iconos SF Symbols); pesos hasta Bold;
+  - ningún texto se corta con «…»: nada de `lineLimit(1)` en títulos o nombres; las cifras se encogen (`minimumScaleFactor`);
   - fondos blancos o gris muy suave, un único color de acento y cifras grandes en negrita;
   - profundidad con `elevation(_:)` (sombras en capas), nunca bloques planos;
   - mapas en relieve 3D (`Terrain3DView`) como protagonistas;

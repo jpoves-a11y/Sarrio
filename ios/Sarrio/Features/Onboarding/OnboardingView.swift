@@ -23,12 +23,12 @@ struct OnboardingView: View {
             .padding(.bottom, Theme.Spacing.xl)
 
             Text("Cada cumbre,\nen un solo lugar.")
-                .font(.system(size: 36, weight: .heavy))
+                .font(.sarrio(36, .semibold))
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .padding(.bottom, Theme.Spacing.m)
 
             Text("Sarrio detecta los picos que subes y construye tu biblioteca de montaña.")
-                .font(.system(size: 17))
+                .font(.sarrio(17))
                 .foregroundStyle(Theme.Colors.textSecondary)
                 .padding(.bottom, Theme.Spacing.xl)
 
@@ -85,8 +85,8 @@ private struct FeatureRow: View {
                 .foregroundStyle(Theme.Colors.accent)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
-                Text(text).font(.system(size: 15)).foregroundStyle(Theme.Colors.textSecondary)
+                Text(title).font(.sarrio(16, .semibold)).foregroundStyle(Theme.Colors.textPrimary)
+                Text(text).font(.sarrio(15)).foregroundStyle(Theme.Colors.textSecondary)
             }
         }
     }

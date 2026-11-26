@@ -1,10 +1,22 @@
 import SwiftUI
+import UIKit
 
 @main
 struct SarrioApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     private let services = AppServices.shared
+
+    init() {
+        // Geist también en las barras del sistema (títulos, pestañas, controles segmentados)
+        let nav = UINavigationBar.appearance()
+        nav.largeTitleTextAttributes = [.font: UIFont.sarrio(32, .bold)]
+        nav.titleTextAttributes = [.font: UIFont.sarrio(17, .semibold)]
+        UIBarButtonItem.appearance().setTitleTextAttributes([.font: UIFont.sarrio(17, .medium)], for: .normal)
+        UITabBarItem.appearance().setTitleTextAttributes([.font: UIFont.sarrio(10, .medium)], for: .normal)
+        UISegmentedControl.appearance().setTitleTextAttributes([.font: UIFont.sarrio(13, .medium)], for: .normal)
+        UISegmentedControl.appearance().setTitleTextAttributes([.font: UIFont.sarrio(13, .semibold)], for: .selected)
+    }
 
     var body: some Scene {
         WindowGroup {

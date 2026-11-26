@@ -1,3 +1,4 @@
+import CoreLocation
 import SarrioKit
 import SwiftUI
 
@@ -14,6 +15,8 @@ struct ActivityDetailView: View {
     @State private var confirmDelete = false
     @State private var errorMessage: String?
     @State private var showsMap = false
+    /// Cumbre abierta en 3D (con la ruta encima).
+    @State private var summitInMap: Ascent?
 
     init(activity: Activity) {
         self.activity = activity
@@ -67,6 +70,9 @@ struct ActivityDetailView: View {
                 }
             }
         }
+        .fullScreenCover(item: $summitInMap) { ascent in
+            SummitMapView(ascent: ascent, route: (detail?.segments ?? []).map { $0.map(\.coordinate) })
+        }
         .confirmationDialog("¿Borrar esta actividad?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Borrar actividad y sus cumbres", role: .destructive) {
                 Task {
@@ -92,13 +98,13 @@ struct ActivityDetailView: View {
                     .font(.statLabel).tracking(1.2)
                     .foregroundStyle(Theme.Colors.accent)
                 Text(activity.displayTitle)
-                    .font(.system(size: 26, weight: .heavy))
+                    .font(.sarrio(26, .semibold))
                     .foregroundStyle(Theme.Colors.textPrimary)
                 Text(activity.startAt.formatted(date: .complete, time: .shortened))
-                    .font(.system(size: 14))
+                    .font(.sarrio(14))
                     .foregroundStyle(Theme.Colors.textSecondary)
                 Label(sourceTitle, systemImage: sourceIcon)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.sarrio(12, .semibold))
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .padding(.top, 2)
             }
@@ -133,9 +139,9 @@ struct ActivityDetailView: View {
                     .frame(width: 48, height: 48)
                     .background(.white.opacity(0.18), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Ver en el mapa 3D").font(.system(size: 18, weight: .bold)).foregroundStyle(.white)
+                    Text("Ver en el mapa 3D").font(.sarrio(18, .bold)).foregroundStyle(.white)
                     Text(detail == nil ? "Cargando la ruta…" : "Vuela la ruta sobre el relieve")
-                        .font(.system(size: 13)).foregroundStyle(.white.opacity(0.8))
+                        .font(.sarrio(13)).foregroundStyle(.white.opacity(0.8))
                 }
                 Spacer()
                 if detail == nil {
@@ -160,14 +166,14 @@ struct ActivityDetailView: View {
             HStack {
                 SectionHeader(title: "Cimas alcanzadas")
                 Text("\(ascents.count)")
-                    .font(.system(size: 17, weight: .heavy).monospacedDigit())
+                    .font(.sarrio(17, .semibold).monospacedDigit())
                     .foregroundStyle(ascents.isEmpty ? Theme.Colors.textSecondary : Theme.Colors.accent)
             }
             if ascents.isEmpty {
                 HStack(spacing: Theme.Spacing.s) {
                     Image(systemName: "flag.slash").foregroundStyle(Theme.Colors.textSecondary)
                     Text(detail == nil ? "Comprobando…" : "Ninguna cima en esta ruta")
-                        .font(.system(size: 15)).foregroundStyle(Theme.Colors.textSecondary)
+                        .font(.sarrio(15)).foregroundStyle(Theme.Colors.textSecondary)
                 }
                 .padding(.vertical, 2)
             } else {
@@ -175,15 +181,26 @@ struct ActivityDetailView: View {
                     HStack(spacing: Theme.Spacing.m) {
                         PeakBadge(count: 1, size: 38)
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(ascent.peak.displayName).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
-                            Text([ascent.peak.range, ascent.summitedAt.formatted(date: .omitted, time: .shortened)].compactMap { $0 }.joined(separator: " · "))
-                                .font(.system(size: 13)).foregroundStyle(Theme.Colors.textSecondary)
+                            Text(ascent.peak.displayName).font(.sarrio(16, .semibold)).foregroundStyle(Theme.Colors.textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text([ascent.peak.ele.map { "\($0.groupedInteger) m" }, ascent.peak.range,
+                                  ascent.summitedAt.formatted(date: .omitted, time: .shortened)].compactMap { $0 }.joined(separator: " · "))
+                                .font(.sarrio(13)).foregroundStyle(Theme.Colors.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        Spacer()
-                        if let ele = ascent.peak.ele {
-                            Text("\(ele.groupedInteger) m").font(.system(size: 17, weight: .bold).monospacedDigit())
-                                .foregroundStyle(Theme.Colors.textPrimary)
+                        Spacer(minLength: Theme.Spacing.s)
+                        // La cumbre en el relieve 3D, con la ruta de esta actividad
+                        Button { summitInMap = ascent } label: {
+                            Label("Ver en 3D", systemImage: "view.3d")
+                                .font(.sarrio(13, .semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(Theme.Colors.accent, in: Capsule())
+                                .elevation(.low)
+                                .fixedSize()
                         }
+                        .buttonStyle(.pressableCard)
+                        .disabled(detail == nil)
                     }
                     .padding(.vertical, 2)
                 }
@@ -202,7 +219,7 @@ struct ActivityDetailView: View {
     private var settingsCard: some View {
         Card(elevation: .low) {
             HStack {
-                Text("Quién la ve").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
+                Text("Quién la ve").font(.sarrio(16, .semibold)).foregroundStyle(Theme.Colors.textPrimary)
                 Spacer()
                 Picker("Quién la ve", selection: $visibility) {
                     ForEach(Visibility.allCases) { Label($0.title, systemImage: $0.icon).tag($0) }
@@ -212,7 +229,7 @@ struct ActivityDetailView: View {
             }
             Divider()
             Button(role: .destructive) { confirmDelete = true } label: {
-                Label("Borrar actividad", systemImage: "trash").font(.system(size: 16, weight: .medium))
+                Label("Borrar actividad", systemImage: "trash").font(.sarrio(16, .medium))
             }
         }
     }
@@ -301,6 +318,43 @@ extension SportType {
         case .snowshoeing: "snowflake"
         case .climbing: "figure.climbing"
         case .other: "figure.mixed.cardio"
+        }
+    }
+}
+
+/// Una cumbre coronada en el relieve 3D, con la ruta de la actividad dibujada y la cámara girando.
+/// Limpio: el mapa a pantalla completa y una píldora discreta con el nombre.
+private struct SummitMapView: View {
+    var ascent: Ascent
+    var route: [[CLLocationCoordinate2D]]
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Terrain3DView(center: ascent.peak.coordinate, distance: 2_600, segments: route, summits: [ascent.peak],
+                          orbit: true, interactive: true)
+                .ignoresSafeArea()
+            VStack {
+                HStack {
+                    Spacer()
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
+                            .frame(width: 36, height: 36).background(.ultraThinMaterial, in: Circle())
+                            .environment(\.colorScheme, .dark)
+                    }
+                }
+                Spacer()
+                HStack(spacing: 8) {
+                    Text(ascent.peak.displayName).font(.sarrio(16, .semibold)).foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Coronada a las \(ascent.summitedAt.formatted(date: .omitted, time: .shortened))")
+                        .font(.sarrio(13)).foregroundStyle(.white.opacity(0.75))
+                }
+                .padding(.horizontal, 16).padding(.vertical, 10)
+                .background(.ultraThinMaterial, in: Capsule())
+                .environment(\.colorScheme, .dark)
+            }
+            .padding(Theme.Spacing.m)
         }
     }
 }

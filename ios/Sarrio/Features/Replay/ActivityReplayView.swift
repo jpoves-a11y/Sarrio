@@ -57,7 +57,7 @@ struct ActivityReplayView: View {
                 ReplayChrome(plan: plan, progress: progress, weather: weather, onReplay: { playToken += 1 }, onExpand: onExpand)
             } else {
                 Rectangle().fill(Theme.Colors.separator)
-                    .overlay(Text("Esta actividad no tiene ruta").font(.system(size: 15)).foregroundStyle(Theme.Colors.textSecondary))
+                    .overlay(Text("Esta actividad no tiene ruta").font(.sarrio(15)).foregroundStyle(Theme.Colors.textSecondary))
             }
         }
         .frame(height: height)
@@ -280,7 +280,7 @@ private struct ReplayLoadingCover: View {
                 VStack(spacing: Theme.Spacing.m) {
                     ProgressRing(fraction: loading).frame(width: 46, height: 46)
                     Text("Preparando el vuelo…")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.sarrio(14, .semibold))
                         .foregroundStyle(.white.opacity(0.85))
                 }
             }
@@ -346,7 +346,7 @@ private struct ReplayChrome: View {
                     Link(destination: url) {
                         Label("Tiempo", systemImage: "apple.logo")
                             .labelStyle(.titleAndIcon)
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.sarrio(11, .semibold))
                             .foregroundStyle(.white.opacity(0.85))
                     }
                 }
@@ -354,7 +354,7 @@ private struct ReplayChrome: View {
                 if progress.isFinished {
                     Button(action: onReplay) {
                         Label("Repetir", systemImage: "arrow.counterclockwise")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.sarrio(14, .semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 14).padding(.vertical, 9)
                             .background(Theme.Colors.accent, in: Capsule())
@@ -372,9 +372,9 @@ private struct ReplayChrome: View {
 
     private func counter(value: String, unit: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 2) {
-            Text(value).font(.system(size: 17, weight: .bold).monospacedDigit()).foregroundStyle(.white)
+            Text(value).font(.sarrio(17, .bold).monospacedDigit()).foregroundStyle(.white)
                 .contentTransition(.numericText())
-            Text(unit).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
+            Text(unit).font(.sarrio(11, .semibold)).foregroundStyle(.white.opacity(0.7))
         }
     }
 

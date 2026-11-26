@@ -100,10 +100,15 @@ struct StatView: View {
                 .font(.statLabel)
                 .tracking(0.6)
                 .foregroundStyle(Theme.Colors.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            // Las cifras se encogen un poco antes que cortarse
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(value).font(.statValue).foregroundStyle(Theme.Colors.textPrimary)
                 if let unit { Text(unit).font(.statUnit).foregroundStyle(Theme.Colors.textSecondary) }
             }
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
         }
         .accessibilityElement(children: .combine)
     }
@@ -131,7 +136,7 @@ struct StatRow: View {
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 16, weight: .semibold))
+            .font(.sarrio(16, .semibold))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 50)
             .background(
@@ -148,7 +153,7 @@ struct PrimaryButtonStyle: ButtonStyle {
 struct SecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 16, weight: .semibold))
+            .font(.sarrio(16, .semibold))
             .foregroundStyle(Theme.Colors.textPrimary)
             .frame(maxWidth: .infinity, minHeight: 50)
             .overlay(
@@ -184,7 +189,7 @@ struct AvatarView: View {
             .frame(width: size, height: size)
             .overlay(
                 Text(initials)
-                    .font(.system(size: size * 0.38, weight: .bold))
+                    .font(.sarrio(size * 0.38, .semibold))
                     .foregroundStyle(Theme.Colors.accent)
             )
             .accessibilityHidden(true)
@@ -196,7 +201,7 @@ struct SectionHeader: View {
     var title: String
     var body: some View {
         Text(title)
-            .font(.system(size: 17, weight: .bold))
+            .font(.sarrio(17, .bold))
             .foregroundStyle(Theme.Colors.textPrimary)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -216,9 +221,9 @@ struct EmptyStateView: View {
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(Theme.Colors.textSecondary)
             VStack(spacing: Theme.Spacing.xs) {
-                Text(title).font(.system(size: 18, weight: .bold)).foregroundStyle(Theme.Colors.textPrimary)
+                Text(title).font(.sarrio(18, .bold)).foregroundStyle(Theme.Colors.textPrimary)
                 Text(message)
-                    .font(.system(size: 15))
+                    .font(.sarrio(15))
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .multilineTextAlignment(.center)
             }

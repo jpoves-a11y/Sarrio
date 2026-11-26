@@ -66,10 +66,10 @@ private struct ShareCard: View {
             Spacer()
             VStack(spacing: 16) {
                 icon
-                Text(title).font(.system(size: 20, weight: .heavy)).multilineTextAlignment(.center)
-                Text(message).font(.system(size: 15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                Text(title).font(.sarrio(20, .semibold)).multilineTextAlignment(.center)
+                Text(message).font(.sarrio(15)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 Button(action: close) {
-                    Text("Hecho").font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                    Text("Hecho").font(.sarrio(16, .semibold)).foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 50)
                         .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .shadow(color: Color.accentColor.opacity(0.3), radius: 12, y: 6)

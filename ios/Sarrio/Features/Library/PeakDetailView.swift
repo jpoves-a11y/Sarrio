@@ -42,18 +42,18 @@ struct PeakDetailView: View {
                 Capsule().fill(Theme.Colors.separator).frame(width: 36, height: 4).frame(maxWidth: .infinity)
                 HStack(alignment: .firstTextBaseline) {
                     Text(group.peak.displayName)
-                        .font(.system(size: 28, weight: .heavy))
+                        .font(.sarrio(28, .semibold))
                         .foregroundStyle(Theme.Colors.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: Theme.Spacing.s)
                     if let ele = group.peak.ele {
                         Text("\(ele.groupedInteger) m")
-                            .font(.system(size: 15, weight: .bold).monospacedDigit())
+                            .font(.sarrio(15, .bold).monospacedDigit())
                             .foregroundStyle(Theme.Colors.textSecondary)
                     }
                 }
                 if let line = subtitle {
-                    Text(line).font(.system(size: 14)).foregroundStyle(Theme.Colors.textSecondary)
+                    Text(line).font(.sarrio(14)).foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
             .staggeredAppear(0)
@@ -98,9 +98,9 @@ struct PeakDetailView: View {
         let row = HStack(spacing: Theme.Spacing.m) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(ascent.summitedAt.formatted(date: .long, time: .omitted))
-                    .font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
+                    .font(.sarrio(16, .semibold)).foregroundStyle(Theme.Colors.textPrimary)
                 Text(ascent.note ?? (ascent.activityId == nil ? "Añadida a mano" : "Desde una actividad"))
-                    .font(.system(size: 13)).foregroundStyle(Theme.Colors.textSecondary)
+                    .font(.sarrio(13)).foregroundStyle(Theme.Colors.textSecondary)
             }
             Spacer()
             if ascent.activityId != nil {

@@ -136,7 +136,7 @@ struct MountainActivitiesView: View {
                 ForEach(store.months) { month in
                     VStack(spacing: Theme.Spacing.s) {
                         Text(month.month.formatted(.dateTime.month(.wide).year()).capitalized)
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.sarrio(15, .bold))
                             .foregroundStyle(Theme.Colors.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.top, Theme.Spacing.s)
@@ -179,11 +179,11 @@ struct MountainActivityRow: View {
                 SportBadge(sport: activity.sport, size: 42)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(activity.displayTitle)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.sarrio(16, .semibold))
                         .foregroundStyle(Theme.Colors.textPrimary)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("\(activity.sport.title) · \(activity.startAt.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))")
-                        .font(.system(size: 13))
+                        .font(.sarrio(13))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
                 Spacer(minLength: 0)
@@ -198,9 +198,9 @@ struct MountainActivityRow: View {
             .padding(.top, 2)
             if let names = activity.ascents?.map(\.peak.displayName), !names.isEmpty {
                 Text(names.joined(separator: " · "))
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.sarrio(13, .medium))
                     .foregroundStyle(Theme.Colors.accent)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -209,7 +209,7 @@ struct MountainActivityRow: View {
         HStack(spacing: 4) {
             Image(systemName: summits > 0 ? "mountain.2.fill" : "flag.slash").font(.system(size: 10, weight: .bold))
             Text(summits == 0 ? "Sin cimas" : summits == 1 ? "1 cima" : "\(summits) cimas")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.sarrio(12, .semibold))
         }
         .foregroundStyle(summits > 0 ? .white : Theme.Colors.textSecondary)
         .padding(.horizontal, 9).padding(.vertical, 5)
@@ -218,7 +218,7 @@ struct MountainActivityRow: View {
 
     private func metric(_ value: String, _ unit: String?) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 2) {
-            Text(value).font(.system(size: 17, weight: .bold).monospacedDigit()).foregroundStyle(Theme.Colors.textPrimary)
+            Text(value).font(.sarrio(17, .bold).monospacedDigit()).foregroundStyle(Theme.Colors.textPrimary)
             if let unit { Text(unit).font(.statUnit).foregroundStyle(Theme.Colors.textSecondary) }
         }
     }

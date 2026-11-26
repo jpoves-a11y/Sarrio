@@ -34,7 +34,7 @@ struct LibraryView: View {
                         PolarConnectCard { Task { await store.connectPolar() } }.staggeredAppear(1)
                     }
                     peaksSection.staggeredAppear(2)
-                    if !store.activities.isEmpty { activitiesSection.staggeredAppear(3) }
+                    if !summitedActivities.isEmpty { activitiesSection.staggeredAppear(3) }
                 } else if store.isLoading && store.library == nil {
                     ProgressView().padding(.top, 120)
                 } else {
@@ -104,7 +104,7 @@ struct LibraryView: View {
                     }
                 } label: {
                     Label(store.sortOrder.title, systemImage: "arrow.up.arrow.down")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.sarrio(14, .semibold))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
@@ -117,10 +117,18 @@ struct LibraryView: View {
         .animation(Theme.Motion.spring, value: store.sortOrder)
     }
 
+    /// En Cumbres, solo las actividades en las que coronaste alguna cima (todas están en Perfil).
+    private var summitedActivities: [Activity] { store.activities.filter { !($0.ascents ?? []).isEmpty } }
+
     private var activitiesSection: some View {
         VStack(spacing: Theme.Spacing.s) {
-            SectionHeader(title: "Actividades")
-            ForEach(store.activities.prefix(10)) { activity in
+            HStack {
+                SectionHeader(title: "Actividades con cima")
+                NavigationLink { MountainActivitiesView() } label: {
+                    Text("Ver todas").font(.sarrio(14, .semibold)).foregroundStyle(Theme.Colors.accent)
+                }
+            }
+            ForEach(summitedActivities.prefix(10)) { activity in
                 NavigationLink { ActivityDetailView(activity: activity) } label: { ActivityRow(activity: activity) }
                     .buttonStyle(.pressableCard)
                     .scrollDepth()
@@ -170,11 +178,11 @@ private struct SummitHero: View {
                         .foregroundStyle(.white.opacity(0.75))
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(peak.displayName)
-                            .font(.system(size: 26, weight: .heavy))
+                            .font(.sarrio(26, .semibold))
                             .foregroundStyle(.white)
                         if let ele = peak.ele {
                             Text("\(ele.groupedInteger) m")
-                                .font(.system(size: 15, weight: .bold).monospacedDigit())
+                                .font(.sarrio(15, .bold).monospacedDigit())
                                 .foregroundStyle(.white.opacity(0.75))
                         }
                     }
@@ -227,17 +235,17 @@ private struct PeakCard: View {
                 PeakBadge(count: group.ascents.count)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(group.peak.displayName)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.sarrio(17, .semibold))
                         .foregroundStyle(Theme.Colors.textPrimary)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(subtitle)
-                        .font(.system(size: 13))
+                        .font(.sarrio(13))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
                 Spacer(minLength: 0)
                 if let ele = group.peak.ele {
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text(ele.groupedInteger).font(.system(size: 20, weight: .bold).monospacedDigit())
+                        Text(ele.groupedInteger).font(.sarrio(20, .bold).monospacedDigit())
                         Text("m").font(.statUnit).foregroundStyle(Theme.Colors.textSecondary)
                     }
                     .foregroundStyle(Theme.Colors.textPrimary)
@@ -269,7 +277,7 @@ struct PeakBadge: View {
                 .shadow(color: Theme.Colors.accent.opacity(0.3), radius: 3, y: 2)
             if count > 1 {
                 Text("\(count)")
-                    .font(.system(size: 11, weight: .heavy).monospacedDigit())
+                    .font(.sarrio(11, .semibold).monospacedDigit())
                     .foregroundStyle(.white)
                     .padding(.horizontal, 5).padding(.vertical, 1)
                     .background(Theme.Colors.accent, in: Capsule())
@@ -289,11 +297,11 @@ struct ActivityRow: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(activity.displayTitle)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.sarrio(16, .semibold))
                         .foregroundStyle(Theme.Colors.textPrimary)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("\(activity.sport.title) · \(activity.startAt.formatted(date: .abbreviated, time: .omitted))")
-                        .font(.system(size: 13))
+                        .font(.sarrio(13))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
                 Spacer()
@@ -327,10 +335,10 @@ private struct HealthConnectCard: View {
                     .elevation(.low)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Conecta Apple Health")
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.sarrio(17, .bold))
                         .foregroundStyle(Theme.Colors.textPrimary)
                     Text("Leemos tus entrenos con GPS, también los de tu Apple Watch, y añadimos solas las cumbres nuevas.")
-                        .font(.system(size: 14))
+                        .font(.sarrio(14))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
@@ -355,10 +363,10 @@ private struct PolarConnectCard: View {
                     .elevation(.low)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Conecta Polar")
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.sarrio(17, .bold))
                         .foregroundStyle(Theme.Colors.textPrimary)
                     Text("Traemos los entrenos con GPS que subas a Polar Flow a partir de ahora y buscamos sus cumbres. Los anteriores, expórtalos desde Flow e impórtalos con +.")
-                        .font(.system(size: 14))
+                        .font(.sarrio(14))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
@@ -386,14 +394,14 @@ private struct SyncStatusCard: View {
                     }
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.Colors.textPrimary)
-                    Text(subtitle).font(.system(size: 13)).foregroundStyle(Theme.Colors.textSecondary).lineLimit(1)
+                    Text(title).font(.sarrio(16, .bold)).foregroundStyle(Theme.Colors.textPrimary)
+                    Text(subtitle).font(.sarrio(13)).foregroundStyle(Theme.Colors.textSecondary).fixedSize(horizontal: false, vertical: true)
                         .contentTransition(.opacity)
                 }
                 Spacer(minLength: 0)
                 if progress.total > 0 {
                     Text("\(progress.processed)/\(progress.total)")
-                        .font(.system(size: 15, weight: .bold).monospacedDigit())
+                        .font(.sarrio(15, .bold).monospacedDigit())
                         .foregroundStyle(Theme.Colors.textPrimary)
                         .contentTransition(.numericText())
                 }
@@ -456,7 +464,7 @@ private struct SyncStatusCard: View {
     private func chip(_ text: String, icon: String?, accent: Bool) -> some View {
         HStack(spacing: 4) {
             if let icon { Image(systemName: icon).font(.system(size: 10, weight: .bold)) }
-            Text(text).font(.system(size: 12, weight: .semibold))
+            Text(text).font(.sarrio(12, .semibold))
         }
         .foregroundStyle(accent ? .white : Theme.Colors.textPrimary)
         .padding(.horizontal, 10).padding(.vertical, 5)
@@ -470,7 +478,7 @@ private struct ProgressPill: View {
     var body: some View {
         HStack(spacing: Theme.Spacing.s) {
             ProgressView().controlSize(.small)
-            Text(text).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
+            Text(text).font(.sarrio(14, .semibold)).foregroundStyle(Theme.Colors.textPrimary)
         }
         .padding(.horizontal, Theme.Spacing.m)
         .padding(.vertical, 10)

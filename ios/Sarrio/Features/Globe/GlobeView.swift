@@ -34,7 +34,7 @@ struct GlobeView: View {
                                 overviewToken += 1
                             } label: {
                                 Label("Todas", systemImage: "globe.europe.africa.fill")
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .font(.sarrio(14, .semibold))
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 14).padding(.vertical, 9)
                                     .background(.ultraThinMaterial, in: Capsule())
@@ -53,10 +53,10 @@ struct GlobeView: View {
                 } else if library.peakGroups.isEmpty && library.library != nil && !searchFocused {
                     Card(elevation: .high) {
                         Text("Aún no hay cumbres en tu globo")
-                            .font(.system(size: 17, weight: .bold))
+                            .font(.sarrio(17, .bold))
                             .foregroundStyle(Theme.Colors.textPrimary)
                         Text("Conecta Apple Health o Polar, o importa un GPX, y tus cimas aparecerán aquí. Mientras, busca cualquier pico arriba.")
-                            .font(.system(size: 14))
+                            .font(.sarrio(14))
                             .foregroundStyle(Theme.Colors.textSecondary)
                     }
                     .padding(.bottom, Theme.Spacing.s)
@@ -82,7 +82,7 @@ struct GlobeView: View {
                 .submitLabel(.search)
                 .autocorrectionDisabled()
                 .foregroundStyle(.white)
-                .font(.system(size: 16, weight: .medium))
+                .font(.sarrio(16, .medium))
                 .onSubmit { if let first = results.first { choose(first) } }
             if searching { ProgressView().controlSize(.small).tint(.white) }
             if !query.isEmpty {
@@ -103,7 +103,7 @@ struct GlobeView: View {
         return VStack(spacing: 0) {
             if results.isEmpty && !searching {
                 Text(query.count < 2 ? "Escribe al menos dos letras" : "No hay picos con ese nombre")
-                    .font(.system(size: 14)).foregroundStyle(Theme.Colors.textSecondary)
+                    .font(.sarrio(14)).foregroundStyle(Theme.Colors.textSecondary)
                     .frame(maxWidth: .infinity).padding(Theme.Spacing.m)
             }
             ForEach(Array(results.enumerated()), id: \.element.id) { index, peak in
@@ -115,13 +115,13 @@ struct GlobeView: View {
                             .frame(width: 30, height: 30)
                             .background(Theme.Colors.accent.opacity(0.1), in: Circle())
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(peak.displayName).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary).lineLimit(1)
+                            Text(peak.displayName).font(.sarrio(16, .semibold)).foregroundStyle(Theme.Colors.textPrimary).fixedSize(horizontal: false, vertical: true)
                             Text(peak.range ?? (ascended.contains(peak.id) ? "Subido" : " "))
-                                .font(.system(size: 12)).foregroundStyle(Theme.Colors.textSecondary)
+                                .font(.sarrio(12)).foregroundStyle(Theme.Colors.textSecondary)
                         }
                         Spacer(minLength: 0)
                         if let ele = peak.ele {
-                            Text("\(ele.groupedInteger) m").font(.system(size: 15, weight: .bold).monospacedDigit()).foregroundStyle(Theme.Colors.textPrimary)
+                            Text("\(ele.groupedInteger) m").font(.sarrio(15, .bold).monospacedDigit()).foregroundStyle(Theme.Colors.textPrimary)
                         }
                     }
                     .padding(.horizontal, Theme.Spacing.m).padding(.vertical, 10)
@@ -172,8 +172,8 @@ struct GlobeView: View {
 
     private func stat(_ value: String, _ unit: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
-            Text(value).font(.system(size: 17, weight: .bold).monospacedDigit()).foregroundStyle(.white)
-            Text(unit).font(.system(size: 12, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
+            Text(value).font(.sarrio(17, .bold).monospacedDigit()).foregroundStyle(.white)
+            Text(unit).font(.sarrio(12, .semibold)).foregroundStyle(.white.opacity(0.7))
         }
     }
 }
@@ -191,11 +191,11 @@ private struct PeakFlyCard: View {
                 PeakBadge(count: selection.group?.ascents.count ?? 0, size: 48)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(peak.displayName)
-                        .font(.system(size: 20, weight: .heavy))
+                        .font(.sarrio(20, .semibold))
                         .foregroundStyle(Theme.Colors.textPrimary)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(locationLine)
-                        .font(.system(size: 13))
+                        .font(.sarrio(13))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
                 Spacer(minLength: 0)
@@ -210,7 +210,7 @@ private struct PeakFlyCard: View {
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 if let ele = peak.ele {
                     Text(ele.groupedInteger).font(.heroValue).foregroundStyle(Theme.Colors.textPrimary)
-                    Text("m").font(.system(size: 17, weight: .bold)).foregroundStyle(Theme.Colors.textSecondary)
+                    Text("m").font(.sarrio(17, .bold)).foregroundStyle(Theme.Colors.textSecondary)
                 }
                 Spacer()
             }
@@ -219,14 +219,14 @@ private struct PeakFlyCard: View {
                 if let group = selection.group {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(group.ascents.count == 1 ? "Subido una vez" : "Subido \(group.ascents.count) veces")
-                            .font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
+                            .font(.sarrio(15, .semibold)).foregroundStyle(Theme.Colors.textPrimary)
                         Text("Última: \(group.lastAscent.formatted(date: .long, time: .omitted))")
-                            .font(.system(size: 13)).foregroundStyle(Theme.Colors.textSecondary)
+                            .font(.sarrio(13)).foregroundStyle(Theme.Colors.textSecondary)
                     }
                     Spacer()
                     NavigationLink { PeakDetailView(group: group) } label: {
                         Label("Ver pico", systemImage: "arrow.right")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.sarrio(15, .semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 16).padding(.vertical, 10)
                             .background(Theme.Colors.accent, in: Capsule())
@@ -235,7 +235,7 @@ private struct PeakFlyCard: View {
                     .buttonStyle(.pressableCard)
                 } else {
                     Label("Aún no lo has subido", systemImage: "flag")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.sarrio(15, .semibold))
                         .foregroundStyle(Theme.Colors.textSecondary)
                     Spacer()
                 }

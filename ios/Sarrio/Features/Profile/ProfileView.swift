@@ -51,7 +51,7 @@ struct ProfileView: View {
                 SectionHeader(title: "Actividades de montaña")
                 NavigationLink { MountainActivitiesView() } label: {
                     Text(mountain.isEmpty ? "Ver" : "Ver todas")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.sarrio(14, .semibold))
                         .foregroundStyle(Theme.Colors.accent)
                 }
             }
@@ -61,7 +61,7 @@ struct ProfileView: View {
                     HStack(spacing: Theme.Spacing.m) {
                         SportBadge(sport: .hiking, size: 40)
                         Text("Tus salidas de senderismo y trail de Apple Watch, Polar o tus archivos aparecerán aquí, con o sin cimas.")
-                            .font(.system(size: 14))
+                            .font(.sarrio(14))
                             .foregroundStyle(Theme.Colors.textSecondary)
                     }
                 }
@@ -81,16 +81,16 @@ struct ProfileView: View {
                 AvatarView(name: me.displayName, size: 64)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(me.displayName)
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.sarrio(22, .bold))
                         .foregroundStyle(Theme.Colors.textPrimary)
                     Text("@\(me.username)")
-                        .font(.system(size: 15))
+                        .font(.sarrio(15))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
             if let bio = me.bio, !bio.isEmpty {
                 Text(bio)
-                    .font(.system(size: 15))
+                    .font(.sarrio(15))
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .padding(.top, Theme.Spacing.xs)
             }
@@ -111,7 +111,7 @@ struct NavigationRow<Destination: View>: View {
                     .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(Theme.Colors.textPrimary)
                     .frame(width: 22)
-                Text(title).font(.system(size: 16)).foregroundStyle(Theme.Colors.textPrimary)
+                Text(title).font(.sarrio(16)).foregroundStyle(Theme.Colors.textPrimary)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
