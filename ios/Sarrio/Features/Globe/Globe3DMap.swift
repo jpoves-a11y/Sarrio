@@ -70,9 +70,10 @@ struct Globe3DMap: UIViewRepresentable {
 
         private static let source = "globe-peaks"
         private static let clusterLayer = "globe-clusters"
-        private static let clusterCountLayer = "globe-cluster-count"
         private static let peakLayer = "globe-peak"
         private static let peakLabelLayer = "globe-peak-label"
+        private static let flagImage = "sarrio-flag"
+        private static let groupImage = "sarrio-flag-group"
 
         init(selected: Binding<GlobeSelection?>) { self.selected = selected }
 
@@ -137,38 +138,48 @@ struct Globe3DMap: UIViewRepresentable {
             source.clusterMaxZoom = 11
             try? map.addSource(source)
 
-            let accent = StyleColor(UIColor(named: "AccentColor") ?? .systemOrange)
+            let accent = UIColor(named: "AccentColor") ?? .systemOrange
+            // Banderillas (el mismo dibujo que en el resto de mapas), quietas: en el globo puede haber cientos
+            try? map.addImage(SummitFlag.image(.single, color: accent), id: Self.flagImage)
+            try? map.addImage(SummitFlag.image(.group, color: accent), id: Self.groupImage)
+            // Pequeñas de lejos, tamaño real de cerca
+            let iconSize = Exp(.interpolate) { Exp(.linear); Exp(.zoom); 2; 0.55; 8; 0.8; 12; 1.0 }
 
-            var clusters = CircleLayer(id: Self.clusterLayer, source: Self.source)
+            // Grupos: un manojo de banderillas con el número al lado
+            var clusters = SymbolLayer(id: Self.clusterLayer, source: Self.source)
             clusters.filter = Exp(.has) { "point_count" }
-            clusters.circleColor = .constant(accent)
-            clusters.circleRadius = .expression(Exp(.step) { Exp(.get) { "point_count" }; 17; 5; 21; 20; 27 })
-            clusters.circleStrokeColor = .constant(StyleColor(.white))
-            clusters.circleStrokeWidth = .constant(3)
-            clusters.circlePitchAlignment = .constant(.viewport)
-            clusters.circleEmissiveStrength = .constant(1)
+            clusters.iconImage = .constant(.name(Self.groupImage))
+            clusters.iconAnchor = .constant(.bottom)
+            clusters.iconSize = .expression(iconSize)
+            clusters.iconPitchAlignment = .constant(.viewport)
+            clusters.iconAllowOverlap = .constant(true)
+            clusters.iconOpacityTransition = StyleTransition(duration: 0.3, delay: 0)
+            clusters.iconEmissiveStrength = .constant(1)
+            clusters.textField = .expression(Exp(.get) { "point_count_abbreviated" })
+            clusters.textFont = .constant(["DIN Pro Bold", "Arial Unicode MS Bold"])
+            clusters.textSize = .constant(15)
+            clusters.textColor = .constant(StyleColor(.white))
+            clusters.textHaloColor = .constant(StyleColor(UIColor.black.withAlphaComponent(0.6)))
+            clusters.textHaloWidth = .constant(1.2)
+            clusters.textAnchor = .constant(.left)
+            clusters.textOffset = .constant([1.6, -2.4])
+            clusters.textAllowOverlap = .constant(true)
+            clusters.textEmissiveStrength = .constant(1)
             try? map.addLayer(clusters)
 
-            var count = SymbolLayer(id: Self.clusterCountLayer, source: Self.source)
-            count.filter = Exp(.has) { "point_count" }
-            count.textField = .expression(Exp(.get) { "point_count_abbreviated" })
-            count.textFont = .constant(["DIN Pro Bold", "Arial Unicode MS Bold"])
-            count.textSize = .constant(14)
-            count.textColor = .constant(StyleColor(.white))
-            count.textAllowOverlap = .constant(true)
-            count.textEmissiveStrength = .constant(1)
-            try? map.addLayer(count)
-
-            var peaks = CircleLayer(id: Self.peakLayer, source: Self.source)
+            // Cumbre suelta: una banderilla de pie sobre el relieve
+            var peaks = SymbolLayer(id: Self.peakLayer, source: Self.source)
             peaks.filter = Exp(.not) { Exp(.has) { "point_count" } }
-            peaks.circleColor = .constant(accent)
-            peaks.circleRadius = .constant(8)
-            peaks.circleStrokeColor = .constant(StyleColor(.white))
-            peaks.circleStrokeWidth = .constant(3)
-            peaks.circlePitchAlignment = .constant(.viewport)
-            peaks.circleEmissiveStrength = .constant(1)
+            peaks.iconImage = .constant(.name(Self.flagImage))
+            peaks.iconAnchor = .constant(.bottom)
+            peaks.iconSize = .expression(iconSize)
+            peaks.iconPitchAlignment = .constant(.viewport)
+            peaks.iconAllowOverlap = .constant(true)
+            peaks.iconOpacityTransition = StyleTransition(duration: 0.3, delay: 0)
+            peaks.iconEmissiveStrength = .constant(1)
             try? map.addLayer(peaks)
 
+            // Nombre y altitud a la derecha del paño (de cerca)
             var labels = SymbolLayer(id: Self.peakLabelLayer, source: Self.source)
             labels.filter = Exp(.not) { Exp(.has) { "point_count" } }
             labels.textField = .expression(Exp(.get) { "label" })
@@ -177,12 +188,22 @@ struct Globe3DMap: UIViewRepresentable {
             labels.textColor = .constant(StyleColor(.white))
             labels.textHaloColor = .constant(StyleColor(UIColor.black.withAlphaComponent(0.65)))
             labels.textHaloWidth = .constant(1.4)
-            labels.textOffset = .constant([0, 1.5])
-            labels.textAnchor = .constant(.top)
+            labels.textAnchor = .constant(.left)
+            labels.textOffset = .constant([2.2, -2.4])
             labels.textOptional = .constant(true)
+            labels.textOpacityTransition = StyleTransition(duration: 0.3, delay: 0)
             labels.textEmissiveStrength = .constant(1)
             labels.minZoom = 8
             try? map.addLayer(labels)
+        }
+
+        /// Oculta en las capas la cumbre elegida (encima va su banderilla animada) o las vuelve a mostrar.
+        private func hideInLayers(peakId: Int64?) {
+            guard let map = mapView?.mapboxMap, styleReady else { return }
+            let notCluster: [Any] = ["!", ["has", "point_count"]]
+            let filter: [Any] = peakId.map { ["all", notCluster, ["!=", ["get", "peakId"], Double($0)]] } ?? notCluster
+            try? map.setLayerProperty(for: Self.peakLayer, property: "filter", value: filter)
+            try? map.setLayerProperty(for: Self.peakLabelLayer, property: "filter", value: filter)
         }
 
         private func draw() {
@@ -252,18 +273,14 @@ struct Globe3DMap: UIViewRepresentable {
             shownSelection = selection?.id
             searchMarker?.remove()
             searchMarker = nil
+            hideInLayers(peakId: selection?.id)
             guard let selection, let mapView else { return }
-            // Un pico que no es de los tuyos no está en las capas: se marca aparte
-            if selection.group == nil {
-                let marker = SummitMarkerView(name: selection.peak.displayName, elevation: selection.peak.ele,
-                                              color: UIColor(named: "AccentColor") ?? .systemOrange)
-                let annotation = ViewAnnotation(coordinate: selection.peak.coordinate, view: marker)
-                annotation.variableAnchors = [ViewAnnotationAnchorConfig(anchor: .bottom)]
-                annotation.allowOverlap = true
-                mapView.viewAnnotations.add(annotation)
-                searchMarker = annotation
-                marker.pop()
-            }
+            // La elegida (tuya o del buscador): banderilla grande que cae y se clava mientras la cámara vuela
+            let flag = SummitFlagView(name: nil, elevation: nil, scale: 1.6, planted: false)
+            let annotation = flag.annotation(at: selection.peak.coordinate)
+            mapView.viewAnnotations.add(annotation)
+            searchMarker = annotation
+            flag.plant(delay: 1.6)
             fly(to: selection.peak)
         }
 

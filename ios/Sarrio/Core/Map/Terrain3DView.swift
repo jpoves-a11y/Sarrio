@@ -51,6 +51,7 @@ struct Terrain3DView: UIViewRepresentable {
         private let cover = TerrainLoadingCover()
         private var revealTask: Task<Void, Never>?
         private var revealed = false
+        private var flags: [SummitFlagView] = []
 
         private static let routeSource = "terrain-route"
         private static let casingLayer = "terrain-casing"
@@ -127,6 +128,8 @@ struct Terrain3DView: UIViewRepresentable {
                 if Task.isCancelled { return }
                 self.revealed = true
                 self.cover.hide()
+                // Las banderas caen y se clavan al aparecer el relieve, una tras otra
+                for (i, flag) in self.flags.enumerated() { flag.plant(delay: 0.35 + Double(i) * 0.25) }
                 if self.view?.orbit == true { self.startOrbit() }
             }
         }
@@ -161,13 +164,12 @@ struct Terrain3DView: UIViewRepresentable {
                 line.lineEmissiveStrength = .constant(1)
                 try? map.addLayer(line)
             }
-            for peak in view.summits {
-                let marker = SummitMarkerView(name: peak.displayName, elevation: peak.ele, color: UIColor(named: "AccentColor") ?? .systemOrange)
-                let annotation = ViewAnnotation(coordinate: CLLocationCoordinate2D(latitude: peak.lat, longitude: peak.lon), view: marker)
-                annotation.variableAnchors = [ViewAnnotationAnchorConfig(anchor: .bottom)]
-                annotation.allowOverlap = true
-                mapView.viewAnnotations.add(annotation)
-                marker.pop()
+            flags = view.summits.map { peak in
+                // Escondidas hasta que el relieve está cargado; entonces caen y se clavan
+                let flag = SummitFlagView(name: peak.displayName, elevation: peak.ele, scale: 1.25, planted: false)
+                mapView.viewAnnotations.add(flag.annotation(at: CLLocationCoordinate2D(latitude: peak.lat, longitude: peak.lon)))
+                if revealed { flag.plant(delay: 0.2) }
+                return flag
             }
         }
 
@@ -248,19 +250,6 @@ final class TerrainLoadingCover: UIView {
             self.isHidden = true
             self.spinner.stopAnimating()
         }
-    }
-}
-
-/// Marcador simple de cumbre para SwiftUI (fuera de los mapas).
-struct SummitPin: View {
-    var body: some View {
-        Image(systemName: "triangle.fill")
-            .font(.system(size: 13, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(width: 30, height: 30)
-            .background(Theme.Colors.accent, in: Circle())
-            .overlay(Circle().stroke(.white, lineWidth: 2.5))
-            .elevation(.medium)
     }
 }
 

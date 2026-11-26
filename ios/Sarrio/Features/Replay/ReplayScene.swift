@@ -28,7 +28,7 @@ final class ReplayScene {
     private weak var mapView: MapView?
     private let hiker = HikerDotView()
     private var hikerAnnotation: ViewAnnotation?
-    private var summitMarkers: [(distance: Double, view: SummitMarkerView)] = []
+    private var summitMarkers: [(distance: Double, view: SummitFlagView)] = []
     private(set) var isReady = false
     private var lightPreset = "day"
     private var drawn: Double = 0
@@ -187,11 +187,9 @@ final class ReplayScene {
         // Las cumbres, escondidas hasta coronarlas
         for (index, distance) in plan.summitDistances.enumerated() where index < summits.count {
             let peak = summitForDistance(index)
-            let view = SummitMarkerView(name: peak.displayName, elevation: peak.ele, color: color)
-            let marker = ViewAnnotation(coordinate: CLLocationCoordinate2D(latitude: peak.lat, longitude: peak.lon), view: view)
-            marker.variableAnchors = [ViewAnnotationAnchorConfig(anchor: .bottom)]
-            marker.allowOverlap = true
-            mapView.viewAnnotations.add(marker)
+            // Escondida arriba: cae y se clava cuando el montañero corona
+            let view = SummitFlagView(name: peak.displayName, elevation: peak.ele, color: color, planted: false)
+            mapView.viewAnnotations.add(view.annotation(at: CLLocationCoordinate2D(latitude: peak.lat, longitude: peak.lon)))
             summitMarkers.append((distance, view))
         }
 
@@ -253,7 +251,7 @@ final class ReplayScene {
         try? map.setLayerProperty(for: Self.lineLayer, property: "line-trim-offset", value: trim)
         let reached = summitMarkers.filter { $0.distance <= target + 1 }.count
         if reached > summitsShown {
-            for marker in summitMarkers[summitsShown..<reached] { marker.view.pop() }
+            for marker in summitMarkers[summitsShown..<reached] { marker.view.plant() }
             summitsShown = reached
         }
     }
@@ -366,79 +364,4 @@ final class HikerDotView: UIView {
     override func sizeThatFits(_ size: CGSize) -> CGSize { intrinsicContentSize }
     override func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize { intrinsicContentSize }
     override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority h: UILayoutPriority, verticalFittingPriority v: UILayoutPriority) -> CGSize { intrinsicContentSize }
-}
-
-/// Marcador de cumbre: una píldora blanca que flota con sombra, con el nombre y la altitud; aparece
-/// con un muelle (y un toque háptico) cuando el montañero corona.
-final class SummitMarkerView: UIView {
-    private let size: CGSize
-    private let content = UIView()
-
-    init(name: String, elevation: Double?, color: UIColor) {
-        let icon = UIImageView(image: UIImage(systemName: "triangle.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 9, weight: .bold)))
-        icon.tintColor = .white
-        let badge = UIView()
-        badge.backgroundColor = color
-        let nameLabel = UILabel()
-        nameLabel.text = name
-        nameLabel.font = .sarrio(13, .semibold)
-        nameLabel.textColor = UIColor(white: 0.08, alpha: 1)
-        let eleLabel = UILabel()
-        eleLabel.text = elevation.map { "\(Int($0.rounded()).formatted()) m" }
-        eleLabel.font = UIFont.sarrio(12, .medium).monospacedDigits
-        eleLabel.textColor = UIColor(white: 0.42, alpha: 1)
-
-        let height: CGFloat = 30, badgeSize: CGFloat = 20, pad: CGFloat = 6, gap: CGFloat = 6
-        let nameWidth = ceil(nameLabel.intrinsicContentSize.width)
-        let eleWidth = eleLabel.text == nil ? 0 : ceil(eleLabel.intrinsicContentSize.width)
-        let width = pad + badgeSize + gap + nameWidth + (eleWidth > 0 ? gap + eleWidth : 0) + pad + 4
-        let stem: CGFloat = 12
-        size = CGSize(width: width, height: height + stem)
-        super.init(frame: CGRect(origin: .zero, size: size))
-        isUserInteractionEnabled = false
-
-        content.frame = bounds
-        addSubview(content)
-        let pill = UIView(frame: CGRect(x: 0, y: 0, width: width, height: height))
-        pill.backgroundColor = .white
-        pill.layer.cornerRadius = 4
-        pill.layer.shadowColor = UIColor.black.cgColor
-        pill.layer.shadowOpacity = 0.22
-        pill.layer.shadowRadius = 10
-        pill.layer.shadowOffset = CGSize(width: 0, height: 5)
-        content.addSubview(pill)
-        badge.frame = CGRect(x: pad, y: (height - badgeSize) / 2, width: badgeSize, height: badgeSize)
-        badge.layer.cornerRadius = 3
-        pill.addSubview(badge)
-        icon.frame = badge.bounds.insetBy(dx: 5, dy: 5)
-        icon.contentMode = .scaleAspectFit
-        badge.addSubview(icon)
-        nameLabel.frame = CGRect(x: badge.frame.maxX + gap, y: 0, width: nameWidth, height: height)
-        pill.addSubview(nameLabel)
-        if eleWidth > 0 {
-            eleLabel.frame = CGRect(x: nameLabel.frame.maxX + gap, y: 0, width: eleWidth, height: height)
-            pill.addSubview(eleLabel)
-        }
-        let line = UIView(frame: CGRect(x: width / 2 - 1, y: height, width: 2, height: stem))
-        line.backgroundColor = .white
-        content.addSubview(line)
-
-        content.alpha = 0
-        content.transform = CGAffineTransform(translationX: 0, y: 10).scaledBy(x: 0.6, y: 0.6)
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    func pop() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        UIView.animate(withDuration: 0.6, delay: 0, usingSpringWithDamping: 0.62, initialSpringVelocity: 0.8, options: [.beginFromCurrentState]) {
-            self.content.alpha = 1
-            self.content.transform = .identity
-        }
-    }
-
-    override var intrinsicContentSize: CGSize { size }
-    override func sizeThatFits(_ size: CGSize) -> CGSize { self.size }
-    override func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize { size }
-    override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority h: UILayoutPriority, verticalFittingPriority v: UILayoutPriority) -> CGSize { size }
 }
