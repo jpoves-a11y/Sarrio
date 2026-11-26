@@ -55,6 +55,7 @@ struct ProfileView: View {
                         ForEach(Array(recent.enumerated()), id: \.element.id) { index, badge in
                             BadgeMedal(icon: badge.icon, earned: true, size: 54)
                                 .elevation(.medium)
+                                .background { if badge.tier == .legend { LegendAura(size: 54, onDark: false) } }
                                 .zIndex(Double(recent.count - index))
                         }
                     }

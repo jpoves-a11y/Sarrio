@@ -96,7 +96,9 @@ struct BadgesView: View {
                         Button { selected = badge } label: {
                             VStack(spacing: 6) {
                                 BadgeMedal(icon: badge.icon, earned: true, size: 80, shine: badge.isEarned)
-                                    .opacity(badge.isEarned ? 1 : 0.5)
+                                    .opacity(badge.isEarned ? 1 : 0.55)
+                                    .legendAura(size: 80, intensity: badge.isEarned ? 1 : 0.35)
+                                    .padding(.vertical, 10)
                                 Text(badge.name)
                                     .font(.sarrio(13, .semibold))
                                     .foregroundStyle(badge.isEarned ? .white : .white.opacity(0.7))
@@ -116,9 +118,11 @@ struct BadgesView: View {
                 }
                 .padding(.horizontal, Theme.Spacing.m)
             }
+            .scrollClipDisabled()
         }
         .padding(.vertical, Theme.Spacing.l)
         .background(LegendColors.ink, in: RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
         .elevation(.high)
     }
 
@@ -189,6 +193,7 @@ struct BadgeDetailView: View {
                         .elevation(badge.isEarned ? .high : .low)
                         .interactiveTilt(maxAngle: 14)
                         .frame(width: 220, height: 220)
+                        .background { if badge.tier == .legend { LegendAura(size: 220, intensity: badge.isEarned ? 1 : 0.4, onDark: false) } }
                         .padding(.top, Theme.Spacing.l)
 
                     VStack(spacing: Theme.Spacing.s) {

@@ -19,6 +19,33 @@ export const TIERS = {
   },
 };
 
+/**
+ * Rama de laurel a un lado de la cifra (`dir` = 1 derecha, -1 izquierda): hojas en pareja a lo
+ * largo de un arco que sube desde abajo, cerca del canto.
+ */
+function laurel(dir, r = 42) {
+  const at = (deg) => {
+    const t = (deg * Math.PI) / 180; // ángulo desde arriba, en sentido horario
+    return { x: 60 + dir * r * Math.sin(t), y: 60 - r * Math.cos(t), t };
+  };
+  const out = [];
+  const a = at(140), b = at(96);
+  out.push(`<path d="M${a.x.toFixed(1)} ${a.y.toFixed(1)} A${r} ${r} 0 0 ${dir > 0 ? 0 : 1} ${b.x.toFixed(1)} ${b.y.toFixed(1)}" fill="none" class="stem"/>`);
+  for (let i = 0; i < 6; i++) {
+    const { x, y, t } = at(137 - i * 7.5);
+    const ux = -dir * Math.cos(t), uy = -Math.sin(t); // hacia arriba a lo largo de la rama
+    const nx = dir * Math.sin(t), ny = -Math.cos(t); // hacia fuera
+    const len = 6.4 - i * 0.45;
+    for (const side of [1, -1]) {
+      const ex = x + ux * len + side * nx * len * 0.55, ey = y + uy * len + side * ny * len * 0.55;
+      const c1x = x + side * nx * len * 0.55, c1y = y + side * ny * len * 0.55;
+      const c2x = x + ux * len * 0.7, c2y = y + uy * len * 0.7;
+      out.push(`<path d="M${x.toFixed(1)} ${y.toFixed(1)} Q${c1x.toFixed(1)} ${c1y.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)} Q${c2x.toFixed(1)} ${c2y.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)} Z" class="leaf"/>`);
+    }
+  }
+  return out.join("");
+}
+
 const CROWN = "M46 40 L46 28 L53 34 L60 24 L67 34 L74 28 L74 40 Z";
 
 // Pictogramas: trazos en una caja de 60×60 centrada en (60,60) del medallón de 120.
@@ -66,8 +93,8 @@ export const BADGES = [
   { id: "king-pyrenees", name: "Rey del Pirineo", tier: "legend", category: "Leyendas", art: `<path d="${CROWN}"/><circle cx="60" cy="24" r="1.8" class="fill"/><path d="M26 82 L40 60 L48 70 L60 50 L72 66 L80 58 L94 82"/>`, t: "3000", desc: "Todos los tresmiles del Pirineo." },
   { id: "lord-alps", name: "Señor de los Alpes", tier: "legend", category: "Leyendas", art: `<path d="${CROWN}"/><circle cx="60" cy="24" r="1.8" class="fill"/><path d="M28 82 L50 60 L56 48 L62 44 L66 56 L92 82"/><path d="M56 48 L62 44 L64 52 L60 50 Z" class="fill"/>`, t: "4000", desc: "Todos los cuatromiles de los Alpes." },
   { id: "iberian-slam", name: "Gran Slam Ibérico", tier: "legend", category: "Leyendas", art: `<path d="M26 82 L32 62 L37 70 L43 54 L48 66 L54 46 L59 62 L65 50 L70 64 L76 56 L81 66 L87 60 L94 82"/>` + [[32, 62], [43, 54], [54, 46], [65, 50], [76, 56], [87, 60]].map(([x, y]) => `<circle cx="${x}" cy="${y - 5}" r="2.2" class="fill"/>`).join(""), t: "6", desc: "El techo de cada gran cordillera." },
-  { id: "everesting", name: "Everesting", tier: "legend", category: "Leyendas", art: `<path d="M28 82 L60 38 L92 82"/><path d="M48 80 L60 73 L51 66 L63 59 L56 52 L60 46" stroke-dasharray="3 3.5"/><path d="M60 38 L60 29 L69 32 L60 35"/>`, t: "8849", desc: "8.849 m de desnivel positivo en una sola actividad." },
-  { id: "hundred-k", name: "Cien mil", tier: "legend", category: "Leyendas", art: `<circle cx="60" cy="58" r="22"/>` + Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<path d="M${(60 + 22 * Math.sin(a)).toFixed(1)} ${(58 - 22 * Math.cos(a)).toFixed(1)} L${(60 + 25.5 * Math.sin(a)).toFixed(1)} ${(58 - 25.5 * Math.cos(a)).toFixed(1)}"/>`; }).join("") + `<path d="M46 67 L55 52 L60 59 L66 46 L75 67"/>`, t: "100 000", desc: "100.000 m de desnivel positivo en un año." },
+  { id: "everesting", name: "Tenzing", tier: "legend", category: "Leyendas", art: `<path d="M28 82 L60 38 L92 82"/><path d="M48 80 L60 73 L51 66 L63 59 L56 52 L60 46" stroke-dasharray="3 3.5"/><path d="M60 38 L60 29 L69 32 L60 35"/>`, t: "8849", desc: "8.849 m de desnivel positivo en una sola actividad." },
+  { id: "hundred-k", name: "Cien mil", tier: "legend", category: "Leyendas", art: `<circle cx="60" cy="58" r="22"/>` + Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<path d="M${(60 + 22 * Math.sin(a)).toFixed(1)} ${(58 - 22 * Math.cos(a)).toFixed(1)} L${(60 + 25.5 * Math.sin(a)).toFixed(1)} ${(58 - 25.5 * Math.cos(a)).toFixed(1)}"/>`; }).join("") + `<path d="M46 67 L55 52 L60 59 L66 46 L75 67"/>`, t: "100 k", desc: "100.000 m de desnivel positivo en un año." },
 ];
 
 function altitude(lines) {
@@ -114,12 +141,17 @@ export function badgeSVG(badge, { locked = false, font = "Geist" } = {}) {
   const c = locked ? { light: "#EEEFF1", mid: "#C9CCD1", dark: "#9DA1A8", ink: "#A9ADB3" } : TIERS[badge.tier];
   const id = `${badge.id}${locked ? "-l" : ""}`;
   const face = c.face ?? ["#FFFFFF", "#F6F5F2", "#E6E3DD"];
+  // Leyendas: oro metalizado (degradado) en grabado, cifra y filos, con laurel y doble anillo
+  const premium = !!c.face;
+  const ink = premium ? `url(#${id}-gold)` : c.ink;
+  const artScale = premium ? 0.88 : 1.14;
+  const artY = premium ? (badge.t ? 53 : 58) : badge.t ? 56 : 59;
   const ticks = Array.from({ length: 48 }, (_, i) => {
     const a = (i / 48) * Math.PI * 2, r1 = 53.2, r2 = 55.6;
     return `M${(60 + r1 * Math.cos(a)).toFixed(2)} ${(60 + r1 * Math.sin(a)).toFixed(2)} L${(60 + r2 * Math.cos(a)).toFixed(2)} ${(60 + r2 * Math.sin(a)).toFixed(2)}`;
   }).join(" ");
   const label = badge.t
-    ? `<text x="60" y="97" text-anchor="middle" font-family="${font}" font-weight="600" font-size="${badge.t.length > 5 ? 11 : 13}" letter-spacing="0.4" fill="${c.ink}">${badge.t}</text>`
+    ? `<text x="60" y="97" text-anchor="middle" font-family="${font}" font-weight="${premium ? 700 : 600}" font-size="${badge.t.length > 5 ? 11 : 13}" letter-spacing="${premium ? 0.8 : 0.4}" fill="${ink}">${badge.t}</text>`
     : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
   <defs>
@@ -129,6 +161,9 @@ export function badgeSVG(badge, { locked = false, font = "Geist" } = {}) {
     <radialGradient id="${id}-face" cx="0.38" cy="0.32" r="0.8">
       <stop offset="0" stop-color="${face[0]}"/><stop offset="0.7" stop-color="${face[1]}"/><stop offset="1" stop-color="${face[2]}"/>
     </radialGradient>
+    <linearGradient id="${id}-gold" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#FFF1C2"/><stop offset="0.35" stop-color="#EDC871"/><stop offset="0.7" stop-color="#C9963B"/><stop offset="1" stop-color="#8E6420"/>
+    </linearGradient>
     <linearGradient id="${id}-gloss" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#FFFFFF" stop-opacity="${locked ? 0.15 : c.face ? 0.22 : 0.55}"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
     </linearGradient>
@@ -138,9 +173,13 @@ export function badgeSVG(badge, { locked = false, font = "Geist" } = {}) {
   <path d="${ticks}" stroke="${c.tick ?? c.dark}" stroke-width="1" opacity="${c.tick ? 0.6 : 0.45}"/>
   <circle cx="60" cy="60" r="50.5" fill="${c.dark}" opacity="0.55"/>
   <circle cx="60" cy="60" r="49" fill="url(#${id}-face)"/>
-  <circle cx="60" cy="60" r="45.5" fill="none" stroke="${c.ring ?? c.mid}" stroke-width="0.8" opacity="0.7"/>
-  <g fill="none" stroke="${c.ink}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="art" transform="translate(60 ${badge.t ? 56 : 59}) scale(1.14) translate(-60 -60)">
-    ${badge.art.replaceAll('class="fill"', `fill="${c.ink}" stroke="none"`)}
+  <circle cx="60" cy="60" r="45.5" fill="none" stroke="${premium ? ink : c.ring ?? c.mid}" stroke-width="${premium ? 1 : 0.8}" opacity="${premium ? 0.9 : 0.7}"/>
+  ${premium ? `<circle cx="60" cy="60" r="56.6" fill="none" stroke="${ink}" stroke-width="1.1"/>
+  <circle cx="60" cy="60" r="49" fill="none" stroke="${ink}" stroke-width="0.7" opacity="0.8"/>
+  <circle cx="60" cy="60" r="43.8" fill="none" stroke="${ink}" stroke-width="0.4" opacity="0.6"/>
+  <g fill="${ink}" stroke="${ink}" stroke-width="0.4">${laurel(1).replaceAll('class="stem"', `stroke-width="1"`)}${laurel(-1).replaceAll('class="stem"', `stroke-width="1"`)}</g>` : ""}
+  <g fill="none" stroke="${ink}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="art" transform="translate(60 ${artY}) scale(${artScale}) translate(-60 -60)">
+    ${badge.art.replaceAll('class="fill"', `fill="${ink}" stroke="none"`)}
   </g>
   ${label}
   <path d="M14 52 A46 46 0 0 1 106 52 A50 34 0 0 0 14 52 Z" fill="url(#${id}-gloss)"/>

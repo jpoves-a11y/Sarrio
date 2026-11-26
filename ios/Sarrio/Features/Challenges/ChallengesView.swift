@@ -227,9 +227,11 @@ struct LegendsSection: View {
                 }
                 .padding(.horizontal, Theme.Spacing.m)
             }
+            .scrollClipDisabled()
         }
         .padding(.vertical, Theme.Spacing.l)
         .background(LegendColors.ink, in: RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
         .elevation(.high)
     }
 }
@@ -243,9 +245,11 @@ private struct LegendCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             // Siempre en oro; apagado hasta conseguirlo
             BadgeMedal(icon: "badge-\(challenge.badgeId ?? "")", earned: true, size: 92, shine: p?.done == true)
-                .opacity(p?.done == true ? 1 : 0.55)
+                .opacity(p?.done == true ? 1 : 0.6)
                 .interactiveTilt(maxAngle: 10)
                 .frame(width: 92, height: 92)
+                .legendAura(size: 92, intensity: p?.done == true ? 1 : 0.4)
+                .frame(maxWidth: .infinity)
             Text(challenge.title)
                 .font(.sarrio(16, .bold))
                 .foregroundStyle(.white)
@@ -265,6 +269,7 @@ private struct LegendCard: View {
         }
         .frame(width: 150, alignment: .leading)
         .padding(Theme.Spacing.m)
-        .background(LegendColors.panel, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .padding(.top, Theme.Spacing.s)
+        .background(LegendColors.panel.opacity(0.7), in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
     }
 }

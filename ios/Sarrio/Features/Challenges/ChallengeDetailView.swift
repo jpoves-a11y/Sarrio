@@ -58,9 +58,10 @@ struct ChallengeDetailView: View {
                         .elevation(.high)
                         .interactiveTilt(maxAngle: 14)
                         .frame(width: 170, height: 170)
+                        .legendAura(size: 170, intensity: current.progress?.done == true ? 1 : 0.4, onDark: false)
                     Spacer()
                 }
-                .padding(.vertical, Theme.Spacing.m)
+                .padding(.vertical, Theme.Spacing.xl)
             }
             Text((current.isLegend ? "Leyenda" : current.official ? "Reto de Sarrio" : "Reto de \(current.creator?.displayName ?? "un amigo")").uppercased())
                 .font(.sarrio(12, .semibold))

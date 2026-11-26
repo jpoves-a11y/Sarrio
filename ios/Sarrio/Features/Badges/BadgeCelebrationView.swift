@@ -26,6 +26,8 @@ struct BadgeCelebrationView: View {
                 .offset(y: landed ? 0 : -420)
                 .interactiveTilt(maxAngle: 12)
                 .frame(width: 230, height: 230)
+                // Las Leyendas se encienden al asentarse
+                .background { if legend { LegendAura(size: 230, intensity: settled ? 1 : 0).animation(.easeIn(duration: 0.8), value: settled) } }
 
             VStack(spacing: Theme.Spacing.s) {
                 Text(badge.name)

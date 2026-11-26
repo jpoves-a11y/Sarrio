@@ -32,7 +32,7 @@ export const BADGES: { id: string; name: string; description: string; tier: Tier
   { id: "king-pyrenees", name: "Rey del Pirineo", tier: "legend", category: "Leyendas", description: "Todos los tresmiles del Pirineo." },
   { id: "lord-alps", name: "Señor de los Alpes", tier: "legend", category: "Leyendas", description: "Todos los cuatromiles de los Alpes." },
   { id: "iberian-slam", name: "Gran Slam Ibérico", tier: "legend", category: "Leyendas", description: "El techo de cada gran cordillera: Aneto, Mulhacén, Torre Cerredo, Almanzor, Moncayo y Teide." },
-  { id: "everesting", name: "Everesting", tier: "legend", category: "Leyendas", description: "8.849 m de desnivel positivo en una sola actividad." },
+  { id: "everesting", name: "Tenzing", tier: "legend", category: "Leyendas", description: "La altura del Everest, 8.849 m de desnivel positivo, en una sola actividad. Por Tenzing Norgay." },
   { id: "hundred-k", name: "Cien mil", tier: "legend", category: "Leyendas", description: "100.000 m de desnivel positivo en un mismo año." },
 ];
 
@@ -68,6 +68,6 @@ export const METRIC_CHALLENGES: OfficialMetricChallenge[] = [
 
 /** Leyendas de meta (las de lista las siembra `scripts/seed-challenges.mjs`). */
 export const LEGEND_METRIC_CHALLENGES: OfficialMetricChallenge[] = [
-  { slug: "legend-everesting", badgeId: "everesting", title: "Everesting", description: "La altura del Everest, 8.849 m de desnivel positivo, en una sola actividad.", metric: "max_activity_gain", target: 8849, recurrence: "none" },
+  { slug: "legend-everesting", badgeId: "everesting", title: "Tenzing", description: "La altura del Everest, 8.849 m de desnivel positivo, en una sola actividad. En honor a Tenzing Norgay, que la subió con Hillary en 1953.", metric: "max_activity_gain", target: 8849, recurrence: "none" },
   { slug: "legend-hundred-k", badgeId: "hundred-k", title: "Cien mil", description: "100.000 m de desnivel positivo en un año: más de once Everest.", metric: "elevation_gain", target: 100_000, recurrence: "yearly" },
 ];
