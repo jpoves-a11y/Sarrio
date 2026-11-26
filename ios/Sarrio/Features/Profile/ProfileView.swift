@@ -19,6 +19,7 @@ struct ProfileView: View {
                         ])
                     }
                 }
+                activitiesSection
                 Card(padding: 0) {
                     VStack(spacing: 0) {
                         NavigationRow(icon: "medal", title: "Emblemas") { BadgesView() }
@@ -39,6 +40,38 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $editing) {
             if let me = session.me { NavigationStack { EditProfileView(me: me) } }
+        }
+    }
+
+    /// Últimas salidas de montaña (con o sin cimas) y acceso a todas.
+    private var activitiesSection: some View {
+        let mountain = library.activities.filter { $0.sport.isMountain }
+        return VStack(spacing: Theme.Spacing.s) {
+            HStack {
+                SectionHeader(title: "Actividades de montaña")
+                NavigationLink { MountainActivitiesView() } label: {
+                    Text(mountain.isEmpty ? "Ver" : "Ver todas")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.Colors.accent)
+                }
+            }
+            .padding(.top, Theme.Spacing.s)
+            if mountain.isEmpty {
+                Card(elevation: .low) {
+                    HStack(spacing: Theme.Spacing.m) {
+                        SportBadge(sport: .hiking, size: 40)
+                        Text("Tus salidas de senderismo y trail de Apple Watch, Polar o tus archivos aparecerán aquí, con o sin cimas.")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                    }
+                }
+            } else {
+                ForEach(Array(mountain.prefix(3).enumerated()), id: \.element.id) { index, activity in
+                    NavigationLink { ActivityDetailView(activity: activity) } label: { MountainActivityRow(activity: activity) }
+                        .buttonStyle(.pressableCard)
+                        .staggeredAppear(index + 1)
+                }
+            }
         }
     }
 

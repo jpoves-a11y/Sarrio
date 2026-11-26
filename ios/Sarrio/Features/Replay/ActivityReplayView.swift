@@ -335,7 +335,7 @@ private struct ReplayChrome: View {
             }
             Spacer()
             if plan.elevations.contains(where: { $0 != nil }) {
-                ElevationStrip(plan: plan, fraction: progress.fraction)
+                ElevationProfileView(plan: plan, fraction: progress.fraction)
                     .frame(height: 54)
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
@@ -390,9 +390,12 @@ private struct ReplayChrome: View {
 
 /// Perfil de elevación: lo recorrido en color de acento con un relleno que se desvanece, lo que
 /// queda fino y tenue, y un marcador donde va el montañero.
-private struct ElevationStrip: View {
+struct ElevationProfileView: View {
     let plan: ReplayPlan
     let fraction: Double
+    /// Color de lo que queda por recorrer (blanco sobre el mapa, gris sobre una tarjeta).
+    var baseColor: Color = .white.opacity(0.3)
+    var showsMarker = true
 
     var body: some View {
         Canvas { context, size in
@@ -406,7 +409,7 @@ private struct ElevationStrip: View {
             var full = Path()
             full.move(to: point(0))
             for i in 1...samples { full.addLine(to: point(i)) }
-            context.stroke(full, with: .color(.white.opacity(0.3)), lineWidth: 1.2)
+            context.stroke(full, with: .color(baseColor), lineWidth: 1.2)
 
             let done = max(1, Int((Double(samples) * min(1, max(0, fraction))).rounded()))
             var walked = Path()
@@ -419,6 +422,7 @@ private struct ElevationStrip: View {
             context.fill(fill, with: .linearGradient(Gradient(colors: [Theme.Colors.accent.opacity(0.55), Theme.Colors.accent.opacity(0)]),
                                                      startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
             context.stroke(walked, with: .color(Theme.Colors.accent), style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+            guard showsMarker else { return }
             let marker = point(done)
             context.fill(Path(ellipseIn: CGRect(x: marker.x - 4.5, y: marker.y - 4.5, width: 9, height: 9)), with: .color(.white))
             context.stroke(Path(ellipseIn: CGRect(x: marker.x - 4.5, y: marker.y - 4.5, width: 9, height: 9)), with: .color(Theme.Colors.accent), lineWidth: 2)

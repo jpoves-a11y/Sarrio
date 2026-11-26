@@ -146,7 +146,10 @@ actor ActivitySync {
 
         var progress = SyncProgress(source: .polar)
         await report?(progress)
-        let pending = try await api.polarExercises().filter { $0.hasRoute && !$0.imported }
+        // Con ruta, o sin ella si es de montaña (se guarda con sus cifras)
+        let pending = try await api.polarExercises().filter {
+            !$0.imported && ($0.hasRoute || SportType(polarSport: $0.sport).isMountain)
+        }
         progress.begin(total: pending.count, sports: pending.map { SportType(polarSport: $0.sport) })
         await report?(progress)
 
@@ -156,9 +159,9 @@ actor ActivitySync {
             let sport = SportType(polarSport: exercise.sport)
             progress.current = "\(sport.title) · \(Self.polarDate(exercise.startTime))"
             await report?(progress)
-            let data = try await api.polarFIT(id: exercise.id)
             var outcome: Outcome?
-            if let parsed = try? FITParser.parse(data: data), parsed.points.count >= 2 {
+            let fit: Data? = exercise.hasRoute ? try await api.polarFIT(id: exercise.id) : nil
+            if let fit, let parsed = try? FITParser.parse(data: fit), parsed.points.count >= 2 {
                 var track = parsed
                 if track.sport == nil || track.sport == .other { track.sport = sport }
                 outcome = try await upload(
@@ -169,8 +172,19 @@ actor ActivitySync {
                     duration: exercise.durationS,
                     distance: exercise.distanceM
                 )
-                outcomes.append(outcome!)
+            } else if sport.isMountain {
+                outcome = try await upload(
+                    ParsedTrack(points: [], sport: sport),
+                    source: .polar,
+                    externalId: exercise.id,
+                    title: nil,
+                    startDate: Self.polarStart(exercise.startTime),
+                    duration: exercise.durationS,
+                    distance: exercise.distanceM,
+                    sport: sport
+                )
             }
+            if let outcome { outcomes.append(outcome) }
             progress.finishItem(outcome)
             await report?(progress)
         }
@@ -179,6 +193,14 @@ actor ActivitySync {
         await report?(progress)
         if outcomes.contains(where: \.isNew) { notifyChange() }
         return outcomes
+    }
+
+    /// «2026-07-14T07:00:00» (hora local de Polar) → fecha.
+    private static func polarStart(_ raw: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return formatter.date(from: String(raw.prefix(19)))
     }
 
     private static func polarDate(_ raw: String) -> String {
@@ -199,15 +221,19 @@ actor ActivitySync {
         startDate: Date? = nil,
         duration: TimeInterval? = nil,
         distance: Double? = nil,
-        elevationGain: Double? = nil
+        elevationGain: Double? = nil,
+        sport: SportType? = nil
     ) async throws -> Outcome {
-        guard parsed.points.count >= 2 else { throw SyncError.noTrack }
-        let summits = try await peakPackStore.detectSummits(in: parsed.points)
+        // Sin ruta solo se guardan las salidas de montaña (con sus cifras, sin mapa ni cumbres)
+        let sport = sport ?? parsed.sport
+        guard parsed.points.count >= 2 || sport?.isMountain == true else { throw SyncError.noTrack }
+        let summits = parsed.points.count >= 2 ? try await peakPackStore.detectSummits(in: parsed.points) : []
         let body = ActivityUpload(
             track: parsed,
             summits: summits,
             source: source,
             externalId: externalId,
+            sport: sport,
             title: title,
             startDate: startDate,
             duration: duration,

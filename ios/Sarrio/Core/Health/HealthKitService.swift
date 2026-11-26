@@ -87,10 +87,12 @@ final class HealthKitService: @unchecked Sendable {
         var workouts: [HealthWorkout] = []
         for workout in result.addedSamples {
             let points = try await routePoints(for: workout)
-            guard points.count >= 2 else { continue } // sin GPS no hay cumbres que detectar
+            let sport = Self.sport(for: workout.workoutActivityType)
+            // Sin GPS no hay cumbres que detectar, pero las salidas de montaña se guardan igualmente
+            guard points.count >= 2 || sport.isMountain else { continue }
             workouts.append(HealthWorkout(
                 uuid: workout.uuid,
-                sport: Self.sport(for: workout.workoutActivityType),
+                sport: sport,
                 start: workout.startDate,
                 end: workout.endDate,
                 distance: workout.statistics(for: HKQuantityType(.distanceWalkingRunning))?.sumQuantity()?.doubleValue(for: .meter())

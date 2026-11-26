@@ -31,6 +31,21 @@ public enum SportType: String, Sendable, Codable, CaseIterable {
         }
     }
 
+    /// Actividades de montaña: las que se listan en el perfil aunque no tengan cumbres.
+    public var isMountain: Bool {
+        switch self {
+        case .hiking, .trailRunning, .mountaineering, .snowshoeing, .backcountrySkiing, .climbing: true
+        default: false
+        }
+    }
+
+    /// Apple Health no distingue el trail de la carrera: una carrera con más de 25 m de desnivel
+    /// positivo por km se considera trail running.
+    public static func refined(_ sport: SportType, distance: Double?, elevationGain: Double?) -> SportType {
+        guard sport == .running, let distance, distance > 1000, let gain = elevationGain else { return sport }
+        return gain / (distance / 1000) > 25 ? .trailRunning : .running
+    }
+
     /// Deporte FIT (`sport`, mensaje `session`), según el perfil del FIT SDK.
     public init(fitSport: UInt8, subSport: UInt8? = nil) {
         switch fitSport {

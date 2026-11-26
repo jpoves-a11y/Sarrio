@@ -257,3 +257,17 @@ private let start = Date(timeIntervalSince1970: 1_784_000_000)
         #expect(bundle.peaks(in: "u0hu").first?.range == "Alpes")
     }
 }
+
+@Suite struct SportTypeTests {
+    @Test func classifiesMountainSports() {
+        #expect(SportType.hiking.isMountain && SportType.trailRunning.isMountain && SportType.mountaineering.isMountain)
+        #expect(!SportType.running.isMountain && !SportType.cycling.isMountain)
+    }
+
+    @Test func turnsSteepRunsIntoTrail() {
+        #expect(SportType.refined(.running, distance: 12_000, elevationGain: 900) == .trailRunning)
+        #expect(SportType.refined(.running, distance: 10_000, elevationGain: 80) == .running)
+        #expect(SportType.refined(.running, distance: 10_000, elevationGain: nil) == .running)
+        #expect(SportType.refined(.hiking, distance: 10_000, elevationGain: 900) == .hiking)
+    }
+}

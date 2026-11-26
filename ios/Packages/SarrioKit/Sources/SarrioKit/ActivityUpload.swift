@@ -44,12 +44,15 @@ public struct ActivityUpload: Codable, Sendable, Equatable {
 
         self.source = source
         self.externalId = externalId
-        self.sportType = (sport ?? parsed.sport ?? .hiking).rawValue
+        let distanceM = (distance ?? parsed.distance).rounded()
+        let elevGainM = (elevationGain ?? parsed.elevationGain()).rounded()
+        // Una carrera con mucho desnivel es trail (Apple Health no los distingue)
+        self.sportType = SportType.refined(sport ?? parsed.sport ?? .hiking, distance: distanceM, elevationGain: elevGainM).rawValue
         self.title = title ?? parsed.name
         self.startAt = Int64((start.timeIntervalSince1970 * 1000).rounded())
         self.durationS = (duration ?? parsed.duration)?.rounded()
-        self.distanceM = (distance ?? parsed.distance).rounded()
-        self.elevGainM = (elevationGain ?? parsed.elevationGain()).rounded()
+        self.distanceM = distanceM
+        self.elevGainM = elevGainM
         self.track = simplified.map { p in
             [
                 (p.latitude * 1e6).rounded() / 1e6,
