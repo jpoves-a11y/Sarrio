@@ -47,23 +47,23 @@ final class MapPrefetcher {
             CLLocationCoordinate2D(latitude: 80, longitude: 180), CLLocationCoordinate2D(latitude: 80, longitude: -180),
             CLLocationCoordinate2D(latitude: -80, longitude: -180),
         ]])
-        load(region: "sarrio-world", geometry: .polygon(world), zoom: 0...4)
+        load(region: "sarrio-world", area: world, zoom: 0...4)
 
         // Alrededor de cada cumbre: satélite y relieve
         for peak in peaks.prefix(Self.maxPeaks) {
-            load(region: "sarrio-peak-\(peak.id)", geometry: .polygon(Self.square(around: peak.coordinate, meters: 3_000)), zoom: 10...14)
+            load(region: "sarrio-peak-\(peak.id)", area: Self.square(around: peak.coordinate, meters: 3_000), zoom: 10...14)
         }
         running = false
     }
 
-    private func load(region id: String, geometry: MapboxMaps.Geometry, zoom: ClosedRange<UInt8>) {
+    private func load(region id: String, area: Polygon, zoom: ClosedRange<UInt8>) {
         let descriptor = offline.createTilesetDescriptor(for: TilesetDescriptorOptions(
             styleURI: .standardSatellite,
             zoomRange: zoom,
             tilesets: ["mapbox://mapbox.mapbox-terrain-dem-v1"]
         ))
         guard let options = TileRegionLoadOptions(
-            geometry: geometry,
+            geometry: .polygon(area),
             descriptors: [descriptor],
             metadata: ["sarrio": id],
             acceptExpired: true,
