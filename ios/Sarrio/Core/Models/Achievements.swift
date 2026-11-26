@@ -1,8 +1,46 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Lectura tolerante
+// El servidor puede añadir niveles, métricas o retos nuevos antes de que la app se actualice:
+// lo desconocido toma un valor por defecto y lo que no se puede leer se salta, sin romper la pantalla.
+
+/// Enum que, ante un valor desconocido, usa `fallback` en lugar de fallar.
+protocol TolerantEnum: RawRepresentable, Decodable where RawValue == String {
+    static var fallback: Self { get }
+}
+
+extension TolerantEnum {
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: raw) ?? Self.fallback
+    }
+}
+
+/// Lista que se salta los elementos que no puede leer.
+struct LossyArray<Element: Decodable>: Decodable {
+    var elements: [Element]
+
+    init(from decoder: Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        var out: [Element] = []
+        while !container.isAtEnd {
+            if let element = try? container.decode(Element.self) {
+                out.append(element)
+            } else if (try? container.decode(Skip.self)) == nil {
+                break // no se puede avanzar: mejor parar que dar vueltas
+            }
+        }
+        elements = out
+    }
+
+    private struct Skip: Decodable {}
+}
+
 /// Nivel del emblema (el color del medallón).
-enum BadgeTier: String, Codable, Sendable {
+enum BadgeTier: String, Codable, Sendable, TolerantEnum {
+    static let fallback = BadgeTier.gold
+
     case bronze, silver, gold, special, legend
 
     var title: String {
@@ -69,6 +107,15 @@ struct BadgeCatalog: Decodable, Sendable {
     var badges: [Badge]
     var earned: Int
     var total: Int
+
+    private enum CodingKeys: String, CodingKey { case badges, earned, total }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        badges = try c.decode(LossyArray<Badge>.self, forKey: .badges).elements
+        earned = try c.decode(Int.self, forKey: .earned)
+        total = try c.decode(Int.self, forKey: .total)
+    }
 }
 
 /// Emblema recién conseguido (viene en la respuesta de una subida).
@@ -83,9 +130,12 @@ struct NewBadge: Codable, Hashable, Sendable, Identifiable {
 
 // MARK: - Retos
 
-enum ChallengeKind: String, Codable, Sendable { case metric, peaks }
+enum ChallengeKind: String, Codable, Sendable, TolerantEnum {
+    case metric, peaks
+    static let fallback = ChallengeKind.metric
+}
 
-enum ChallengeMetric: String, Codable, Sendable, CaseIterable, Identifiable {
+enum ChallengeMetric: String, Codable, Sendable, CaseIterable, Identifiable, TolerantEnum {
     case elevationGain = "elevation_gain"
     case distance
     case summits
@@ -95,6 +145,10 @@ enum ChallengeMetric: String, Codable, Sendable, CaseIterable, Identifiable {
     case highSummits = "high_summits"
     case sunriseSummits = "sunrise_summits"
     case maxActivityGain = "max_activity_gain"
+    /// Métrica que esta versión de la app aún no conoce.
+    case unknown
+
+    static let fallback = ChallengeMetric.unknown
 
     var id: String { rawValue }
 
@@ -112,6 +166,7 @@ enum ChallengeMetric: String, Codable, Sendable, CaseIterable, Identifiable {
         case .highSummits: "Cimas altas"
         case .sunriseSummits: "Cimas al amanecer"
         case .maxActivityGain: "Desnivel en una actividad"
+        case .unknown: "Progreso"
         }
     }
 
@@ -122,6 +177,7 @@ enum ChallengeMetric: String, Codable, Sendable, CaseIterable, Identifiable {
         case .summits, .uniquePeaks, .highSummits, .sunriseSummits: "cimas"
         case .activities: "salidas"
         case .activeWeeks: "semanas"
+        case .unknown: ""
         }
     }
 
@@ -135,7 +191,10 @@ enum ChallengeMetric: String, Codable, Sendable, CaseIterable, Identifiable {
 }
 
 struct ChallengeProgress: Codable, Hashable, Sendable {
-    enum Status: String, Codable, Sendable { case active, upcoming, ended }
+    enum Status: String, Codable, Sendable, TolerantEnum {
+        case active, upcoming, ended
+        static let fallback = Status.active
+    }
     var value: Double
     var target: Double
     var fraction: Double
@@ -227,7 +286,15 @@ struct Challenge: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
-struct ChallengeList: Decodable, Sendable { var challenges: [Challenge] }
+struct ChallengeList: Decodable, Sendable {
+    var challenges: [Challenge]
+
+    private enum CodingKeys: String, CodingKey { case challenges }
+
+    init(from decoder: Decoder) throws {
+        challenges = try decoder.container(keyedBy: CodingKeys.self).decode(LossyArray<Challenge>.self, forKey: .challenges).elements
+    }
+}
 
 struct ChallengePeak: Codable, Hashable, Sendable, Identifiable {
     var id: Int64
