@@ -33,7 +33,7 @@ struct Me: Codable, Equatable, Sendable {
 }
 
 /// Perfil público de otro usuario (`GET /v1/users/:username`).
-struct PublicUser: Codable, Equatable, Identifiable, Sendable {
+struct PublicUser: Codable, Hashable, Identifiable, Sendable {
     var id: String
     var username: String
     var displayName: String
