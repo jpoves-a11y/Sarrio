@@ -12,6 +12,8 @@ enum Theme {
         static let accent = Color.accentColor
         static let background = Color(uiColor: .systemBackground)
         static let groupedBackground = Color(red: 0.965, green: 0.965, blue: 0.97)
+        /// Fondo de las pantallas: blanco limpio (los bloques no llevan caja, solo filos finos).
+        static let page = Color.white
         static let surface = Color.white
         static let textPrimary = Color(red: 0.08, green: 0.08, blue: 0.09)
         static let textSecondary = Color(red: 0.42, green: 0.43, blue: 0.45)

@@ -94,7 +94,7 @@ struct MountainActivitiesView: View {
         Group {
             if let store { content(store) } else { ProgressView() }
         }
-        .background(Theme.Colors.groupedBackground)
+        .background(Theme.Colors.page)
         .navigationTitle("Actividades")
         .task {
             if store == nil {

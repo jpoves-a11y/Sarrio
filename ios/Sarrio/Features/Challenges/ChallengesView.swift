@@ -7,7 +7,7 @@ struct ChallengesView: View {
                 .padding(.top, Theme.Spacing.xl)
         }
         .frame(maxWidth: .infinity)
-        .background(Theme.Colors.groupedBackground)
+        .background(Theme.Colors.page)
         .navigationTitle("Retos")
     }
 }

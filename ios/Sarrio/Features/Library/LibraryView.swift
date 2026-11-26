@@ -44,7 +44,7 @@ struct LibraryView: View {
             .padding(.horizontal, Theme.Spacing.m)
             .padding(.bottom, Theme.Spacing.xl)
         }
-        .background(Theme.Colors.groupedBackground)
+        .background(Theme.Colors.page)
         .navigationTitle("Cumbres")
         .safeAreaInset(edge: .bottom) {
             // Las sincronizaciones tienen su tarjeta de progreso arriba; la píldora queda para los archivos

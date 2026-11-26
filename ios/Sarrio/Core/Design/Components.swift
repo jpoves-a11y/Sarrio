@@ -1,21 +1,30 @@
 import SwiftUI
 
 /// Bloque blanco que flota sobre el fondo gris: la unidad visual básica de la app.
+/// Bloque de contenido. Minimalista por defecto: sin caja ni sombra, solo aire y un filo fino
+/// debajo que lo separa del siguiente. Con `.high` (lo que flota sobre un mapa) es una tarjeta
+/// blanca que se levanta con sombra.
 struct Card<Content: View>: View {
     var padding: CGFloat = Theme.Spacing.m
     var elevation: Theme.Elevation = .low
     @ViewBuilder var content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) { content }
-            .padding(padding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.Colors.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                    .stroke(Theme.Colors.separator, lineWidth: 0.5)
-            )
-            .elevation(elevation)
+        if elevation == .high {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) { content }
+                .padding(padding)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.Colors.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                .elevation(.high)
+        } else {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) { content }
+                .padding(.vertical, padding == 0 ? 0 : 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(Theme.Colors.separator).frame(height: 0.5)
+                }
+        }
     }
 }
 

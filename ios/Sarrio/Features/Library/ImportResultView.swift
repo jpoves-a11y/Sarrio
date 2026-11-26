@@ -52,7 +52,7 @@ struct ImportResultView: View {
             Button("Hecho") { dismiss() }.buttonStyle(.primary)
         }
         .padding(Theme.Spacing.m)
-        .background(Theme.Colors.groupedBackground)
+        .background(Theme.Colors.page)
         .sensoryFeedback(.success, trigger: revealed)
         .onAppear { withAnimation(Theme.Motion.spring.delay(0.1)) { revealed = true } }
     }

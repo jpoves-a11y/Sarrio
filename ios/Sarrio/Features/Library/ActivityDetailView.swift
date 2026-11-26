@@ -45,7 +45,7 @@ struct ActivityDetailView: View {
             .padding(.top, Theme.Spacing.s)
             .padding(.bottom, Theme.Spacing.xl)
         }
-        .background(Theme.Colors.groupedBackground)
+        .background(Theme.Colors.page)
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .fullScreenCover(isPresented: $showsMap) {

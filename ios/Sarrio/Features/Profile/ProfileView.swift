@@ -32,7 +32,7 @@ struct ProfileView: View {
             }
             .padding(Theme.Spacing.m)
         }
-        .background(Theme.Colors.groupedBackground)
+        .background(Theme.Colors.page)
         .navigationTitle("Perfil")
         .task { if library.library == nil { await library.load() } }
         .toolbar {
