@@ -24,13 +24,16 @@ export const testEnv = {
   JWT_SECRET: "test-secret-test-secret-test-secret",
   APPLE_BUNDLE_ID: "com.sarrio.test",
   TURSO_DATABASE_URL: "unused",
-  TOKEN_ENCRYPTION_KEY: "unused",
+  // 32 bytes en base64 (AES-256)
+  TOKEN_ENCRYPTION_KEY: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
 } as unknown as Env;
 
 /** App con BD en memoria y un verificador de Apple falso: el token "apple:<sub>" es válido. */
-export async function createTestApp() {
+export async function createTestApp(options: { fetch?: typeof fetch; env?: Partial<Env> } = {}) {
   const db = await createTestDb();
+  const env = { ...testEnv, ...options.env } as Env;
   const app = createApp({
+    fetch: options.fetch,
     getDb: () => db,
     verifyAppleToken: async (token) => {
       if (!token.startsWith("apple:")) throw new Error("bad token");
@@ -48,7 +51,7 @@ export async function createTestApp() {
         },
         body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
       },
-      testEnv,
+      env,
     );
   const signIn = async (sub: string, fullName?: string) => {
     const res = await request("POST", "/v1/auth/apple", { body: { identityToken: `apple:${sub}`, fullName } });

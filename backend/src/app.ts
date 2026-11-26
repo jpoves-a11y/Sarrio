@@ -8,6 +8,7 @@ import { ascentsRoutes } from "./routes/ascents";
 import { authRoutes } from "./routes/auth";
 import { meRoutes } from "./routes/me";
 import { peaksRoutes } from "./routes/peaks";
+import { providersRoutes } from "./routes/providers";
 import { usersRoutes } from "./routes/users";
 
 export const defaultDeps: Deps = { getDb, verifyAppleToken: verifyAppleIdentityToken };
@@ -31,8 +32,8 @@ export function createApp(deps: Deps = defaultDeps) {
   v1.route("/peaks", peaksRoutes);
   v1.route("/activities", activitiesRoutes);
   v1.route("/ascents", ascentsRoutes);
+  v1.route("/providers", providersRoutes);
   // Fase 6: /friends, /feed, likes, comments
-  // Fase 7: /providers/polar (OAuth + webhook)
   app.route("/v1", v1);
 
   app.notFound((c) => c.json({ error: "not_found" }, 404));

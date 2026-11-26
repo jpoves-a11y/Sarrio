@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { AppBindings } from "../env";
 import { requireAuth } from "../auth/session";
-import { activities, activityTracks, ascents, privacyZones, users, type Source, type Visibility } from "../db/schema";
+import { activities, activityTracks, ascents, privacyZones, providerConnections, users, type Source, type Visibility } from "../db/schema";
 import { applyPrivacyZones } from "../lib/geo";
 import { newId } from "../lib/ids";
 import { boundingBox, decodeTrack, encodeTrack, parseTrack, serializeSegments, trackReaches } from "../lib/track";
@@ -15,8 +15,8 @@ import { canView, mustTrimTrack } from "../services/visibility";
 export const activitiesRoutes = new Hono<AppBindings>();
 activitiesRoutes.use("*", requireAuth);
 
-/** Fuentes que la app puede subir directamente (Polar y compañía llegarán por webhook). */
-const uploadSources = ["healthkit", "file", "manual"] as const satisfies readonly Source[];
+/** Fuentes que la app puede subir (Polar solo con la cuenta de Polar conectada). */
+const uploadSources = ["healthkit", "file", "manual", "polar"] as const satisfies readonly Source[];
 const SPORT_RE = /^[a-z_]{2,30}$/;
 const MAX_ASCENTS_PER_ACTIVITY = 50;
 
@@ -55,6 +55,15 @@ activitiesRoutes.post("/", bodyLimit({ maxSize: 4 * 1024 * 1024 }), async (c) =>
 
   const db = c.var.db;
   const userId = c.var.userId;
+
+  if (source === "polar") {
+    const linked = await db
+      .select({ userId: providerConnections.userId })
+      .from(providerConnections)
+      .where(and(eq(providerConnections.userId, userId), eq(providerConnections.provider, "polar")))
+      .get();
+    if (!linked) return c.json({ error: "polar_not_connected" }, 409);
+  }
 
   const existing = await db
     .select()

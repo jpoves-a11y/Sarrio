@@ -10,12 +10,16 @@ export interface Env extends DbEnv {
   TOKEN_ENCRYPTION_KEY: string;
   POLAR_CLIENT_ID?: string;
   POLAR_CLIENT_SECRET?: string;
+  /** Opcional: si no, `<origen de la API>/v1/providers/polar/callback` (tiene que coincidir con el registrado en Polar). */
+  POLAR_REDIRECT_URI?: string;
 }
 
 /** Dependencias inyectables (en tests se sustituyen por una BD en memoria y un verificador falso). */
 export interface Deps {
   getDb: (env: Env) => Db;
   verifyAppleToken: (identityToken: string, env: Env, nonce?: string) => Promise<AppleIdentity>;
+  /** `fetch` para las APIs de terceros (Polar); en tests, uno falso. */
+  fetch?: typeof fetch;
 }
 
 export type AppBindings = {
