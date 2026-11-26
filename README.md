@@ -72,6 +72,11 @@ npx wrangler secret put TOKEN_ENCRYPTION_KEY
 npm run deploy
 ```
 
+Estado actual de producción:
+- API: `https://sarrio.runna-io-api.workers.dev` (Worker `sarrio`, desplegado por Workers Builds).
+- Base de datos: Turso `sarrio` (`libsql://sarrio-sarrio.aws-eu-west-1.turso.io`), con las migraciones aplicadas.
+- Los cuatro secretos del Worker ya están puestos.
+
 ### 3. Picos (OpenStreetMap)
 ```bash
 node tools/peaks/fetch-peaks.mjs pirineos > peaks-pirineos.sql
