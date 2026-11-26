@@ -15,7 +15,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const regionsFile = path.join(here, "..", "..", "tools", "peaks", "regions.json");
 /** Regiones importadas en la base de datos (las que la copia cubre por completo). */
 const BUNDLED_REGIONS = [
-  "pirineos", "sierra-nevada", "picos-de-europa", "sistema-central",
+  "pirineos", "sierra-nevada", "picos-de-europa", "sistema-central", "moncayo", "teide",
   "alpes-so", "alpes-sc", "alpes-se", "alpes-no", "alpes-nc", "alpes-ne",
 ];
 

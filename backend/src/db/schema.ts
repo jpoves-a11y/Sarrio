@@ -174,7 +174,7 @@ export const badges = sqliteTable("badges", {
   name: text("name").notNull(),
   description: text("description").notNull(),
   icon: text("icon").notNull(), // nombre del asset en la app (Badges.xcassets)
-  tier: text("tier", { enum: ["bronze", "silver", "gold", "special"] }).notNull(),
+  tier: text("tier", { enum: ["bronze", "silver", "gold", "special", "legend"] }).notNull(),
   category: text("category").notNull().default(""),
   sortOrder: integer("sort_order").notNull().default(0),
 });
@@ -201,6 +201,7 @@ export const challengeMetricValues = [
   "active_weeks",
   "high_summits",
   "sunrise_summits",
+  "max_activity_gain",
 ] as const;
 export type ChallengeMetric = (typeof challengeMetricValues)[number];
 export const recurrenceValues = ["none", "monthly", "yearly"] as const;
@@ -227,6 +228,8 @@ export const challenges = sqliteTable(
     /** Ventana dentro del año, "MM-DD..MM-DD" (puede cruzar el año: "12-21..03-20"). */
     window: text("window"),
     sortOrder: integer("sort_order").notNull().default(0),
+    /** Reto de Leyenda: al completarlo se gana este emblema (aunque no te hayas unido). */
+    badgeId: text("badge_id").references(() => badges.id),
     startsAt: integer("starts_at", { mode: "timestamp_ms" }),
     endsAt: integer("ends_at", { mode: "timestamp_ms" }),
     createdAt: createdAt(),

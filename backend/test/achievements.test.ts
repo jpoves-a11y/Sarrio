@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  evaluatePeakList,
   challengePeriod,
   challengeProgress,
   evaluateBadges,
@@ -133,6 +134,23 @@ describe("evaluateBadges", () => {
     expect(earned.get("chain")?.ascentId).toBe(s[2]!.id);
   });
 
+  it("awards the legends of effort", () => {
+    const big = act(Date.UTC(2026, 6, 1), { elevGainM: 9000, distanceM: 60_000 });
+    const year = Array.from({ length: 12 }, (_, i) => act(Date.UTC(2026, i, 2), { elevGainM: 8000 }));
+    const { earned, progress } = evaluateBadges({ activities: [big, ...year], ascents: [] }, Date.UTC(2026, 11, 20));
+    expect(earned.get("everesting")?.activityId).toBe(big.id);
+    expect(earned.get("hundred-k")?.activityId).toBe(year[11]!.id);
+    expect(progress.get("hundred-k")).toEqual({ value: 105_000, target: 100_000 });
+  });
+
+  it("completes a peak list with the last missing ascent", () => {
+    const a = asc(Date.UTC(2026, 6, 1), { peakId: 1 });
+    const b = asc(Date.UTC(2026, 7, 1), { peakId: 2 });
+    const again = asc(Date.UTC(2026, 8, 1), { peakId: 1 });
+    expect(evaluatePeakList([1, 2, 3], { activities: [], ascents: [a, b] })).toEqual({ earned: null, progress: { value: 2, target: 3 } });
+    expect(evaluatePeakList([1, 2], { activities: [], ascents: [again, b, a] }).earned?.ascentId).toBe(b.id);
+  });
+
   it("counts consecutive weeks", () => {
     const start = Date.UTC(2026, 8, 7, 9); // lunes
     const weekly = [0, 1, 2, 3].map((w) => act(start + w * 7 * D + (w % 2) * 3 * D));
@@ -188,6 +206,11 @@ describe("challenges", () => {
     const def: ChallengeDef = { ...metric({}), kind: "peaks", metric: null, target: null, peakIds: [1, 2, 3] };
     const p = challengeProgress(def, { activities: [], ascents: [asc(now - D, { peakId: 2 }), asc(now - D, { peakId: 2 }), asc(now, { peakId: 9 })] }, now);
     expect(p).toMatchObject({ value: 1, target: 3, done: false, donePeakIds: [2] });
+  });
+
+  it("takes the best single activity for max_activity_gain", () => {
+    const history = { activities: [act(Date.UTC(2026, 1, 1), { elevGainM: 3000 }), act(Date.UTC(2026, 2, 1), { elevGainM: 5200 })], ascents: [] };
+    expect(challengeProgress(metric({ metric: "max_activity_gain", target: 8849 }), history, now).value).toBe(5200);
   });
 
   it("counts high summits and active weeks", () => {

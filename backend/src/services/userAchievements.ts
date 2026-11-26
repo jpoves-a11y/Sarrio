@@ -1,7 +1,7 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { activities, ascents, badges, challengeParticipants, challengePeaks, challenges, peaks, userBadges } from "../db/schema";
-import { challengeProgress, evaluateBadges, type ChallengeDef, type History } from "./achievements";
+import { challengeProgress, evaluateBadges, evaluatePeakList, type ChallengeDef, type History } from "./achievements";
 
 export type ChallengeRow = typeof challenges.$inferSelect;
 
@@ -47,6 +47,19 @@ export async function loadHistory(db: Db, userId: string): Promise<History> {
 export async function awardBadges(db: Db, userId: string, history?: History) {
   const h = history ?? (await loadHistory(db, userId));
   const evaluation = evaluateBadges(h);
+  // Leyendas de lista: se ganan al completar su reto, aunque no te hayas unido
+  const legends = await db
+    .select({ id: challenges.id, badgeId: challenges.badgeId })
+    .from(challenges)
+    .where(and(isNotNull(challenges.badgeId), eq(challenges.kind, "peaks")));
+  if (legends.length) {
+    const peakMap = await peakIdsFor(db, legends.map((l) => l.id));
+    for (const l of legends) {
+      const r = evaluatePeakList(peakMap.get(l.id) ?? [], h);
+      evaluation.progress.set(l.badgeId!, r.progress);
+      if (r.earned && !evaluation.earned.has(l.badgeId!)) evaluation.earned.set(l.badgeId!, r.earned);
+    }
+  }
   const stored = await db.select({ badgeId: userBadges.badgeId }).from(userBadges).where(eq(userBadges.userId, userId));
   const have = new Set(stored.map((s) => s.badgeId));
   const fresh = [...evaluation.earned.entries()].filter(([id]) => !have.has(id));

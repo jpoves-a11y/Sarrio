@@ -9,6 +9,31 @@
 import { createClient } from "@libsql/client";
 
 export const PEAK_LISTS = [
+  // Leyendas: completarlas da su emblema (badgeId), aunque no te hayas unido
+  {
+    slug: "legend-king-pyrenees",
+    badgeId: "king-pyrenees",
+    title: "Rey del Pirineo",
+    description: "Todos los tresmiles del Pirineo, como la lista clásica: del Aneto a la última aguja.",
+    box: [42.0, -2.0, 43.4, 3.4],
+    minEle: 3000,
+    spacingM: 100,
+  },
+  {
+    slug: "legend-iberian-slam",
+    badgeId: "iberian-slam",
+    title: "Gran Slam Ibérico",
+    description: "El techo de cada gran cordillera: Aneto, Mulhacén, Torre Cerredo, Almanzor, Moncayo y Teide.",
+    // El más alto de cada caja
+    tops: [
+      [42.6, 0.62, 42.66, 0.7],
+      [37.03, -3.34, 37.08, -3.28],
+      [43.18, -4.88, 43.22, -4.83],
+      [40.23, -5.31, 40.26, -5.28],
+      [41.76, -1.86, 41.81, -1.8],
+      [28.25, -16.66, 28.29, -16.62],
+    ],
+  },
   {
     slug: "maladeta-3000",
     title: "Tresmiles de la Maladeta",
@@ -43,6 +68,7 @@ export const PEAK_LISTS = [
   },
   {
     slug: "alps-4000",
+    badgeId: "lord-alps",
     title: "Cuatromiles de los Alpes",
     description: "Las cimas de más de 4.000 m de los Alpes, del Mont Blanc al Bernina.",
     box: [43.5, 5, 48.5, 16],
@@ -72,12 +98,27 @@ async function main() {
   const dryRun = process.argv.includes("--dry-run");
   const db = createClient({ url: process.env.TURSO_DATABASE_URL, authToken: process.env.TURSO_AUTH_TOKEN });
   for (const [i, list] of PEAK_LISTS.entries()) {
-    const [south, west, north, east] = list.box;
-    const { rows } = await db.execute({
-      sql: "SELECT id, name, ele, lat, lon FROM peaks WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ? AND ele >= ? AND name <> '' AND lower(name) NOT LIKE 'antecima%'",
-      args: [south, north, west, east, list.minEle],
-    });
-    const peaks = pickPeaks(rows.map((r) => ({ id: Number(r.id), name: String(r.name), ele: Number(r.ele), lat: Number(r.lat), lon: Number(r.lon) })), list.spacingM);
+    const toPeak = (r) => ({ id: Number(r.id), name: String(r.name), ele: Number(r.ele), lat: Number(r.lat), lon: Number(r.lon) });
+    let peaks;
+    let rows = [];
+    if (list.tops) {
+      peaks = [];
+      for (const [south, west, north, east] of list.tops) {
+        const top = await db.execute({
+          sql: "SELECT id, name, ele, lat, lon FROM peaks WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ? AND ele IS NOT NULL ORDER BY ele DESC LIMIT 1",
+          args: [south, north, west, east],
+        });
+        if (!top.rows[0]) throw new Error(`${list.title}: no hay picos en ${[south, west, north, east]} (¿falta importar la región?)`);
+        peaks.push(toPeak(top.rows[0]));
+      }
+    } else {
+      const [south, west, north, east] = list.box;
+      ({ rows } = await db.execute({
+        sql: "SELECT id, name, ele, lat, lon FROM peaks WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ? AND ele >= ? AND name <> '' AND lower(name) NOT LIKE 'antecima%'",
+        args: [south, north, west, east, list.minEle],
+      }));
+      peaks = pickPeaks(rows.map(toPeak), list.spacingM);
+    }
     console.log(`${list.title}: ${peaks.length} cimas (${rows.length} en la caja)`);
     console.log("  " + peaks.map((p) => `${p.name} ${Math.round(p.ele)}`).join(", "));
     if (dryRun) continue;
@@ -85,10 +126,11 @@ async function main() {
     await db.batch(
       [
         {
-          sql: `INSERT INTO challenges (id, slug, title, description, visibility, kind, recurrence, sort_order)
-                VALUES (?, ?, ?, ?, 'public', 'peaks', 'none', ?)
-                ON CONFLICT(id) DO UPDATE SET title = excluded.title, description = excluded.description, sort_order = excluded.sort_order`,
-          args: [id, list.slug, list.title, list.description, 100 + i],
+          sql: `INSERT INTO challenges (id, slug, title, description, visibility, kind, recurrence, sort_order, badge_id)
+                VALUES (?, ?, ?, ?, 'public', 'peaks', 'none', ?, ?)
+                ON CONFLICT(id) DO UPDATE SET title = excluded.title, description = excluded.description,
+                  sort_order = excluded.sort_order, badge_id = excluded.badge_id`,
+          args: [id, list.slug, list.title, list.description, 100 + i, list.badgeId ?? null],
         },
         { sql: "DELETE FROM challenge_peaks WHERE challenge_id = ?", args: [id] },
         ...peaks.map((p) => ({ sql: "INSERT INTO challenge_peaks (challenge_id, peak_id) VALUES (?, ?)", args: [id, p.id] })),

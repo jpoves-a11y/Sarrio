@@ -41,6 +41,8 @@ function toChallenge(c: ChallengeRow) {
     minEle: c.minEle,
     recurrence: c.recurrence,
     window: c.window,
+    /** Leyenda: el emblema que da completarlo. */
+    badgeId: c.badgeId,
     startsAt: c.startsAt?.getTime() ?? null,
     endsAt: c.endsAt?.getTime() ?? null,
   };

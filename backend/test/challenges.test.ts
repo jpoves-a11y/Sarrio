@@ -39,7 +39,7 @@ describe("badges", () => {
     expect(again.newBadges).toEqual([]);
 
     const list = (await (await request("GET", "/v1/badges", { token: ana.token })).json()) as any;
-    expect(list.total).toBe(24);
+    expect(list.total).toBe(29);
     expect(list.earned).toBe(4);
     const first = list.badges.find((b: any) => b.id === "first-summit");
     expect(first.earnedAt).toBe(Date.UTC(2026, 6, 14, 9));
@@ -62,7 +62,8 @@ describe("challenges", () => {
   it("lists the official challenges with progress and lets me join", async () => {
     const { request, ana } = await setup();
     const featured = (await (await request("GET", "/v1/challenges", { token: ana.token })).json()) as any;
-    expect(featured.challenges.length).toBe(10);
+    expect(featured.challenges.length).toBe(12);
+    expect(featured.challenges.filter((c: any) => c.badgeId).map((c: any) => c.badgeId)).toEqual(["everesting", "hundred-k"]);
     expect(featured.challenges[0]).toMatchObject({ slug: "everest-year", official: true, joined: false, progress: { target: 8849 } });
 
     const id = featured.challenges[0].id;
@@ -87,6 +88,17 @@ describe("challenges", () => {
     expect(detail.challenge.progress).toMatchObject({ value: 1, target: 1, done: true });
     expect(detail.challenge.completedAt).not.toBeNull();
     expect(detail.peaks).toEqual([expect.objectContaining({ name: "Aneto", done: true })]);
+  });
+
+  it("awards a list legend when its list is completed, without joining", async () => {
+    const { request, db, ana } = await setup();
+    await db.insert(challenges).values({ id: "official-slam", slug: "slam", title: "Gran Slam", kind: "peaks", badgeId: "iberian-slam" });
+    await db.insert(challengePeaks).values([{ challengeId: "official-slam", peakId: ANETO.id }]);
+    const before = (await (await request("GET", "/v1/badges", { token: ana.token })).json()) as any;
+    expect(before.badges.find((b: any) => b.id === "iberian-slam").progress).toEqual({ value: 0, target: 1 });
+    const res = (await (await request("POST", "/v1/activities", { token: ana.token, body: upload })).json()) as any;
+    expect(res.newBadges.map((b: any) => b.id)).toContain("iberian-slam");
+    expect(res.newBadges.find((b: any) => b.id === "iberian-slam").tier).toBe("legend");
   });
 
   it("creates own challenges, private ones hidden from others", async () => {

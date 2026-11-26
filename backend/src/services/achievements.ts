@@ -186,6 +186,8 @@ export function evaluateBadges(history: History, now = Date.now()): BadgeEvaluat
     bestGain = Math.max(bestGain, g);
     bestDistance = Math.max(bestDistance, d);
     if (g >= 2000) earn("long-day", fromActivity(a));
+    if (g >= 8849) earn("everesting", fromActivity(a));
+    if (yg >= 100_000) earn("hundred-k", fromActivity(a));
     if (d >= 40_000) earn("ultra", fromActivity(a));
     if (g >= 1000 && d > 0 && d <= 5000) earn("vertical-km", fromActivity(a));
   }
@@ -195,6 +197,8 @@ export function evaluateBadges(history: History, now = Date.now()): BadgeEvaluat
   progress.set("km-1000", { value: Math.round(distance), target: 1_000_000 });
   progress.set("everest", { value: Math.round(gainByYear.get(localDate(now).y) ?? 0), target: 8849 });
   progress.set("long-day", { value: Math.round(bestGain), target: 2000 });
+  progress.set("everesting", { value: Math.round(bestGain), target: 8849 });
+  progress.set("hundred-k", { value: Math.round(gainByYear.get(localDate(now).y) ?? 0), target: 100_000 });
   progress.set("ultra", { value: Math.round(bestDistance), target: 40_000 });
 
   // Encadenador: cimas por actividad
@@ -325,6 +329,8 @@ export function challengeProgress(def: ChallengeDef, history: History, now = Dat
   switch (def.metric) {
     case "elevation_gain":
       return finish(Math.round(activities.reduce((s, a) => s + (a.elevGainM ?? 0), 0)), target);
+    case "max_activity_gain":
+      return finish(Math.round(Math.max(0, ...activities.map((a) => a.elevGainM ?? 0))), target);
     case "distance":
       return finish(Math.round(activities.reduce((s, a) => s + (a.distanceM ?? 0), 0)), target);
     case "activities":
@@ -347,4 +353,20 @@ export function challengeProgress(def: ChallengeDef, history: History, now = Dat
     default:
       return finish(0, target);
   }
+}
+
+/**
+ * Leyenda de lista de cimas (todos los tresmiles, todos los cuatromiles…): se gana con la
+ * ascensión que completa la lista, contando siempre (sin periodo).
+ */
+export function evaluatePeakList(peakIds: number[], history: History): { earned: Earned | null; progress: Progress } {
+  const listed = new Set(peakIds);
+  const first = new Map<number, HAscent>();
+  for (const a of [...history.ascents].sort((x, y) => x.summitedAt - y.summitedAt)) {
+    if (listed.has(a.peakId) && !first.has(a.peakId)) first.set(a.peakId, a);
+  }
+  const progress = { value: first.size, target: listed.size };
+  if (listed.size === 0 || first.size < listed.size) return { earned: null, progress };
+  const last = [...first.values()].reduce((m, a) => (a.summitedAt > m.summitedAt ? a : m));
+  return { earned: { earnedAt: last.summitedAt, ascentId: last.id, activityId: last.activityId ?? undefined }, progress };
 }
