@@ -22,6 +22,9 @@ struct Terrain3DView: UIViewRepresentable {
     var pitch: Double = 62
     /// Sin animación (el feed): las banderillas ya clavadas y la ruta entera, sin que caigan.
     var animated = true
+    /// Encuadrar estos puntos (la ruta entera) en lugar de `center`/`distance`: Mapbox ajusta el zoom
+    /// al tamaño real del mapa con la inclinación, y el eje largo de la ruta queda en horizontal.
+    var fit: [CLLocationCoordinate2D] = []
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -122,10 +125,15 @@ struct Terrain3DView: UIViewRepresentable {
                     waited += 1
                 }
                 guard let self else { return }
-                for heading in headings {
-                    if Task.isCancelled { return }
-                    self.setCamera(heading: heading)
+                if let fitted = self.fittedCamera() {
+                    mapView.mapboxMap.setCamera(to: fitted)
                     _ = await self.loadState.settle(clock: clock, maxSeconds: 4, minRefreshes: 3)
+                } else {
+                    for heading in headings {
+                        if Task.isCancelled { return }
+                        self.setCamera(heading: heading)
+                        _ = await self.loadState.settle(clock: clock, maxSeconds: 4, minRefreshes: 3)
+                    }
                 }
                 if Task.isCancelled { return }
                 self.revealed = true
@@ -175,6 +183,32 @@ struct Terrain3DView: UIViewRepresentable {
                 if revealed && view.animated { flag.plant(delay: 0.2) }
                 return flag
             }
+        }
+
+        /// La ruta entera a la vista: rumbo por su eje largo (en horizontal), algo inclinada y con
+        /// margen arriba para las banderillas.
+        private func fittedCamera() -> CameraOptions? {
+            guard let view, let mapView, view.fit.count >= 2, mapView.bounds.width > 1 else { return nil }
+            let bearing = Self.longAxisBearing(view.fit)
+            let padding = UIEdgeInsets(top: 36, left: 18, bottom: 18, right: 18)
+            return try? mapView.mapboxMap.camera(for: view.fit, camera: CameraOptions(bearing: bearing, pitch: 50),
+                                                 coordinatesPadding: padding, maxZoom: 15, offset: nil)
+        }
+
+        /// Rumbo de la cámara que deja el eje largo de los puntos en horizontal (dirección principal
+        /// por covarianza, en metros locales).
+        static func longAxisBearing(_ points: [CLLocationCoordinate2D]) -> Double {
+            let lat0 = points.map(\.latitude).reduce(0, +) / Double(points.count)
+            let lon0 = points.map(\.longitude).reduce(0, +) / Double(points.count)
+            let kx = cos(lat0 * .pi / 180) * 111_320, ky = 110_574.0
+            var cxx = 0.0, cyy = 0.0, cxy = 0.0
+            for p in points {
+                let x = (p.longitude - lon0) * kx, y = (p.latitude - lat0) * ky
+                cxx += x * x; cyy += y * y; cxy += x * y
+            }
+            // Ángulo del eje largo desde el este (antihorario); el rumbo que lo pone horizontal es el opuesto
+            let angle = 0.5 * atan2(2 * cxy, cxx - cyy) * 180 / .pi
+            return -angle
         }
 
         private func setCamera(heading: Double) {

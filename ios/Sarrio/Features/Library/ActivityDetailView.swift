@@ -62,14 +62,13 @@ struct ActivityDetailView: View {
                         end: endDate,
                         height: nil
                     )
-                    .ignoresSafeArea()
+                    // Cerrar, dentro de la zona segura a la altura de los contadores
                     Button { showsMap = false } label: {
                         Image(systemName: "xmark").font(.system(size: 15, weight: .bold)).foregroundStyle(.white)
                             .frame(width: 36, height: 36).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                             .environment(\.colorScheme, .dark)
                     }
-                    .padding(.horizontal, Theme.Spacing.m)
-                    .padding(.top, 56)
+                    .padding(Theme.Spacing.m)
                 }
             }
         }

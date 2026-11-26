@@ -49,11 +49,15 @@ struct ActivityReplayView: View {
     var body: some View {
         ZStack {
             if let plan {
+                // A pantalla completa el mapa llega a los bordes, pero los datos quedan dentro de la
+                // zona segura (bajo la isla o la muesca y sobre el indicador de inicio)
                 ReplayMapRepresentable(
                     plan: plan, summits: summits, start: start, end: end, weather: weather,
                     playToken: playToken, reduceMotion: reduceMotion, progress: progress
                 )
+                .ignoresSafeArea(edges: height == nil ? .all : [])
                 ReplayLoadingCover(progress: progress)
+                    .ignoresSafeArea(edges: height == nil ? .all : [])
                 ReplayChrome(plan: plan, progress: progress, weather: weather, onReplay: { playToken += 1 }, onExpand: onExpand)
             } else {
                 Rectangle().fill(Theme.Colors.separator)
