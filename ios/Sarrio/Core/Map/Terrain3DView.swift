@@ -35,8 +35,10 @@ struct Terrain3DView: View {
             }
         }
         .mapStyle(.imagery(elevation: .realistic))
-        .mapControls { MapCompass(); MapPitchToggle() }
-        .mapControlVisibility(interactive ? .automatic : .hidden)
+        .mapControls {
+            MapCompass().mapControlVisibility(interactive ? .automatic : .hidden)
+            MapPitchToggle().mapControlVisibility(interactive ? .automatic : .hidden)
+        }
         .onAppear {
             position = .camera(camera(heading: heading))
             startOrbit()
