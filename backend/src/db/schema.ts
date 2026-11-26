@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  blob,
   index,
   integer,
   primaryKey,
@@ -116,7 +117,7 @@ export const activities = sqliteTable(
     minLon: real("min_lon"),
     maxLat: real("max_lat"),
     maxLon: real("max_lon"),
-    /** Reservado para la ruta (fase 3: se guardará comprimida en la propia base de datos, sin R2). */
+    /** Sin uso: la ruta vive en `activity_tracks` (comprimida en la propia base de datos, sin R2). */
     trackKey: text("track_key"),
     visibility: text("visibility", { enum: visibilityValues }).notNull().default("friends"),
     createdAt: createdAt(),
@@ -126,6 +127,18 @@ export const activities = sqliteTable(
     index("activities_user_start_idx").on(t.userId, t.startAt),
   ],
 );
+
+/**
+ * Ruta de una actividad, comprimida (gzip de JSON) en la propia base de datos.
+ * Formato `gz-json-v1`: `[[lat, lon, ele | null, t | null], …]`, con `t` en segundos desde `start_at`.
+ * El cliente la simplifica antes de subirla (Douglas-Peucker), así que ocupa pocos KB.
+ */
+export const activityTracks = sqliteTable("activity_tracks", {
+  activityId: text("activity_id").primaryKey().references(() => activities.id, { onDelete: "cascade" }),
+  encoding: text("encoding").notNull().default("gz-json-v1"),
+  pointCount: integer("point_count").notNull(),
+  data: blob("data", { mode: "buffer" }).notNull(),
+});
 
 export const ascents = sqliteTable(
   "ascents",

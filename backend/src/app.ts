@@ -3,6 +3,8 @@ import { logger } from "hono/logger";
 import type { AppBindings, Deps } from "./env";
 import { getDb } from "./db/client";
 import { verifyAppleIdentityToken } from "./auth/apple";
+import { activitiesRoutes } from "./routes/activities";
+import { ascentsRoutes } from "./routes/ascents";
 import { authRoutes } from "./routes/auth";
 import { meRoutes } from "./routes/me";
 import { peaksRoutes } from "./routes/peaks";
@@ -27,7 +29,8 @@ export function createApp(deps: Deps = defaultDeps) {
   v1.route("/me", meRoutes);
   v1.route("/users", usersRoutes);
   v1.route("/peaks", peaksRoutes);
-  // Fase 3: /activities, /ascents
+  v1.route("/activities", activitiesRoutes);
+  v1.route("/ascents", ascentsRoutes);
   // Fase 6: /friends, /feed, likes, comments
   // Fase 7: /providers/polar (OAuth + webhook)
   app.route("/v1", v1);
