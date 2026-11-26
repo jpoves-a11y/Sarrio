@@ -286,7 +286,8 @@ export const blocks = sqliteTable(
   (t) => [primaryKey({ columns: [t.blockerId, t.blockedId] })],
 );
 
-export const targetTypeValues = ["ascent", "activity", "user_badge", "challenge"] as const;
+export const targetTypeValues = ["ascent", "activity", "user_badge", "challenge", "feed_item"] as const;
+export type TargetType = (typeof targetTypeValues)[number];
 
 export const likes = sqliteTable(
   "likes",
@@ -331,7 +332,13 @@ export const feedItems = sqliteTable(
   {
     id: id(),
     actorId: text("actor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    kind: text("kind", { enum: ["ascent", "badge", "challenge_completed"] }).notNull(),
+    /**
+     * `activity`: una salida de montaña (con o sin cimas; refId = actividad);
+     * `ascent`: una ascensión manual (refId = ascensión);
+     * `badge`: un emblema (refId = id del emblema);
+     * `challenge_completed`: un reto completado (refId = reto).
+     */
+    kind: text("kind", { enum: ["activity", "ascent", "badge", "challenge_completed"] }).notNull(),
     refId: text("ref_id").notNull(),
     visibility: text("visibility", { enum: visibilityValues }).notNull(),
     createdAt: createdAt(),

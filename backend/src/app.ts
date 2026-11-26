@@ -8,6 +8,9 @@ import { ascentsRoutes } from "./routes/ascents";
 import { authRoutes } from "./routes/auth";
 import { badgesRoutes } from "./routes/badges";
 import { challengesRoutes } from "./routes/challenges";
+import { commentsRoutes, feedRoutes, likesRoutes } from "./routes/feed";
+import { blocksRoutes, friendsRoutes, reportsRoutes } from "./routes/friends";
+import { notificationsRoutes } from "./routes/notifications";
 import { meRoutes } from "./routes/me";
 import { peaksRoutes } from "./routes/peaks";
 import { providersRoutes } from "./routes/providers";
@@ -37,7 +40,13 @@ export function createApp(deps: Deps = defaultDeps) {
   v1.route("/providers", providersRoutes);
   v1.route("/badges", badgesRoutes);
   v1.route("/challenges", challengesRoutes);
-  // Fase 6: /friends, /feed, likes, comments
+  v1.route("/friends", friendsRoutes);
+  v1.route("/blocks", blocksRoutes);
+  v1.route("/reports", reportsRoutes);
+  v1.route("/feed", feedRoutes);
+  v1.route("/likes", likesRoutes);
+  v1.route("/comments", commentsRoutes);
+  v1.route("/notifications", notificationsRoutes);
   app.route("/v1", v1);
 
   app.notFound((c) => c.json({ error: "not_found" }, 404));

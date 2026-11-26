@@ -11,6 +11,8 @@ import { isVisibility } from "../lib/validation";
 import { ascentsForActivities, peaksById, toActivity, toAscent } from "../services/activities";
 import { getRelationship } from "../services/relationships";
 import { afterUpload } from "../services/userAchievements";
+import { MOUNTAIN_SPORTS } from "../services/achievements";
+import { addFeedItem, removeFeedItems, setFeedVisibility } from "../services/social";
 import { canView, mustTrimTrack } from "../services/visibility";
 
 export const activitiesRoutes = new Hono<AppBindings>();
@@ -135,6 +137,11 @@ activitiesRoutes.post("/", bodyLimit({ maxSize: 4 * 1024 * 1024 }), async (c) =>
         .returning()
     : [];
 
+  // Al feed de mis amigos: las salidas de montaña (con o sin cimas) y cualquier actividad con cima
+  if (MOUNTAIN_SPORTS.has(sportType) || inserted.length) {
+    await addFeedItem(db, { actorId: userId, kind: "activity", refId: activityId, visibility, at: startAt });
+  }
+
   // Emblemas nuevos y retos cumplidos con esta actividad (la app enseña la celebración).
   const newBadges = await afterUpload(db, userId);
 
@@ -220,6 +227,7 @@ activitiesRoutes.patch("/:id", async (c) => {
     if (!isVisibility(body.visibility)) return c.json({ error: "invalid_visibility" }, 400);
     update.visibility = body.visibility;
     await db.update(ascents).set({ visibility: body.visibility }).where(eq(ascents.activityId, activity.id));
+    await setFeedVisibility(db, "activity", activity.id, body.visibility);
   }
   if (Object.keys(update).length) await db.update(activities).set(update).where(where);
   const updated = await db.select().from(activities).where(where).get();
@@ -233,6 +241,7 @@ activitiesRoutes.delete("/:id", async (c) => {
   const activity = await db.select({ id: activities.id }).from(activities).where(where).get();
   if (!activity) return c.json({ error: "not_found" }, 404);
   await db.delete(ascents).where(eq(ascents.activityId, activity.id));
+  await removeFeedItems(db, "activity", activity.id);
   await db.delete(activities).where(where);
   return c.body(null, 204);
 });

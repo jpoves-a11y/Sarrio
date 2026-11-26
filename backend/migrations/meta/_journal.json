@@ -43,6 +43,13 @@
       "when": 1795718990001,
       "tag": "0005_tenzing",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795724383070,
+      "tag": "0006_feed_backfill",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import { newId } from "../lib/ids";
 import { isVisibility } from "../lib/validation";
 import { ascentsWithPeaks, peaksById, toAscent } from "../services/activities";
 import { afterUpload } from "../services/userAchievements";
+import { addFeedItem, removeFeedItems, setFeedVisibility } from "../services/social";
 
 export const ascentsRoutes = new Hono<AppBindings>();
 ascentsRoutes.use("*", requireAuth);
@@ -53,6 +54,7 @@ ascentsRoutes.post("/", async (c) => {
       visibility: (body.visibility as typeof user.defaultVisibility | undefined) ?? user.defaultVisibility,
     })
     .returning();
+  await addFeedItem(db, { actorId: c.var.userId, kind: "ascent", refId: ascent!.id, visibility: ascent!.visibility, at: summitedAt });
   const newBadges = await afterUpload(db, c.var.userId);
   return c.json({ ...toAscent(ascent!, peak), newBadges }, 201);
 });
@@ -74,6 +76,7 @@ ascentsRoutes.patch("/:id", async (c) => {
   if (body.visibility !== undefined) {
     if (!isVisibility(body.visibility)) return c.json({ error: "invalid_visibility" }, 400);
     update.visibility = body.visibility;
+    await setFeedVisibility(db, "ascent", ascent.id, body.visibility);
   }
   if (Object.keys(update).length) await db.update(ascents).set(update).where(where);
   const updated = await db.select().from(ascents).where(where).get();
@@ -85,6 +88,7 @@ ascentsRoutes.delete("/:id", async (c) => {
   const where = and(eq(ascents.id, c.req.param("id")), eq(ascents.userId, c.var.userId));
   const ascent = await c.var.db.select({ id: ascents.id }).from(ascents).where(where).get();
   if (!ascent) return c.json({ error: "not_found" }, 404);
+  await removeFeedItems(c.var.db, "ascent", ascent.id);
   await c.var.db.delete(ascents).where(where);
   return c.body(null, 204);
 });

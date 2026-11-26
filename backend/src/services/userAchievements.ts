@@ -1,6 +1,7 @@
-import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type { Db } from "../db/client";
-import { activities, ascents, badges, challengeParticipants, challengePeaks, challenges, peaks, userBadges } from "../db/schema";
+import { activities, ascents, badges, challengeParticipants, challengePeaks, challenges, peaks, userBadges, users } from "../db/schema";
+import { addFeedItem } from "./social";
 import { challengeProgress, evaluateBadges, evaluatePeakList, type ChallengeDef, type History } from "./achievements";
 
 export type ChallengeRow = typeof challenges.$inferSelect;
@@ -76,6 +77,11 @@ export async function awardBadges(db: Db, userId: string, history?: History) {
         })),
       )
       .onConflictDoNothing();
+    // Al feed de mis amigos, con la visibilidad por defecto del usuario
+    const visibility = await defaultVisibility(db, userId);
+    for (const [badgeId, e] of fresh) {
+      await addFeedItem(db, { actorId: userId, kind: "badge", refId: badgeId, visibility, at: e.earnedAt });
+    }
   }
   return { newBadgeIds: fresh.map(([id]) => id), evaluation, history: h };
 }
@@ -106,26 +112,44 @@ export async function peakIdsFor(db: Db, challengeIds: string[]) {
   return map;
 }
 
-/** Marca como completados los retos a los que está unido el usuario y ya ha cumplido. */
+async function defaultVisibility(db: Db, userId: string) {
+  const u = await db.select({ v: users.defaultVisibility }).from(users).where(eq(users.id, userId)).get();
+  return u?.v ?? "friends";
+}
+
+/**
+ * Retos completados: todos los oficiales y los míos cuentan siempre (no hay que unirse). El
+ * primero que se completa queda apuntado (`challenge_participants.completedAt`) y va al feed.
+ */
 export async function refreshChallenges(db: Db, userId: string, history: History) {
-  const joined = await db
-    .select({ challenge: challenges })
-    .from(challengeParticipants)
-    .innerJoin(challenges, eq(challengeParticipants.challengeId, challenges.id))
-    .where(and(eq(challengeParticipants.userId, userId), isNull(challengeParticipants.completedAt)));
-  if (!joined.length) return [];
-  const ids = joined.map((j) => j.challenge.id);
-  const peakMap = await peakIdsFor(db, ids);
+  const all = await db
+    .select()
+    .from(challenges)
+    .where(or(isNull(challenges.creatorId), eq(challenges.creatorId, userId)));
+  if (!all.length) return [];
+  const ids = all.map((c) => c.id);
+  const [peakMap, mine] = await Promise.all([
+    peakIdsFor(db, ids),
+    db
+      .select()
+      .from(challengeParticipants)
+      .where(and(eq(challengeParticipants.userId, userId), inArray(challengeParticipants.challengeId, ids))),
+  ]);
+  const completedBefore = new Set(mine.filter((m) => m.completedAt).map((m) => m.challengeId));
   const completed: string[] = [];
-  for (const { challenge } of joined) {
-    const p = challengeProgress(toChallengeDef(challenge, peakMap.get(challenge.id)), history);
-    if (p.done) completed.push(challenge.id);
+  for (const challenge of all) {
+    if (completedBefore.has(challenge.id)) continue;
+    if (challengeProgress(toChallengeDef(challenge, peakMap.get(challenge.id)), history).done) completed.push(challenge.id);
   }
-  if (completed.length) {
+  if (!completed.length) return [];
+  const now = new Date();
+  const visibility = await defaultVisibility(db, userId);
+  for (const challengeId of completed) {
     await db
-      .update(challengeParticipants)
-      .set({ completedAt: new Date() })
-      .where(and(eq(challengeParticipants.userId, userId), inArray(challengeParticipants.challengeId, completed)));
+      .insert(challengeParticipants)
+      .values({ challengeId, userId, completedAt: now })
+      .onConflictDoUpdate({ target: [challengeParticipants.challengeId, challengeParticipants.userId], set: { completedAt: now } });
+    await addFeedItem(db, { actorId: userId, kind: "challenge_completed", refId: challengeId, visibility, at: now.getTime() });
   }
   return completed;
 }
