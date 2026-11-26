@@ -27,12 +27,8 @@ targets:
     type: application
     platform: iOS
     sources:
+      # Incluye Resources/peaks.tsv: versionado vacío; el workflow de TestFlight pone la copia completa
       - path: Sarrio
-        excludes: ["Resources/peaks.tsv"]
-      # Picos dentro de la app: lo genera el workflow de TestFlight; en local y en el CI puede no estar
-      - path: Sarrio/Resources/peaks.tsv
-        buildPhase: resources
-        optional: true
       - path: Shared
     dependencies:
       - package: SarrioKit
