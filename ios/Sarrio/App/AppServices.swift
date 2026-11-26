@@ -15,6 +15,7 @@ final class AppServices {
     let library: LibraryStore
 
     private init() {
+        MapPrefetcher.configureCache()
         let api = APIClient(baseURL: AppConfig.apiBaseURL)
         let peakPackStore = PeakPackStore(api: api)
         let healthKit = HealthKitService()

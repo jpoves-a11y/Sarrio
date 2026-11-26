@@ -168,15 +168,15 @@ private struct SummitHero: View {
                     Text("TU CIMA MÁS ALTA")
                         .font(.statLabel).tracking(1.2)
                         .foregroundStyle(.white.opacity(0.75))
-                    Text(peak.displayName)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(.white)
-                    if let ele = peak.ele {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text(ele.groupedInteger).font(.heroValue).foregroundStyle(.white)
-                            Text("m").font(.system(size: 18, weight: .bold)).foregroundStyle(.white.opacity(0.8))
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(peak.displayName)
+                            .font(.system(size: 26, weight: .heavy))
+                            .foregroundStyle(.white)
+                        if let ele = peak.ele {
+                            Text("\(ele.groupedInteger) m")
+                                .font(.system(size: 15, weight: .bold).monospacedDigit())
+                                .foregroundStyle(.white.opacity(0.75))
                         }
-                        .contentTransition(.numericText())
                     }
                 }
                 HStack(spacing: 0) {

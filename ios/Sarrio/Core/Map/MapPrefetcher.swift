@@ -26,6 +26,12 @@ final class MapPrefetcher {
 
     private init() {}
 
+    /// Lo que el usuario ya ha visto se queda en el iPhone: el caché de teselas de Mapbox crece hasta
+    /// 2 GB (por defecto es pequeño y se vacía pronto). Se llama al arrancar, antes de crear mapas.
+    static func configureCache() {
+        TileStore.default.setOptionForKey(TileStoreOptions.diskQuota, value: NSNumber(value: Int64(2) * 1024 * 1024 * 1024))
+    }
+
     func prefetch(peaks: [PeakRef]) {
         guard !running else { return }
         let defaults = UserDefaults.standard

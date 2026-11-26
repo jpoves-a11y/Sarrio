@@ -1,73 +1,115 @@
 import SarrioKit
 import SwiftUI
 
-/// Un pico de la biblioteca: relieve 3D que se puede girar y todas las veces que has subido.
+/// Un pico de la biblioteca. Arriba, el relieve 3D a sangre (sin marco), que gira solo y se puede
+/// mover con los dedos; abajo, una hoja blanca que lo solapa con el nombre, una altitud discreta y
+/// tus ascensiones. El mapa no aparece hasta tener cargado el detalle (ver `Terrain3DView`).
 struct PeakDetailView: View {
     var group: PeakGroup
     @Environment(LibraryStore.self) private var store
 
+    private static let mapHeight: CGFloat = 470
+    private static let sheetOverlap: CGFloat = 30
+
     var body: some View {
         ScrollView {
-            VStack(spacing: Theme.Spacing.l) {
-                ZStack(alignment: .bottomLeading) {
-                    Terrain3DView(center: group.peak.coordinate, distance: 2_600, summits: [group.peak], orbit: true, interactive: true)
-                    LinearGradient(colors: [.clear, .black.opacity(0.65)], startPoint: .center, endPoint: .bottom)
-                        .allowsHitTesting(false)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(group.peak.displayName).font(.system(size: 26, weight: .heavy)).foregroundStyle(.white)
-                        if let ele = group.peak.ele {
-                            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                Text(ele.groupedInteger).font(.heroValue).foregroundStyle(.white)
-                                Text("m").font(.system(size: 18, weight: .bold)).foregroundStyle(.white.opacity(0.8))
-                            }
-                        }
-                    }
-                    .padding(Theme.Spacing.m)
-                    .allowsHitTesting(false)
+            VStack(spacing: 0) {
+                // Relieve: se estira al tirar hacia abajo
+                GeometryReader { geo in
+                    let pull = max(0, geo.frame(in: .scrollView).minY)
+                    Terrain3DView(center: group.peak.coordinate, distance: 2_400, summits: [group.peak], orbit: true, interactive: true)
+                        .frame(height: Self.mapHeight + pull)
+                        .offset(y: -pull)
                 }
-                .frame(height: 420)
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
-                .elevation(.high)
-                .padding(.top, Theme.Spacing.s)
+                .frame(height: Self.mapHeight)
 
-                Card(elevation: .medium) {
-                    StatRow(stats: [
-                        ("Ascensiones", "\(group.ascents.count)", nil),
-                        ("Primera", group.ascents.last?.summitedAt.formatted(.dateTime.year()) ?? "–", nil),
-                        ("Última", group.ascents.first?.summitedAt.formatted(.dateTime.year()) ?? "–", nil),
-                    ])
-                }
-                .staggeredAppear(1)
+                sheet
+                    .padding(.top, -Self.sheetOverlap)
+            }
+        }
+        .ignoresSafeArea(edges: .top)
+        .background(Theme.Colors.surface)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+    }
 
-                VStack(spacing: Theme.Spacing.s) {
-                    SectionHeader(title: "Tus ascensiones")
-                    ForEach(Array(group.ascents.enumerated()), id: \.element.id) { index, ascent in
-                        ascentRow(ascent).staggeredAppear(index + 2)
+    // MARK: Hoja
+
+    private var sheet: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+            // Nombre y una altitud discreta
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                Capsule().fill(Theme.Colors.separator).frame(width: 36, height: 4).frame(maxWidth: .infinity)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(group.peak.displayName)
+                        .font(.system(size: 28, weight: .heavy))
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: Theme.Spacing.s)
+                    if let ele = group.peak.ele {
+                        Text("\(ele.groupedInteger) m")
+                            .font(.system(size: 15, weight: .bold).monospacedDigit())
+                            .foregroundStyle(Theme.Colors.textSecondary)
                     }
+                }
+                if let line = subtitle {
+                    Text(line).font(.system(size: 14)).foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
-            .padding(.horizontal, Theme.Spacing.m)
-            .padding(.bottom, Theme.Spacing.xl)
+            .staggeredAppear(0)
+
+            // Cifras sin caja: solo los números
+            StatRow(stats: [
+                ("Ascensiones", "\(group.ascents.count)", nil),
+                ("Primera", group.ascents.last?.summitedAt.formatted(.dateTime.year()) ?? "–", nil),
+                ("Última", group.ascents.first?.summitedAt.formatted(.dateTime.year()) ?? "–", nil),
+            ])
+            .staggeredAppear(1)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("TUS ASCENSIONES")
+                    .font(.statLabel).tracking(0.8)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .padding(.bottom, Theme.Spacing.s)
+                ForEach(Array(group.ascents.enumerated()), id: \.element.id) { index, ascent in
+                    ascentRow(ascent)
+                    if index < group.ascents.count - 1 { Divider() }
+                }
+            }
+            .staggeredAppear(2)
         }
-        .background(Theme.Colors.groupedBackground)
-        .navigationBarTitleDisplayMode(.inline)
+        .padding(.horizontal, Theme.Spacing.l)
+        .padding(.top, Theme.Spacing.s)
+        .padding(.bottom, Theme.Spacing.xl)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)
+                .fill(Theme.Colors.surface)
+                .shadow(color: .black.opacity(0.12), radius: 18, y: -6)
+        )
+    }
+
+    private var subtitle: String? {
+        let parts = [group.peak.range, String(format: "%.4f°, %.4f°", group.peak.lat, group.peak.lon)]
+        return parts.compactMap { $0 }.joined(separator: " · ")
     }
 
     @ViewBuilder private func ascentRow(_ ascent: Ascent) -> some View {
-        let row = Card(elevation: .low) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(ascent.summitedAt.formatted(date: .long, time: .omitted))
-                        .font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
-                    Text(ascent.note ?? (ascent.activityId == nil ? "Añadida a mano" : "Desde una actividad"))
-                        .font(.system(size: 13)).foregroundStyle(Theme.Colors.textSecondary)
-                }
-                Spacer()
-                if ascent.activityId != nil {
-                    Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.Colors.textSecondary)
-                }
+        let row = HStack(spacing: Theme.Spacing.m) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ascent.summitedAt.formatted(date: .long, time: .omitted))
+                    .font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.Colors.textPrimary)
+                Text(ascent.note ?? (ascent.activityId == nil ? "Añadida a mano" : "Desde una actividad"))
+                    .font(.system(size: 13)).foregroundStyle(Theme.Colors.textSecondary)
+            }
+            Spacer()
+            if ascent.activityId != nil {
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.Colors.textSecondary)
             }
         }
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+
         if let activityId = ascent.activityId, let activity = store.activities.first(where: { $0.id == activityId }) {
             NavigationLink { ActivityDetailView(activity: activity) } label: { row }.buttonStyle(.pressableCard)
         } else {

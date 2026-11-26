@@ -6,6 +6,9 @@ import UIKit
 
 /// Relieve 3D real (Mapbox Standard Satellite con terreno) con la ruta y las cumbres encima.
 ///
+/// Nunca se ve a medio cargar: tras una cortina, el mapa carga en detalle la vista desde cuatro
+/// ángulos de la órbita (como el replay, con `MapLoadState`) y solo entonces aparece y gira.
+///
 /// - `orbit`: la cámara gira despacio alrededor del centro con el giro lento del replay de KM2
 ///   (desde parado hasta 5°/s en 3 s); se detiene al tocar el mapa.
 /// - `interactive`: permite girar, inclinar y hacer zoom con los dedos.
@@ -32,7 +35,7 @@ struct Terrain3DView: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ mapView: MapView, coordinator: Coordinator) {
-        coordinator.stop()
+        coordinator.cancelLoading()
     }
 
     @MainActor
@@ -44,6 +47,11 @@ struct Terrain3DView: UIViewRepresentable {
         private var baseHeading: Double = 20
         private var drawnKey = ""
 
+        private let loadState = MapLoadState()
+        private let cover = TerrainLoadingCover()
+        private var revealTask: Task<Void, Never>?
+        private var revealed = false
+
         private static let routeSource = "terrain-route"
         private static let casingLayer = "terrain-casing"
         private static let lineLayer = "terrain-line"
@@ -51,6 +59,11 @@ struct Terrain3DView: UIViewRepresentable {
         func attach(to mapView: MapView, view: Terrain3DView) {
             self.mapView = mapView
             self.view = view
+            loadState.attach(to: mapView)
+            mapView.mapboxMap.setTileCacheBudget(size: .tiles(160))
+            cover.frame = mapView.bounds
+            cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            mapView.addSubview(cover)
             mapView.mapboxMap.loadStyle(.standardSatellite) { [weak self] _ in
                 MainActor.assumeIsolated { self?.styleLoaded() }
             }
@@ -63,17 +76,20 @@ struct Terrain3DView: UIViewRepresentable {
                     mapView.addGestureRecognizer(recognizer)
                 }
             }
-            if view.orbit { startOrbit() }
         }
 
         func update(_ view: Terrain3DView) {
             let moved = self.view.map { $0.center.latitude != view.center.latitude || $0.center.longitude != view.center.longitude } ?? true
             self.view = view
-            if moved {
-                setCamera(heading: baseHeading)
-                if view.orbit { startOrbit() }
-            }
             drawOverlays()
+            if moved && revealed {
+                // Otro pico en la misma vista: vuelve a cargar antes de enseñarlo
+                revealed = false
+                stop()
+                cover.show()
+                setCamera(heading: baseHeading)
+                prepareAndReveal()
+            }
         }
 
         private func styleLoaded() {
@@ -84,6 +100,35 @@ struct Terrain3DView: UIViewRepresentable {
             ReplayScene.addTerrain(to: map)
             drawnKey = ""
             drawOverlays()
+            prepareAndReveal()
+        }
+
+        /// Carga en detalle las vistas de la órbita (cuatro rumbos) y luego quita la cortina y gira.
+        private func prepareAndReveal() {
+            guard let mapView, let view else { return }
+            revealTask?.cancel()
+            let headings = view.orbit ? [baseHeading + 90, baseHeading + 180, baseHeading + 270, baseHeading] : [baseHeading]
+            revealTask = Task { [weak self] in
+                let clock = FrameClock(rate: 60)
+                clock.start()
+                defer { clock.stop() }
+                // Que el mapa esté en pantalla
+                var waited = 0
+                while mapView.window == nil || mapView.bounds.width < 1, waited < 300 {
+                    await clock.next()
+                    waited += 1
+                }
+                guard let self else { return }
+                for heading in headings {
+                    if Task.isCancelled { return }
+                    self.setCamera(heading: heading)
+                    _ = await self.loadState.settle(clock: clock, maxSeconds: 4, minRefreshes: 3)
+                }
+                if Task.isCancelled { return }
+                self.revealed = true
+                self.cover.hide()
+                if self.view?.orbit == true { self.startOrbit() }
+            }
         }
 
         /// La ruta (borde blanco y línea de acento) y las cumbres.
@@ -159,7 +204,50 @@ struct Terrain3DView: UIViewRepresentable {
             link = nil
         }
 
+        func cancelLoading() {
+            revealTask?.cancel()
+            stop()
+        }
+
         nonisolated func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    }
+}
+
+/// Cortina mientras el relieve carga: degradado oscuro y un indicador discreto; se va con un fundido.
+final class TerrainLoadingCover: UIView {
+    private let spinner = UIActivityIndicatorView(style: .medium)
+    private let gradient = CAGradientLayer()
+
+    init() {
+        super.init(frame: .zero)
+        gradient.colors = [UIColor(white: 0.16, alpha: 1).cgColor, UIColor(white: 0.07, alpha: 1).cgColor]
+        layer.addSublayer(gradient)
+        spinner.color = UIColor.white.withAlphaComponent(0.7)
+        spinner.startAnimating()
+        addSubview(spinner)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        gradient.frame = bounds
+        spinner.center = CGPoint(x: bounds.midX, y: bounds.midY)
+    }
+
+    func show() {
+        isHidden = false
+        alpha = 1
+        spinner.startAnimating()
+    }
+
+    func hide() {
+        UIView.animate(withDuration: 0.6, delay: 0, options: [.curveEaseOut]) {
+            self.alpha = 0
+        } completion: { _ in
+            self.isHidden = true
+            self.spinner.stopAnimating()
+        }
     }
 }
 
