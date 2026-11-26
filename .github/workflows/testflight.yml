@@ -123,6 +123,12 @@ jobs:
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             | tee "$RUNNER_TEMP/archive.log" | grep -E "error:|warning: .*Sarrio/|\*\* ARCHIVE" || true
           test -d "$RUNNER_TEMP/Sarrio.xcarchive"
+          # Los picos tienen que ir dentro de la app (y ser la copia completa, no la vacía del repo)
+          PEAKS="$RUNNER_TEMP/Sarrio.xcarchive/Products/Applications/Sarrio.app/peaks.tsv"
+          test -f "$PEAKS" || { echo "::error::peaks.tsv no está dentro de la app"; exit 1; }
+          SIZE=$(stat -f%z "$PEAKS")
+          [ "$SIZE" -gt 1000000 ] || { echo "::error::peaks.tsv solo ocupa $SIZE bytes (¿copia vacía?)"; exit 1; }
+          echo "Picos dentro de la app: $((SIZE / 1024)) KB, $(grep -vc '^#' "$PEAKS") picos" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Exportar
         run: |
