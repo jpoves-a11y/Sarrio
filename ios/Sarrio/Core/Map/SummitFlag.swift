@@ -169,17 +169,17 @@ enum SummitFlag {
     enum Style { case single, group }
 
     /// Imagen con el pie del mástil centrado abajo (para `iconAnchor .bottom`).
-    static func image(_ style: Style, scale s: CGFloat = 1, color: UIColor) -> UIImage {
+    static func image(_ style: Style, scale s: CGFloat = 1, color: UIColor, t: Double = 0.35, phase: Double = 0) -> UIImage {
         let (h, w, _) = size(s)
         let half = max(w + 14 * s, h * 0.9 + w) // lo que ocupa a la derecha (paño y sombra)
         let size = CGSize(width: half * 2, height: h + 6 * s)
         return UIGraphicsImageRenderer(size: size).image { r in
             let ctx = r.cgContext
-            let draw: (CGFloat, CGFloat, Double) -> Void = { dx, k, phase in
+            let draw: (CGFloat, CGFloat, Double) -> Void = { dx, k, extra in
                 ctx.saveGState()
                 ctx.translateBy(x: half + dx, y: size.height - 2 * s)
-                SummitFlag.drawGround(in: ctx, scale: s * k, t: 0.35, phase: phase, plant: 1)
-                SummitFlag.drawFlag(in: ctx, scale: s * k, t: 0.35, phase: phase, color: color)
+                SummitFlag.drawGround(in: ctx, scale: s * k, t: t, phase: phase + extra, plant: 1)
+                SummitFlag.drawFlag(in: ctx, scale: s * k, t: t, phase: phase + extra, color: color)
                 ctx.restoreGState()
             }
             switch style {

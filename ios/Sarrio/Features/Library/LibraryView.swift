@@ -170,15 +170,15 @@ private struct SummitHero: View {
         ZStack(alignment: .bottomLeading) {
             Terrain3DView(center: peak.coordinate, distance: 3_200, summits: [peak], orbit: true, interactive: false)
                 .allowsHitTesting(false)
-            LinearGradient(colors: [.clear, .black.opacity(0.15), .black.opacity(0.72)], startPoint: .top, endPoint: .bottom)
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            LinearGradient(colors: [.clear, .clear, .black.opacity(0.62)], startPoint: .top, endPoint: .bottom)
+            VStack(alignment: .leading, spacing: Theme.Spacing.s + 2) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("TU CIMA MÁS ALTA")
                         .font(.statLabel).tracking(1.2)
                         .foregroundStyle(.white.opacity(0.75))
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(peak.displayName)
-                            .font(.sarrio(26, .semibold))
+                            .font(.sarrio(22, .semibold))
                             .foregroundStyle(.white)
                         if let ele = peak.ele {
                             Text("\(ele.groupedInteger) m")
@@ -187,16 +187,16 @@ private struct SummitHero: View {
                         }
                     }
                 }
-                HStack(spacing: 0) {
+                // Cifras discretas, sin caja: solo texto sobre el degradado
+                HStack(spacing: Theme.Spacing.l) {
                     HeroStat(label: "Picos", value: "\(summary.uniquePeaks)")
                     HeroStat(label: "Ascensiones", value: "\(summary.ascents)")
                     HeroStat(label: "Desnivel", value: elevationGain.groupedInteger, unit: "m")
+                    Spacer(minLength: 0)
                 }
-                .padding(Theme.Spacing.m)
-                .background(.ultraThinMaterial.opacity(0.9), in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-                .environment(\.colorScheme, .dark)
             }
-            .padding(Theme.Spacing.m)
+            .padding(.horizontal, Theme.Spacing.m)
+            .padding(.bottom, 12)
         }
         .frame(height: 400)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
@@ -213,14 +213,15 @@ private struct HeroStat: View {
     var unit: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label.uppercased()).font(.statLabel).tracking(0.6).foregroundStyle(.white.opacity(0.7))
+        VStack(alignment: .leading, spacing: 1) {
             HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value).font(.statValue).foregroundStyle(.white)
-                if let unit { Text(unit).font(.statUnit).foregroundStyle(.white.opacity(0.7)) }
+                Text(value).font(.sarrio(17, .semibold).monospacedDigit()).foregroundStyle(.white)
+                if let unit { Text(unit).font(.sarrio(11, .medium)).foregroundStyle(.white.opacity(0.7)) }
             }
+            Text(label.uppercased()).font(.sarrio(10, .medium)).tracking(0.8).foregroundStyle(.white.opacity(0.65))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
     }
 }
 

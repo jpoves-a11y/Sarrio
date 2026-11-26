@@ -33,12 +33,13 @@ struct GlobeView: View {
                                 withAnimation(Theme.Motion.spring) { selected = nil }
                                 overviewToken += 1
                             } label: {
-                                Label("Todas", systemImage: "globe.europe.africa.fill")
-                                    .font(.sarrio(14, .semibold))
+                                // Solo el icono: vuelve a ver todas
+                                Image(systemName: "globe.europe.africa")
+                                    .font(.system(size: 20, weight: .light))
                                     .foregroundStyle(.white)
-                                    .padding(.horizontal, 14).padding(.vertical, 9)
-                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
-                                    .environment(\.colorScheme, .dark)
+                                    .shadow(color: .black.opacity(0.5), radius: 3, y: 1)
+                                    .frame(width: 40, height: 40)
+                                    .contentShape(Rectangle())
                             }
                         }
                     }
@@ -76,8 +77,8 @@ struct GlobeView: View {
 
     private var searchBar: some View {
         HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .semibold)).foregroundStyle(.white.opacity(0.8))
-            TextField("", text: $query, prompt: Text("Buscar un pico").foregroundStyle(.white.opacity(0.6)))
+            Image(systemName: "magnifyingglass").font(.system(size: 15, weight: .regular)).foregroundStyle(.white.opacity(0.85))
+            TextField("", text: $query, prompt: Text("Buscar un pico").foregroundStyle(.white.opacity(0.75)))
                 .focused($searchFocused)
                 .submitLabel(.search)
                 .autocorrectionDisabled()
@@ -91,11 +92,11 @@ struct GlobeView: View {
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .frame(height: 46)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-        .environment(\.colorScheme, .dark)
-        .elevation(.medium)
+        // Barra fina y translúcida, sin cuadro: solo una línea debajo
+        .padding(.horizontal, 4)
+        .frame(height: 40)
+        .overlay(alignment: .bottom) { Rectangle().fill(.white.opacity(searchFocused ? 0.7 : 0.35)).frame(height: 0.5) }
+        .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
     }
 
     private var resultsList: some View {
@@ -164,15 +165,14 @@ struct GlobeView: View {
                 stat(top.groupedInteger, "m máx.")
             }
         }
-        .padding(.horizontal, 14).padding(.vertical, 9)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
-        .environment(\.colorScheme, .dark)
+        // Texto suelto sobre el mapa, sin caja
+        .shadow(color: .black.opacity(0.55), radius: 3, y: 1)
     }
 
     private func stat(_ value: String, _ unit: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
-            Text(value).font(.sarrio(17, .bold).monospacedDigit()).foregroundStyle(.white)
-            Text(unit).font(.sarrio(12, .semibold)).foregroundStyle(.white.opacity(0.7))
+            Text(value).font(.sarrio(14, .semibold).monospacedDigit()).foregroundStyle(.white)
+            Text(unit).font(.sarrio(12)).foregroundStyle(.white.opacity(0.75))
         }
     }
 }

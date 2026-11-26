@@ -44,7 +44,7 @@ struct Globe3DMap: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ mapView: MapView, coordinator: Coordinator) {
-        coordinator.stopSpin()
+        coordinator.stopAll()
     }
 
     @MainActor
@@ -139,9 +139,10 @@ struct Globe3DMap: UIViewRepresentable {
             try? map.addSource(source)
 
             let accent = UIColor(named: "AccentColor") ?? .systemOrange
-            // Banderillas (el mismo dibujo que en el resto de mapas), quietas: en el globo puede haber cientos
-            try? map.addImage(SummitFlag.image(.single, color: accent), id: Self.flagImage)
-            try? map.addImage(SummitFlag.image(.group, color: accent), id: Self.groupImage)
+            // Banderillas (el mismo dibujo que en el resto de mapas). Ondean animando las imágenes, no las
+            // vistas: tres desfases para las sueltas (cada cumbre usa uno) y uno para los grupos
+            renderFlagImages(at: 0)
+            startWaving()
             // Pequeñas de lejos, tamaño real de cerca
             let iconSize = Exp(.interpolate) { Exp(.linear); Exp(.zoom); 2; 0.55; 8; 0.8; 12; 1.0 }
 
@@ -170,7 +171,7 @@ struct Globe3DMap: UIViewRepresentable {
             // Cumbre suelta: una banderilla de pie sobre el relieve
             var peaks = SymbolLayer(id: Self.peakLayer, source: Self.source)
             peaks.filter = Exp(.not) { Exp(.has) { "point_count" } }
-            peaks.iconImage = .constant(.name(Self.flagImage))
+            peaks.iconImage = .expression(Exp(.get) { "flagImage" })
             peaks.iconAnchor = .constant(.bottom)
             peaks.iconSize = .expression(iconSize)
             peaks.iconPitchAlignment = .constant(.viewport)
@@ -197,6 +198,34 @@ struct Globe3DMap: UIViewRepresentable {
             try? map.addLayer(labels)
         }
 
+        // MARK: Ondeado
+
+        private var waveLink: CADisplayLink?
+        private let waveStart = CACurrentMediaTime()
+        private static let phases = 3
+
+        private func renderFlagImages(at t: Double) {
+            guard let map = mapView?.mapboxMap else { return }
+            let accent = UIColor(named: "AccentColor") ?? .systemOrange
+            for k in 0..<Self.phases {
+                try? map.addImage(SummitFlag.image(.single, color: accent, t: t, phase: Double(k) * 2.1), id: "\(Self.flagImage)-\(k)")
+            }
+            try? map.addImage(SummitFlag.image(.group, color: accent, t: t), id: Self.groupImage)
+        }
+
+        /// Unas 12 veces por segundo: suficiente para que ondeen sin cargar el mapa.
+        private func startWaving() {
+            waveLink?.invalidate()
+            let link = CADisplayLink(target: self, selector: #selector(wave))
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: 10, maximum: 15, preferred: 12)
+            link.add(to: .main, forMode: .common)
+            waveLink = link
+        }
+
+        @objc private func wave(_ link: CADisplayLink) {
+            renderFlagImages(at: link.targetTimestamp - waveStart)
+        }
+
         /// Oculta en las capas la cumbre elegida (encima va su banderilla animada) o las vuelve a mostrar.
         private func hideInLayers(peakId: Int64?) {
             guard let map = mapView?.mapboxMap, styleReady else { return }
@@ -216,6 +245,7 @@ struct Globe3DMap: UIViewRepresentable {
                 let ele = group.peak.ele.map { " · \(Int($0.rounded()).formatted()) m" } ?? ""
                 feature.properties = [
                     "peakId": .number(Double(group.peak.id)),
+                    "flagImage": .string("\(Self.flagImage)-\(Int(group.peak.id % Int64(Self.phases)))"),
                     "label": .string(group.peak.displayName + ele),
                 ]
                 return feature
@@ -305,6 +335,12 @@ struct Globe3DMap: UIViewRepresentable {
         func stopSpin() {
             spinLink?.invalidate()
             spinLink = nil
+        }
+
+        func stopAll() {
+            stopSpin()
+            waveLink?.invalidate()
+            waveLink = nil
         }
 
         /// Giro lento de KM2: desde parado hasta `rate`°/s en 3 s.
