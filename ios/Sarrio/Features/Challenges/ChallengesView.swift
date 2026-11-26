@@ -1,21 +1,74 @@
 import SwiftUI
 
-/// Pestaña Retos: los míos en curso (cifra grande y barra fina), los de temporada y las listas
-/// de cimas oficiales para unirme, y crear uno propio.
+/// Categorías de retos, de la más fácil a la más difícil.
+enum ChallengeCategory: Int, CaseIterable, Comparable {
+    case own, month, season, year, lists, legends
+
+    static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
+
+    static func of(_ c: Challenge) -> ChallengeCategory {
+        if c.isLegend { return .legends }
+        if !c.official { return .own }
+        if c.kind == .peaks { return .lists }
+        if c.recurrence == "monthly" { return .month }
+        if c.recurrence == "yearly" && c.window != nil { return .season }
+        return .year
+    }
+
+    var title: String {
+        switch self {
+        case .own: "Tus retos"
+        case .month: "Este mes"
+        case .season: "Esta temporada"
+        case .year: "Este año"
+        case .lists: "Listas de cimas"
+        case .legends: "Leyendas"
+        }
+    }
+}
+
+/// Pestaña Retos: todos los retos siempre activos (no hay que unirse), por categorías de más
+/// fácil a más difícil. En cada una, primero lo que ya tienes o tienes más cerca. Una categoría
+/// casi completada baja al final, para que arriba quede siempre lo factible.
 struct ChallengesView: View {
     @Environment(AchievementsStore.self) private var store
     @State private var creating = false
 
-    private var joinedIds: Set<String> { Set(store.joined.map(\.id)) }
-    private var legends: [Challenge] { store.featured.filter(\.isLegend) }
-    private var inProgress: [Challenge] { store.joined.filter { !$0.isLegend } }
-    private var seasonal: [Challenge] { store.featured.filter { !$0.isLegend && $0.kind == .metric && !joinedIds.contains($0.id) } }
-    private var lists: [Challenge] { store.featured.filter { !$0.isLegend && $0.kind == .peaks && !joinedIds.contains($0.id) } }
+    private var sections: [(category: ChallengeCategory, items: [Challenge])] {
+        let all = store.featured + store.mine.filter { m in !store.featured.contains { $0.id == m.id } }
+        let grouped = Dictionary(grouping: all, by: ChallengeCategory.of)
+        let unsorted = grouped.map { category, items in
+            (category: category, items: items.sorted(by: Self.closestFirst))
+        }
+        return unsorted.sorted { a, b in
+            // Tus retos siempre arriba y las Leyendas siempre al final
+            if a.category == .own { return b.category != .own }
+            if b.category == .own { return false }
+            if a.category == .legends { return false }
+            if b.category == .legends { return true }
+            let ma = Self.mastered(a.items), mb = Self.mastered(b.items)
+            if ma != mb { return !ma }
+            return a.category < b.category
+        }
+    }
+
+    /// Ya hechos y casi hechos primero; los que aún no han empezado, al final.
+    private static func closestFirst(_ a: Challenge, _ b: Challenge) -> Bool {
+        let ua = a.progress?.status == .upcoming, ub = b.progress?.status == .upcoming
+        if ua != ub { return !ua }
+        return (a.progress?.fraction ?? 0) > (b.progress?.fraction ?? 0)
+    }
+
+    /// Categoría casi completada (≥ 60 % de sus retos hechos).
+    private static func mastered(_ items: [Challenge]) -> Bool {
+        let done = items.filter { $0.progress?.done == true }.count
+        return !items.isEmpty && Double(done) / Double(items.count) >= 0.6
+    }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                if store.featured.isEmpty && store.joined.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                if store.featured.isEmpty && store.mine.isEmpty {
                     if let error = store.errorMessage {
                         EmptyStateView(icon: "flag.checkered", title: "No se han podido cargar", message: error, actionTitle: "Reintentar") {
                             Task { await store.loadChallenges() }
@@ -24,31 +77,20 @@ struct ChallengesView: View {
                         ProgressView().frame(maxWidth: .infinity).padding(.top, Theme.Spacing.xl)
                     }
                 } else {
-                    if !legends.isEmpty { LegendsSection(legends: legends) }
-                    section("En curso") {
-                        if inProgress.isEmpty {
-                            Text("Únete a un reto de temporada o a una lista de cimas y verás aquí cómo vas.")
-                                .font(.sarrio(15))
-                                .foregroundStyle(Theme.Colors.textSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.vertical, Theme.Spacing.s)
-                        }
-                        ForEach(Array(inProgress.enumerated()), id: \.element.id) { index, challenge in
-                            NavigationLink { ChallengeDetailView(challenge: challenge) } label: {
-                                ActiveChallengeRow(challenge: challenge)
+                    ForEach(sections, id: \.category) { section in
+                        if section.category == .legends {
+                            LegendsSection(legends: section.items)
+                        } else {
+                            VStack(alignment: .leading, spacing: 0) {
+                                SectionHeader(title: section.category.title)
+                                ForEach(Array(section.items.enumerated()), id: \.element.id) { index, challenge in
+                                    NavigationLink { ChallengeDetailView(challenge: challenge) } label: {
+                                        ChallengeRow(challenge: challenge)
+                                    }
+                                    .buttonStyle(.pressableCard)
+                                    .staggeredAppear(index)
+                                }
                             }
-                            .buttonStyle(.pressableCard)
-                            .staggeredAppear(index)
-                        }
-                    }
-                    if !seasonal.isEmpty {
-                        section("Retos de temporada") {
-                            ForEach(seasonal) { challenge in OpenChallengeRow(challenge: challenge) }
-                        }
-                    }
-                    if !lists.isEmpty {
-                        section("Listas de cimas") {
-                            ForEach(lists) { challenge in OpenChallengeRow(challenge: challenge) }
                         }
                     }
                 }
@@ -67,121 +109,65 @@ struct ChallengesView: View {
         .refreshable { await store.loadChallenges() }
         .sheet(isPresented: $creating) { NavigationStack { CreateChallengeView() } }
     }
-
-    private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            SectionHeader(title: title)
-            content()
-        }
-    }
 }
 
-/// Reto al que estoy unido: la cifra grande, la meta, una barra fina y lo que queda de periodo.
-struct ActiveChallengeRow: View {
+/// Fila de reto: icono, título, cifra y barra fina. Toda la fila abre el reto.
+struct ChallengeRow: View {
     var challenge: Challenge
 
     var body: some View {
         let text = challenge.valueText
         let p = challenge.progress
-        Card {
-            HStack(alignment: .firstTextBaseline) {
-                Text(challenge.title)
-                    .font(.sarrio(17, .semibold))
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: Theme.Spacing.s)
-                if p?.done == true {
-                    Label("Hecho", systemImage: "checkmark")
-                        .font(.sarrio(13, .semibold))
-                        .foregroundStyle(Theme.Colors.accent)
-                } else if let period = challenge.periodText {
-                    Text(period).font(.sarrio(13)).foregroundStyle(Theme.Colors.textSecondary)
-                }
-            }
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(text.value)
-                    .font(.sarrio(34, .semibold).monospacedDigit())
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                    .minimumScaleFactor(0.6)
-                Text("/ \(text.target) \(text.unit)")
-                    .font(.sarrio(15, .medium))
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    .minimumScaleFactor(0.7)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(Theme.Colors.textSecondary.opacity(0.6))
-            }
-            ProgressBar(fraction: p?.fraction ?? 0)
-        }
-    }
-}
-
-/// Reto oficial al que aún no estoy unido, con «Unirme».
-struct OpenChallengeRow: View {
-    var challenge: Challenge
-    @Environment(AchievementsStore.self) private var store
-    @State private var joining = false
-
-    var body: some View {
-        NavigationLink { ChallengeDetailView(challenge: challenge) } label: {
-            Card {
-                HStack(alignment: .center, spacing: Theme.Spacing.m) {
-                    ChallengeIcon(challenge: challenge)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(challenge.title)
-                            .font(.sarrio(16, .semibold))
-                            .foregroundStyle(Theme.Colors.textPrimary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(subtitle)
-                            .font(.sarrio(13))
-                            .foregroundStyle(Theme.Colors.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+        let done = p?.done == true
+        HStack(alignment: .center, spacing: Theme.Spacing.m) {
+            ChallengeIcon(challenge: challenge, done: done)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(challenge.title)
+                        .font(.sarrio(16, .semibold))
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: Theme.Spacing.s)
-                    Button {
-                        joining = true
-                        Task {
-                            await store.setJoined(challenge, true)
-                            joining = false
-                        }
-                    } label: {
-                        Group {
-                            if joining { ProgressView().controlSize(.small) } else { Text("Unirme") }
-                        }
-                        .font(.sarrio(14, .semibold))
-                        .foregroundStyle(Theme.Colors.accent)
-                        .frame(minWidth: 64, minHeight: 32)
-                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous).stroke(Theme.Colors.accent, lineWidth: 1))
+                    if done {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.Colors.accent)
+                    } else if let period = challenge.periodText {
+                        Text(period)
+                            .font(.sarrio(12))
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                            .fixedSize()
                     }
-                    .buttonStyle(.plain)
-                    .sensoryFeedback(.impact(weight: .medium), trigger: joining) { _, now in now }
                 }
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(text.value)
+                        .font(.sarrio(15, .semibold).monospacedDigit())
+                        .foregroundStyle(done ? Theme.Colors.accent : Theme.Colors.textPrimary)
+                    Text("/ \(text.target) \(text.unit)")
+                        .font(.sarrio(13))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .minimumScaleFactor(0.7)
+                }
+                ProgressBar(fraction: p?.fraction ?? 0, height: 2)
             }
         }
-        .buttonStyle(.pressableCard)
-    }
-
-    private var subtitle: String {
-        if challenge.kind == .peaks {
-            let n = challenge.peakCount ?? 0
-            let done = Int(challenge.progress?.value ?? 0)
-            return done > 0 ? "\(n) cimas · ya tienes \(done)" : "\(n) cimas"
-        }
-        let text = challenge.valueText
-        return "\(text.target) \(text.unit) · \(challenge.periodKind)"
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.Colors.separator).frame(height: 0.5) }
+        .opacity(p?.status == .upcoming ? 0.6 : 1)
     }
 }
 
-/// Icono fino del tipo de reto.
+/// Icono fino del tipo de reto (relleno de acento cuando está hecho).
 struct ChallengeIcon: View {
     var challenge: Challenge
-    var size: CGFloat = 36
+    var done = false
+    var size: CGFloat = 40
 
     private var symbol: String {
         if challenge.kind == .peaks { return "mountain.2" }
         switch challenge.metric {
-        case .elevationGain: return "arrow.up.right"
+        case .elevationGain, .maxActivityGain: return "arrow.up.right"
         case .distance: return "point.topleft.down.to.point.bottomright.curvepath"
         case .activeWeeks: return "calendar"
         case .activities: return "figure.hiking"
@@ -193,83 +179,72 @@ struct ChallengeIcon: View {
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: size * 0.46, weight: .light))
-            .foregroundStyle(Theme.Colors.accent)
+            .font(.system(size: size * 0.44, weight: .light))
+            .foregroundStyle(done ? .white : Theme.Colors.accent)
             .frame(width: size, height: size)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous).stroke(Theme.Colors.separator, lineWidth: 1))
+            .background(done ? Theme.Colors.accent : .clear, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous)
+                .stroke(done ? .clear : Theme.Colors.separator, lineWidth: 1))
     }
 }
 
-/// Leyendas: retos de toda una vida. Bloque en obsidiana y oro, desplazable en horizontal, con el
-/// medallón, el progreso y el título que da. Cuentan siempre, sin necesidad de unirse.
+/// Leyendas: bloque en obsidiana y oro, en vertical, con el medallón y su aura. Toda la fila
+/// (medalla incluida) abre el reto.
 struct LegendsSection: View {
     var legends: [Challenge]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("LEYENDAS")
-                    .font(.sarrio(12, .semibold))
-                    .tracking(2)
-                    .foregroundStyle(LegendColors.gold)
-                Text("Retos de toda una vida. Cuentan solos: no hace falta unirse.")
-                    .font(.sarrio(14))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 0) {
+            Text("LEYENDAS")
+                .font(.sarrio(12, .semibold))
+                .tracking(2)
+                .foregroundStyle(LegendColors.gold)
+                .padding(.bottom, Theme.Spacing.s)
+            ForEach(legends) { legend in
+                NavigationLink { ChallengeDetailView(challenge: legend) } label: { LegendRow(challenge: legend) }
+                    .buttonStyle(.pressableCard)
             }
-            .padding(.horizontal, Theme.Spacing.m)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Theme.Spacing.m) {
-                    ForEach(legends) { legend in
-                        NavigationLink { ChallengeDetailView(challenge: legend) } label: { LegendCard(challenge: legend) }
-                            .buttonStyle(.pressableCard)
-                    }
-                }
-                .padding(.horizontal, Theme.Spacing.m)
-            }
-            .scrollClipDisabled()
         }
-        .padding(.vertical, Theme.Spacing.l)
+        .padding(Theme.Spacing.m)
         .background(LegendColors.ink, in: RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
         .elevation(.high)
     }
 }
 
-private struct LegendCard: View {
+private struct LegendRow: View {
     var challenge: Challenge
 
     var body: some View {
         let p = challenge.progress
+        let done = p?.done == true
         let text = challenge.valueText
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+        HStack(spacing: Theme.Spacing.m) {
             // Siempre en oro; apagado hasta conseguirlo
-            BadgeMedal(icon: "badge-\(challenge.badgeId ?? "")", earned: true, size: 92, shine: p?.done == true)
-                .opacity(p?.done == true ? 1 : 0.6)
-                .interactiveTilt(maxAngle: 10)
-                .frame(width: 92, height: 92)
-                .legendAura(size: 92, intensity: p?.done == true ? 1 : 0.4)
-                .frame(maxWidth: .infinity)
-            Text(challenge.title)
-                .font(.sarrio(16, .bold))
-                .foregroundStyle(.white)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(text.value).font(.sarrio(20, .semibold).monospacedDigit()).foregroundStyle(LegendColors.gold)
-                Text("/ \(text.target)").font(.sarrio(12, .medium)).foregroundStyle(.white.opacity(0.55))
-                    .minimumScaleFactor(0.7)
-            }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Rectangle().fill(.white.opacity(0.12))
-                    Rectangle().fill(LegendColors.gold).frame(width: geo.size.width * CGFloat(p?.fraction ?? 0))
+            BadgeMedal(icon: "badge-\(challenge.badgeId ?? "")", earned: true, size: 64, shine: done)
+                .opacity(done ? 1 : 0.6)
+                .legendAura(size: 64, intensity: done ? 1 : 0.35)
+                .frame(width: 84, height: 84)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(challenge.title)
+                    .font(.sarrio(16, .bold))
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text(text.value).font(.sarrio(15, .semibold).monospacedDigit()).foregroundStyle(LegendColors.gold)
+                    Text("/ \(text.target) \(text.unit)").font(.sarrio(12)).foregroundStyle(.white.opacity(0.55))
+                        .minimumScaleFactor(0.7)
                 }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Rectangle().fill(.white.opacity(0.12))
+                        Rectangle().fill(LegendColors.gold).frame(width: geo.size.width * CGFloat(p?.fraction ?? 0))
+                    }
+                }
+                .frame(height: 2)
             }
-            .frame(height: 2)
         }
-        .frame(width: 150, alignment: .leading)
-        .padding(Theme.Spacing.m)
-        .padding(.top, Theme.Spacing.s)
-        .background(LegendColors.panel.opacity(0.7), in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
     }
 }

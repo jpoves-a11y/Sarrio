@@ -8,7 +8,6 @@ import SwiftUI
 final class AchievementsStore {
     private(set) var catalog: BadgeCatalog?
     private(set) var featured: [Challenge] = []
-    private(set) var joined: [Challenge] = []
     private(set) var mine: [Challenge] = []
     private(set) var isLoadingChallenges = false
     var errorMessage: String?
@@ -63,10 +62,10 @@ final class AchievementsStore {
         isLoadingChallenges = true
         defer { isLoadingChallenges = false }
         do {
+            // Todos los retos están siempre activos: oficiales y los míos
             async let f = api.challenges(.featured)
-            async let j = api.challenges(.joined)
             async let m = api.challenges(.mine)
-            (featured, joined, mine) = try await (f, j, m)
+            (featured, mine) = try await (f, m)
         } catch {
             if featured.isEmpty { errorMessage = error.localizedDescription }
         }
@@ -76,15 +75,6 @@ final class AchievementsStore {
         async let b: Void = loadBadges()
         async let c: Void = loadChallenges()
         _ = await (b, c)
-    }
-
-    func setJoined(_ challenge: Challenge, _ join: Bool) async {
-        do {
-            if join { try await api.joinChallenge(id: challenge.id) } else { try await api.leaveChallenge(id: challenge.id) }
-            await loadChallenges()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
     }
 
     func create(_ challenge: NewChallenge) async throws -> Challenge {

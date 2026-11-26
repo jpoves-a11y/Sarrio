@@ -10,7 +10,6 @@ struct ChallengeDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var detail: ChallengeDetail?
     @State private var errorMessage: String?
-    @State private var working = false
     @State private var showGlobe = false
     @State private var confirmDelete = false
 
@@ -64,7 +63,7 @@ struct ChallengeDetailView: View {
                 }
                 .padding(.vertical, Theme.Spacing.xl)
             }
-            Text((current.isLegend ? "Leyenda" : current.official ? "Reto de Sarrio" : "Reto de \(current.creator?.displayName ?? "un amigo")").uppercased())
+            Text(eyebrow.uppercased())
                 .font(.sarrio(12, .semibold))
                 .tracking(1.4)
                 .foregroundStyle(current.isLegend ? LegendColors.gold.opacity(0.9) : Theme.Colors.textSecondary)
@@ -78,21 +77,24 @@ struct ChallengeDetailView: View {
                     .foregroundStyle(Theme.Colors.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            HStack(spacing: Theme.Spacing.m) {
+            // El periodo solo si dice algo que la categoría no dice ya (fechas de temporada o de un reto propio)
+            if ChallengeCategory.of(current) == .season || (!current.official && current.startsAt != nil) {
                 Label(current.periodKind, systemImage: "calendar").labelStyle(DetailLabelStyle())
-                if let n = current.participants, n > 0 {
-                    Label(n == 1 ? "1 persona" : "\(n) personas", systemImage: "person.2").labelStyle(DetailLabelStyle())
-                }
+                    .padding(.top, 2)
             }
-            .padding(.top, 2)
         }
+    }
+
+    /// Categoría del reto (o quién lo creó, si es de un amigo).
+    private var eyebrow: String {
+        if !current.official && !isMine { return "Reto de \(current.creator?.displayName ?? "un amigo")" }
+        return ChallengeCategory.of(current).title
     }
 
     private var progressBlock: some View {
         let text = current.valueText
         let p = current.progress
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            SectionHeader(title: current.isJoined || current.isLegend ? "Tu progreso" : "Llevarías")
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(text.value)
                     .font(.sarrio(56, .semibold).monospacedDigit())
@@ -164,26 +166,11 @@ struct ChallengeDetailView: View {
             if let errorMessage {
                 Text(errorMessage).font(.sarrio(14)).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
-            if current.isLegend {
-                Text("Las Leyendas cuentan solas: cuando la completes, el emblema aparecerá en tu perfil.")
-                    .font(.sarrio(14))
-                    .foregroundStyle(Theme.Colors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else if current.isJoined {
-                Button(isMine ? "Borrar reto" : "Salir del reto") {
-                    if isMine { confirmDelete = true } else { Task { await setJoined(false) } }
-                }
-                .buttonStyle(.secondary)
-            } else {
-                Button {
-                    Task { await setJoined(true) }
-                } label: {
-                    if working { ProgressView().tint(.white) } else { Text("Unirme al reto") }
-                }
-                .buttonStyle(.primary)
+            if isMine {
+                Button("Borrar reto") { confirmDelete = true }
+                    .buttonStyle(.secondary)
             }
         }
-        .disabled(working)
         .padding(.top, Theme.Spacing.s)
     }
 
@@ -196,14 +183,6 @@ struct ChallengeDetailView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-
-    private func setJoined(_ join: Bool) async {
-        working = true
-        defer { working = false }
-        await store.setJoined(current, join)
-        await load()
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 }
 
