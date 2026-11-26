@@ -45,7 +45,7 @@ describe("badges", () => {
     expect(first.earnedAt).toBe(Date.UTC(2026, 6, 14, 9));
     expect(first.activityId).toBe(res.activity.id);
     const four = list.badges.find((b: any) => b.id === "alt-4000");
-    expect(four).toMatchObject({ earnedAt: null, progress: { value: 3404, target: 4000 }, tier: "special", icon: "badge-alt-4000" });
+    expect(four).toMatchObject({ earnedAt: null, progress: { value: 0, target: 1 }, tier: "special", icon: "badge-alt-4000" });
   });
 
   it("awards on manual ascents too", async () => {

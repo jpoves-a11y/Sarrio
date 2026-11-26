@@ -86,6 +86,8 @@ struct Badge: Codable, Hashable, Sendable, Identifiable {
     /// "6.200 / 8.849 m", "12 / 25"… según el emblema.
     var progressText: String? {
         guard let progress else { return nil }
+        // De sí o no: «0 / 1», sin unidad
+        if progress.target == 1 { return "\(Int(progress.value)) / 1" }
         let unit: (Double) -> String
         switch id {
         case "km-100", "km-1000", "ultra": unit = { "\(Int(($0 / 1000).rounded()).formatted())" }
@@ -254,6 +256,7 @@ struct Challenge: Codable, Hashable, Sendable, Identifiable {
     var valueText: (value: String, target: String, unit: String) {
         let p = progress ?? ChallengeProgress(value: 0, target: target ?? 0, fraction: 0, done: false, status: .active)
         if kind == .peaks { return (Int(p.value).formatted(), Int(p.target).formatted(), "cimas") }
+        if p.target == 1 { return (Int(p.value).formatted(), "1", "") }
         let m = metric ?? .summits
         return (m.display(p.value), m.display(p.target), m.unit)
     }

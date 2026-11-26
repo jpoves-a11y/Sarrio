@@ -90,7 +90,7 @@ describe("evaluateBadges", () => {
     expect(earned.get("first-summit")?.ascentId).toBe(a1.id);
     expect(earned.get("alt-3000")?.ascentId).toBe(a1.id);
     expect(earned.has("alt-4000")).toBe(false);
-    expect(progress.get("alt-4000")).toEqual({ value: 3404, target: 4000 });
+    expect(progress.get("alt-4000")).toEqual({ value: 0, target: 1 });
     expect(progress.get("peaks-5")).toEqual({ value: 2, target: 5 });
     expect(progress.get("explorer")).toEqual({ value: 2, target: 3 });
   });
@@ -210,7 +210,8 @@ describe("challenges", () => {
 
   it("takes the best single activity for max_activity_gain", () => {
     const history = { activities: [act(Date.UTC(2026, 1, 1), { elevGainM: 3000 }), act(Date.UTC(2026, 2, 1), { elevGainM: 5200 })], ascents: [] };
-    expect(challengeProgress(metric({ metric: "max_activity_gain", target: 8849 }), history, now).value).toBe(5200);
+    expect(challengeProgress(metric({ metric: "max_activity_gain", target: 8849 }), history, now)).toMatchObject({ value: 0, target: 1, done: false });
+    expect(challengeProgress(metric({ metric: "max_activity_gain", target: 5000 }), history, now)).toMatchObject({ value: 1, target: 1, done: true });
   });
 
   it("counts high summits and active weeks", () => {

@@ -235,8 +235,27 @@ export function evaluateBadges(history: History, now = Date.now()): BadgeEvaluat
   progress.set("streak-4", { value: Math.max(current, Math.min(bestRun, 4)), target: 4 });
   progress.set("streak-12", { value: Math.max(current, Math.min(bestRun, 12)), target: 12 });
 
+  // Logros de sí o no: no se enseña un progreso parcial (tu cima más alta no es «medio» Cuatromil)
+  for (const id of BINARY_BADGES) progress.set(id, { value: earned.has(id) ? 1 : 0, target: 1 });
+
   return { earned, progress };
 }
+
+/** Emblemas que se consiguen de una vez (una cima, una actividad, un momento): progreso 0 / 1. */
+export const BINARY_BADGES = [
+  "first-summit",
+  "alt-2000",
+  "alt-3000",
+  "alt-4000",
+  "sunrise",
+  "sunset",
+  "winter",
+  "chain",
+  "long-day",
+  "ultra",
+  "vertical-km",
+  "everesting",
+];
 
 // ---------------------------------------------------------------------------
 // Retos
@@ -330,7 +349,8 @@ export function challengeProgress(def: ChallengeDef, history: History, now = Dat
     case "elevation_gain":
       return finish(Math.round(activities.reduce((s, a) => s + (a.elevGainM ?? 0), 0)), target);
     case "max_activity_gain":
-      return finish(Math.round(Math.max(0, ...activities.map((a) => a.elevGainM ?? 0))), target);
+      // De sí o no: o tienes una actividad que llega, o no
+      return finish(Math.max(0, ...activities.map((a) => a.elevGainM ?? 0)) >= target ? 1 : 0, 1);
     case "distance":
       return finish(Math.round(activities.reduce((s, a) => s + (a.distanceM ?? 0), 0)), target);
     case "activities":
