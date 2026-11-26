@@ -62,6 +62,20 @@ actor PeakPackStore {
         }
     }
 
+    // MARK: - Búsqueda
+
+    /// Picos por nombre: primero en la copia de la app (al instante y sin red); si da pocos
+    /// resultados, también en el servidor (zonas que la copia no cubre).
+    func search(_ query: String, preferred: Set<Int64> = [], limit: Int = 20) async -> [Peak] {
+        var results = loadBundle()?.search(query, limit: limit, preferred: preferred) ?? []
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if results.count < 5, q.count >= 3, let remote = try? await api.searchPeaks(q, limit: limit) {
+            let known = Set(results.map(\.id))
+            results += remote.filter { !known.contains($0.id) }
+        }
+        return Array(results.prefix(limit))
+    }
+
     // MARK: - Copia de la app
 
     private func loadBundle() -> PeakBundle? {

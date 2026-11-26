@@ -26,9 +26,9 @@ export function toActivity(a: ActivityRow, opts: { includeBox: boolean } = { inc
   };
 }
 
-const peakColumns = { id: peaks.id, name: peaks.name, nameEs: peaks.nameEs, ele: peaks.ele, lat: peaks.lat, lon: peaks.lon };
+const peakColumns = { id: peaks.id, name: peaks.name, nameEs: peaks.nameEs, ele: peaks.ele, lat: peaks.lat, lon: peaks.lon, range: peaks.range };
 
-export type PeakSummary = { id: number; name: string; nameEs: string | null; ele: number | null; lat: number; lon: number };
+export type PeakSummary = { id: number; name: string; nameEs: string | null; ele: number | null; lat: number; lon: number; range: string | null };
 
 export function toAscent(a: AscentRow, peak: PeakSummary) {
   return {

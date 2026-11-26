@@ -82,19 +82,30 @@ actor ActivitySync {
 
     // MARK: - Apple Health
 
+    /// Avisa del progreso (en el hilo principal).
+    typealias ProgressHandler = @MainActor @Sendable (SyncProgress) -> Void
+
     /// Sube los entrenos nuevos de Apple Health. Seguro de llamar varias veces a la vez.
     @discardableResult
-    func syncHealth() async throws -> [Outcome] {
+    func syncHealth(progress report: ProgressHandler? = nil) async throws -> [Outcome] {
         guard HealthKitService.isAvailable, healthKit.isConnected, !healthSyncRunning else { return [] }
         healthSyncRunning = true
         defer { healthSyncRunning = false }
 
+        var progress = SyncProgress(source: .health)
+        await report?(progress)
+        let sports = try await healthKit.pendingSports()
+        progress.begin(total: sports.count, sports: sports)
+        await report?(progress)
+
         var outcomes: [Outcome] = []
-        while true {
+        while progress.phase != .done {
             let batch = try await healthKit.newWorkouts()
             for workout in batch.workouts {
+                progress.current = "\(workout.sport.title) · \(workout.start.formatted(.dateTime.day().month(.abbreviated).year()))"
+                await report?(progress)
                 let parsed = ParsedTrack(name: nil, points: workout.points, sport: workout.sport)
-                outcomes.append(try await upload(
+                let outcome = try await upload(
                     parsed,
                     source: .healthkit,
                     externalId: workout.uuid.uuidString,
@@ -103,11 +114,20 @@ actor ActivitySync {
                     duration: workout.end.timeIntervalSince(workout.start),
                     distance: workout.distance,
                     elevationGain: workout.elevationGain
-                ))
+                )
+                outcomes.append(outcome)
+                progress.finishItem(outcome)
             }
+            // Los entrenos sin GPS del lote también cuentan como procesados
+            progress.processed = min(progress.total, progress.processed + batch.scanned - batch.workouts.count)
             healthKit.commit(batch)
             if !batch.hasMore { break }
+            await report?(progress)
         }
+        progress.processed = progress.total
+        progress.phase = .done
+        progress.current = nil
+        await report?(progress)
         if outcomes.contains(where: \.isNew) { notifyChange() }
         return outcomes
     }
@@ -117,29 +137,56 @@ actor ActivitySync {
     private var polarSyncRunning = false
 
     /// Sube los entrenos de Polar con ruta que aún no estén en Sarrio (Polar da los últimos 30 días).
+    /// Si se interrumpe (iOS suspende la app), la próxima vez sigue con los que falten.
     @discardableResult
-    func syncPolar() async throws -> [Outcome] {
+    func syncPolar(progress report: ProgressHandler? = nil) async throws -> [Outcome] {
         guard !polarSyncRunning else { return [] }
         polarSyncRunning = true
         defer { polarSyncRunning = false }
 
+        var progress = SyncProgress(source: .polar)
+        await report?(progress)
+        let pending = try await api.polarExercises().filter { $0.hasRoute && !$0.imported }
+        progress.begin(total: pending.count, sports: pending.map { SportType(polarSport: $0.sport) })
+        await report?(progress)
+
         var outcomes: [Outcome] = []
-        for exercise in try await api.polarExercises() where exercise.hasRoute && !exercise.imported {
+        for exercise in pending {
+            try Task.checkCancellation()
+            let sport = SportType(polarSport: exercise.sport)
+            progress.current = "\(sport.title) · \(Self.polarDate(exercise.startTime))"
+            await report?(progress)
             let data = try await api.polarFIT(id: exercise.id)
-            let parsed: ParsedTrack
-            do { parsed = try FITParser.parse(data: data) } catch { continue } // sin GPS utilizable
-            guard parsed.points.count >= 2 else { continue }
-            outcomes.append(try await upload(
-                parsed,
-                source: .polar,
-                externalId: exercise.id,
-                title: nil,
-                duration: exercise.durationS,
-                distance: exercise.distanceM
-            ))
+            var outcome: Outcome?
+            if let parsed = try? FITParser.parse(data: data), parsed.points.count >= 2 {
+                var track = parsed
+                if track.sport == nil || track.sport == .other { track.sport = sport }
+                outcome = try await upload(
+                    track,
+                    source: .polar,
+                    externalId: exercise.id,
+                    title: nil,
+                    duration: exercise.durationS,
+                    distance: exercise.distanceM
+                )
+                outcomes.append(outcome!)
+            }
+            progress.finishItem(outcome)
+            await report?(progress)
         }
+        progress.phase = .done
+        progress.current = nil
+        await report?(progress)
         if outcomes.contains(where: \.isNew) { notifyChange() }
         return outcomes
+    }
+
+    private static func polarDate(_ raw: String) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        guard let date = formatter.date(from: String(raw.prefix(19))) else { return "" }
+        return date.formatted(.dateTime.day().month(.abbreviated))
     }
 
     // MARK: - Subida

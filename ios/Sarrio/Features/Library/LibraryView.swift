@@ -17,6 +17,11 @@ struct LibraryView: View {
         @Bindable var store = store
         ScrollView {
             LazyVStack(spacing: Theme.Spacing.l) {
+                if let progress = store.syncProgress {
+                    SyncStatusCard(progress: progress)
+                        .padding(.top, Theme.Spacing.s)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 if let library = store.library, !library.ascents.isEmpty {
                     if let highest = library.summary.highestPeak {
                         SummitHero(peak: highest, summary: library.summary, elevationGain: store.totalElevationGain)
@@ -42,13 +47,14 @@ struct LibraryView: View {
         .background(Theme.Colors.groupedBackground)
         .navigationTitle("Cumbres")
         .safeAreaInset(edge: .bottom) {
-            if store.isImporting || store.isSyncingHealth || store.isSyncingPolar {
-                ProgressPill(text: store.isImporting ? "Buscando cumbres…" : store.isSyncingPolar ? "Trayendo entrenos de Polar…" : "Sincronizando Apple Health…")
+            // Las sincronizaciones tienen su tarjeta de progreso arriba; la píldora queda para los archivos
+            if store.isImporting {
+                ProgressPill(text: "Buscando cumbres…")
                     .padding(.bottom, Theme.Spacing.s)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .animation(Theme.Motion.spring, value: store.isImporting || store.isSyncingHealth || store.isSyncingPolar)
+        .animation(Theme.Motion.spring, value: store.isImporting)
         .toolbar {
             Menu {
                 Button { importing = true } label: { Label("Importar archivo (GPX, FIT, TCX)", systemImage: "doc.badge.plus") }
@@ -124,12 +130,14 @@ struct LibraryView: View {
 
     private var emptyState: some View {
         VStack(spacing: Theme.Spacing.l) {
+            if store.syncProgress == nil {
             EmptyStateView(
                 icon: "mountain.2",
                 title: "Tu biblioteca de cumbres",
                 message: "Conecta Apple Health o importa un GPX, FIT o TCX y detectaremos las cimas que has pisado."
             )
             .padding(.top, Theme.Spacing.l)
+            }
             if HealthKitService.isAvailable && !store.healthConnected {
                 HealthConnectCard { Task { await store.connectHealth() } }
             }
@@ -356,6 +364,98 @@ private struct PolarConnectCard: View {
             }
             Button("Conectar con Polar", action: action).buttonStyle(.primary).padding(.top, Theme.Spacing.xs)
         }
+    }
+}
+
+/// Sincronización en vivo: qué fuente, cuántos entrenos ha encontrado (y de qué deportes), cuál
+/// procesa ahora, cuánto falta y cuántas cumbres nuevas lleva.
+private struct SyncStatusCard: View {
+    var progress: SyncProgress
+
+    var body: some View {
+        Card(elevation: .medium) {
+            HStack(spacing: Theme.Spacing.m) {
+                ZStack {
+                    Circle().fill(Theme.Colors.accent.opacity(0.12)).frame(width: 40, height: 40)
+                    if progress.phase == .done {
+                        Image(systemName: "checkmark").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.Colors.accent)
+                            .transition(.scale.combined(with: .opacity))
+                    } else {
+                        Image(systemName: progress.source.icon).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.Colors.accent)
+                            .symbolEffect(.pulse, isActive: true)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.Colors.textPrimary)
+                    Text(subtitle).font(.system(size: 13)).foregroundStyle(Theme.Colors.textSecondary).lineLimit(1)
+                        .contentTransition(.opacity)
+                }
+                Spacer(minLength: 0)
+                if progress.total > 0 {
+                    Text("\(progress.processed)/\(progress.total)")
+                        .font(.system(size: 15, weight: .bold).monospacedDigit())
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                        .contentTransition(.numericText())
+                }
+            }
+            if progress.phase == .searching {
+                ProgressView().progressViewStyle(.linear).tint(Theme.Colors.accent)
+            } else if progress.total > 0 {
+                ProgressView(value: progress.fraction).progressViewStyle(.linear).tint(Theme.Colors.accent)
+                    .animation(.easeOut(duration: 0.4), value: progress.fraction)
+            }
+            if !progress.sportsSummary.isEmpty || progress.newSummits > 0 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        if progress.newSummits > 0 {
+                            chip("\(progress.newSummits) cumbres nuevas", icon: "mountain.2.fill", accent: true)
+                        }
+                        ForEach(progress.sportsSummary.prefix(4).map { $0.sport }, id: \.self) { sport in
+                            chip("\(progress.bySport[sport] ?? 0) \(sport.title.lowercased())", icon: nil, accent: false)
+                        }
+                    }
+                }
+            }
+        }
+        .animation(Theme.Motion.spring, value: progress.phase)
+    }
+
+    private var title: String {
+        switch progress.phase {
+        case .searching: "Buscando entrenos en \(progress.source.title)…"
+        case .processing: "Sincronizando \(progress.source.title)"
+        case .done:
+            progress.total == 0 ? "\(progress.source.title) al día" : "\(progress.source.title) sincronizado"
+        }
+    }
+
+    private var subtitle: String {
+        switch progress.phase {
+        case .searching: return "Un momento"
+        case .processing:
+            let now = progress.current.map { "Procesando \($0)" } ?? "Procesando"
+            guard let remaining = progress.remaining else { return now }
+            return now + " · \(Self.duration(remaining))"
+        case .done:
+            if progress.total == 0 { return "No hay entrenos nuevos con GPS" }
+            return "\(progress.newActivities) actividades nuevas de \(progress.total) entrenos"
+        }
+    }
+
+    private static func duration(_ seconds: TimeInterval) -> String {
+        if seconds < 60 { return "menos de 1 min" }
+        let minutes = Int((seconds / 60).rounded())
+        return minutes < 60 ? "≈ \(minutes) min" : "≈ \(minutes / 60) h \(minutes % 60) min"
+    }
+
+    private func chip(_ text: String, icon: String?, accent: Bool) -> some View {
+        HStack(spacing: 4) {
+            if let icon { Image(systemName: icon).font(.system(size: 10, weight: .bold)) }
+            Text(text).font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundStyle(accent ? .white : Theme.Colors.textPrimary)
+        .padding(.horizontal, 10).padding(.vertical, 5)
+        .background(accent ? AnyShapeStyle(Theme.Colors.accent) : AnyShapeStyle(Theme.Colors.groupedBackground), in: Capsule())
     }
 }
 

@@ -51,6 +51,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // Debe registrarse en cada arranque para que la entrega en segundo plano funcione.
         AppServices.shared.startHealthObserver()
+        // Sincronizaciones que iOS cortó (iPhone bloqueado): siguen en segundo plano
+        BackgroundSync.register {
+            let services = AppServices.shared
+            guard KeychainStore.sessionToken != nil else { return }
+            await services.library.refreshProviders()
+            await services.library.syncPolar()
+            await services.library.syncHealth()
+        }
         return true
     }
 }

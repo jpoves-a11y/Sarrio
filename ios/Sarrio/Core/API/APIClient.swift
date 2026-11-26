@@ -93,6 +93,12 @@ struct APIClient: Sendable {
         try await get("v1/peaks/pack/\(cell)")
     }
 
+    func searchPeaks(_ query: String, limit: Int = 20) async throws -> [Peak] {
+        struct Body: Decodable { var peaks: [Peak] }
+        let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+=?"))) ?? ""
+        return try await get("v1/peaks/search?q=\(q)&limit=\(limit)", as: Body.self).peaks
+    }
+
     /// Versión del conjunto de picos del servidor (ms), o nil si no la tiene.
     func peaksVersion() async throws -> Int64? {
         struct Body: Decodable { var version: Int64? }

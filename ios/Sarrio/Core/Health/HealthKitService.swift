@@ -68,6 +68,8 @@ final class HealthKitService: @unchecked Sendable {
     /// Resultado de una consulta: los entrenos y el ancla que hay que guardar si se procesan bien.
     struct Batch: Sendable {
         var workouts: [HealthWorkout]
+        /// Entrenos leídos en este lote, con ruta o sin ella (los sin GPS no se suben).
+        var scanned: Int
         /// Quedan más entrenos por leer (el histórico se lee por lotes).
         var hasMore: Bool
         fileprivate var anchor: Data?
@@ -100,9 +102,16 @@ final class HealthKitService: @unchecked Sendable {
         let anchor = try? NSKeyedArchiver.archivedData(withRootObject: result.newAnchor, requiringSecureCoding: true)
         return Batch(
             workouts: workouts.sorted { $0.start < $1.start },
+            scanned: result.addedSamples.count,
             hasMore: result.addedSamples.count == limit,
             anchor: anchor
         )
+    }
+
+    /// Deporte de cada entreno pendiente (sin leer rutas: es rápido), para saber cuántos hay antes de empezar.
+    func pendingSports() async throws -> [SportType] {
+        let descriptor = HKAnchoredObjectQueryDescriptor(predicates: [.workout(workoutPredicate)], anchor: loadAnchor())
+        return try await descriptor.result(for: store).addedSamples.map { Self.sport(for: $0.workoutActivityType) }
     }
 
     func commit(_ batch: Batch) {

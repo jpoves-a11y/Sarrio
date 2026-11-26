@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SarrioKit
+import SwiftUI
 import UIKit
 
 /// Un pico de la biblioteca con todas sus ascensiones (la más reciente primero).
@@ -79,6 +80,8 @@ final class LibraryStore {
             library = try await lib
             activities = try await page.activities
             await refreshProviders()
+            // Satélite y relieve de tus cumbres guardados en el iPhone (con wifi, una vez al día)
+            MapPrefetcher.shared.prefetch(peaks: peakGroups.sorted { $0.lastAscent > $1.lastAscent }.map(\.peak))
         } catch {
             if library == nil { errorMessage = error.localizedDescription }
         }
@@ -127,14 +130,62 @@ final class LibraryStore {
         pendingHealthSync = false
         isSyncingHealth = true
         defer { isSyncingHealth = false }
-        do {
-            try await sync.syncHealth()
-        } catch where HealthKitService.isLockedError(error) {
-            pendingHealthSync = true
-        } catch {
-            errorMessage = "No se pudieron sincronizar los entrenos de Apple Health: \(error.localizedDescription)"
+        await withBackgroundTime {
+            do {
+                try await self.sync.syncHealth(progress: self.report)
+            } catch where HealthKitService.isLockedError(error) {
+                // Se bloqueó a mitad: sigue al desbloquear, con lo que falte
+                self.pendingHealthSync = true
+                self.clearProgress(of: .health)
+            } catch {
+                self.clearProgress(of: .health)
+                if UIApplication.shared.applicationState == .active {
+                    self.errorMessage = "No se pudieron sincronizar los entrenos de Apple Health: \(error.localizedDescription)"
+                }
+            }
         }
         await load()
+    }
+
+    // MARK: Progreso
+
+    /// La sincronización en curso (o la que acaba de terminar, unos segundos).
+    private(set) var syncProgress: SyncProgress?
+
+    private var report: ActivitySync.ProgressHandler {
+        { [weak self] progress in
+            guard let self else { return }
+            withAnimation(Theme.Motion.spring) { self.syncProgress = progress }
+            if progress.phase == .done {
+                // El resumen se queda unos segundos y luego se va
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(progress.total == 0 ? 1.5 : 6))
+                    guard let self, self.syncProgress == progress else { return }
+                    withAnimation(Theme.Motion.spring) { self.syncProgress = nil }
+                }
+            }
+        }
+    }
+
+    private func clearProgress(of source: SyncProgress.Source) {
+        guard syncProgress?.source == source else { return }
+        withAnimation(Theme.Motion.spring) { syncProgress = nil }
+    }
+
+    /// Pide a iOS tiempo para terminar aunque se bloquee el iPhone o se cambie de app. Si no le da
+    /// tiempo, programa una tarea en segundo plano que sigue después con lo que falte.
+    private func withBackgroundTime(_ work: @MainActor () async -> Void) async {
+        let box = BackgroundTaskBox()
+        box.id = UIApplication.shared.beginBackgroundTask(withName: "sarrio-sync") {
+            MainActor.assumeIsolated {
+                BackgroundSync.schedule()
+                if box.id != .invalid { UIApplication.shared.endBackgroundTask(box.id) }
+                box.id = .invalid
+            }
+        }
+        await work()
+        if box.id != .invalid { UIApplication.shared.endBackgroundTask(box.id) }
+        box.id = .invalid
     }
 
     /// Hay una sincronización con Salud pendiente de que se desbloquee el iPhone.
@@ -169,13 +220,22 @@ final class LibraryStore {
         guard polarConnected else { return }
         isSyncingPolar = true
         defer { isSyncingPolar = false }
-        do {
-            try await sync.syncPolar()
-        } catch let error as APIError where error == .http(status: 409, code: "polar_revoked") || error == .http(status: 409, code: "polar_not_connected") {
-            polarConnected = false
-            errorMessage = error.localizedDescription
-        } catch {
-            errorMessage = "No se pudieron traer los entrenos de Polar: \(error.localizedDescription)"
+        await withBackgroundTime {
+            do {
+                try await self.sync.syncPolar(progress: self.report)
+            } catch let error as APIError where error == .http(status: 409, code: "polar_revoked") || error == .http(status: 409, code: "polar_not_connected") {
+                self.polarConnected = false
+                self.clearProgress(of: .polar)
+                self.errorMessage = error.localizedDescription
+            } catch {
+                self.clearProgress(of: .polar)
+                // Cortada por iOS en segundo plano: la tarea programada sigue con lo que falte
+                if UIApplication.shared.applicationState == .active {
+                    self.errorMessage = "No se pudieron traer los entrenos de Polar: \(error.localizedDescription)"
+                } else {
+                    BackgroundSync.schedule()
+                }
+            }
         }
         await load()
     }
@@ -216,4 +276,9 @@ final class LibraryStore {
             errorMessage = error.localizedDescription
         }
     }
+}
+
+/// Identificador de la tarea de segundo plano en curso (lo comparten la sincronización y su caducidad).
+private final class BackgroundTaskBox: @unchecked Sendable {
+    var id = UIBackgroundTaskIdentifier.invalid
 }

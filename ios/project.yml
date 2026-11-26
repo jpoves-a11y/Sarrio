@@ -61,7 +61,8 @@ targets:
           UIColorName: LaunchBackground
         UIApplicationSupportsIndirectInputEvents: true
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        UIBackgroundModes: [remote-notification]
+        UIBackgroundModes: [remote-notification, fetch, processing]
+        BGTaskSchedulerPermittedIdentifiers: [$(SARRIO_BUNDLE_ID).refresh, $(SARRIO_BUNDLE_ID).sync]
         ITSAppUsesNonExemptEncryption: false
         MBXAccessToken: $(MAPBOX_ACCESS_TOKEN)
         SarrioAPIBaseURL: $(SARRIO_API_BASE_URL)

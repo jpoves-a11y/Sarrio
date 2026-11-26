@@ -9,8 +9,17 @@ struct PeakRef: Codable, Hashable, Sendable, Identifiable {
     var ele: Double?
     var lat: Double
     var lon: Double
+    var range: String?
 
     var displayName: String { nameEs ?? name }
+
+    init(id: Int64, name: String, nameEs: String?, ele: Double?, lat: Double, lon: Double, range: String? = nil) {
+        self.id = id; self.name = name; self.nameEs = nameEs; self.ele = ele; self.lat = lat; self.lon = lon; self.range = range
+    }
+
+    init(_ peak: Peak) {
+        self.init(id: peak.id, name: peak.name, nameEs: peak.nameEs, ele: peak.ele, lat: peak.lat, lon: peak.lon, range: peak.range)
+    }
 }
 
 struct Ascent: Codable, Hashable, Sendable, Identifiable {

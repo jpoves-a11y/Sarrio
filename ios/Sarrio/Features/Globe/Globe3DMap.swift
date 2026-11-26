@@ -10,10 +10,17 @@ import UIKit
 ///   cámara vuela inclinándose hasta tus cumbres.
 /// - Las cumbres se agrupan en burbujas con el número; al tocar una, la cámara se acerca a ella.
 /// - Al tocar una cumbre, vuela hasta la cima en 3D y se queda girando a su alrededor.
+/// Pico elegido en el globo: uno de los tuyos (con sus ascensiones) o uno del buscador.
+struct GlobeSelection: Equatable {
+    var peak: PeakRef
+    var group: PeakGroup?
+    var id: Int64 { peak.id }
+}
+
 struct Globe3DMap: UIViewRepresentable {
     var groups: [PeakGroup]
-    /// Pico elegido (lo pone el mapa al tocar y lo puede quitar la vista).
-    @Binding var selected: PeakGroup?
+    /// Pico elegido (lo pone el mapa al tocar, o el buscador, y lo puede quitar la vista).
+    @Binding var selected: GlobeSelection?
     /// Cambia para volver a la vista de todas las cumbres.
     var overviewToken: Int
 
@@ -42,7 +49,9 @@ struct Globe3DMap: UIViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        var selected: Binding<PeakGroup?>
+        var selected: Binding<GlobeSelection?>
+        /// Marcador del pico elegido en el buscador si no es de los tuyos.
+        private var searchMarker: ViewAnnotation?
         private weak var mapView: MapView?
         private var groups: [PeakGroup] = []
         private var drawnKey = ""
@@ -55,6 +64,7 @@ struct Globe3DMap: UIViewRepresentable {
         private var spinCenter: CLLocationCoordinate2D?
         private var spinZoom: CGFloat = 1.1
         private var spinPitch: CGFloat = 0
+        private var spinPadding: UIEdgeInsets?
         private var shownSelection: Int64?
         private var cancelables: [AnyCancelable] = []
 
@@ -64,7 +74,7 @@ struct Globe3DMap: UIViewRepresentable {
         private static let peakLayer = "globe-peak"
         private static let peakLabelLayer = "globe-peak-label"
 
-        init(selected: Binding<PeakGroup?>) { self.selected = selected }
+        init(selected: Binding<GlobeSelection?>) { self.selected = selected }
 
         func attach(to mapView: MapView) {
             self.mapView = mapView
@@ -221,32 +231,49 @@ struct Globe3DMap: UIViewRepresentable {
             }
         }
 
-        /// Vuelo a una cima: se acerca, se inclina y luego gira despacio a su alrededor.
-        private func fly(to group: PeakGroup) {
+        /// Vuelo a una cima: se acerca, se inclina y luego gira despacio a su alrededor (con la
+        /// ficha del pico abajo, por eso el centro se desplaza hacia arriba).
+        private func fly(to peak: PeakRef) {
             guard let mapView else { return }
             stopSpin()
             let bearing = mapView.mapboxMap.cameraState.bearing + 35
-            let target = CameraOptions(center: group.peak.coordinate, padding: UIEdgeInsets(top: 0, left: 0, bottom: 180, right: 0),
-                                       zoom: 13.4, bearing: bearing, pitch: 66)
+            let padding = UIEdgeInsets(top: 0, left: 0, bottom: 260, right: 0)
+            let target = CameraOptions(center: peak.coordinate, padding: padding, zoom: 13.4, bearing: bearing, pitch: 66)
             mapView.camera.fly(to: target, duration: 3.0) { [weak self] _ in
                 MainActor.assumeIsolated {
-                    guard let self, self.selected.wrappedValue?.id == group.id else { return }
-                    self.startSpin(center: group.peak.coordinate, zoom: 13.4, pitch: 66, bearing: bearing, rotatesGlobe: false)
+                    guard let self, self.selected.wrappedValue?.id == peak.id else { return }
+                    self.startSpin(center: peak.coordinate, zoom: 13.4, pitch: 66, bearing: bearing, rotatesGlobe: false, padding: padding)
                 }
             }
         }
 
-        func syncSelection(_ selection: PeakGroup?) {
+        func syncSelection(_ selection: GlobeSelection?) {
             guard selection?.id != shownSelection else { return }
             shownSelection = selection?.id
-            if let selection { fly(to: selection) }
+            searchMarker?.remove()
+            searchMarker = nil
+            guard let selection, let mapView else { return }
+            // Un pico que no es de los tuyos no está en las capas: se marca aparte
+            if selection.group == nil {
+                let marker = SummitMarkerView(name: selection.peak.displayName, elevation: selection.peak.ele,
+                                              color: UIColor(named: "AccentColor") ?? .systemOrange)
+                let annotation = ViewAnnotation(coordinate: selection.peak.coordinate, view: marker)
+                annotation.variableAnchors = [ViewAnnotationAnchorConfig(anchor: .bottom)]
+                annotation.allowOverlap = true
+                mapView.viewAnnotations.add(annotation)
+                searchMarker = annotation
+                marker.pop()
+            }
+            fly(to: selection.peak)
         }
 
         // MARK: Giro lento
 
         /// `rotatesGlobe`: gira la Tierra (cambia la longitud); si no, gira la cámara alrededor del centro.
-        private func startSpin(center: CLLocationCoordinate2D, zoom: CGFloat, pitch: CGFloat, bearing: Double, rotatesGlobe: Bool) {
+        private func startSpin(center: CLLocationCoordinate2D, zoom: CGFloat, pitch: CGFloat, bearing: Double, rotatesGlobe: Bool,
+                               padding: UIEdgeInsets? = nil) {
             stopSpin()
+            spinPadding = padding
             spinCenter = center
             spinZoom = zoom
             spinPitch = pitch
@@ -279,7 +306,8 @@ struct Globe3DMap: UIViewRepresentable {
 
         @objc private func spinAround(_ link: CADisplayLink) {
             guard let mapView, let center = spinCenter else { return }
-            mapView.mapboxMap.setCamera(to: CameraOptions(center: center, zoom: spinZoom, bearing: spinBaseBearing + turned(link, rate: 4), pitch: spinPitch))
+            mapView.mapboxMap.setCamera(to: CameraOptions(center: center, padding: spinPadding, zoom: spinZoom,
+                                                          bearing: spinBaseBearing + turned(link, rate: 4), pitch: spinPitch))
         }
 
         @objc private func userGesture(_ recognizer: UIGestureRecognizer) {
@@ -304,7 +332,7 @@ struct Globe3DMap: UIViewRepresentable {
                     if let value = feature.properties?["peakId"] ?? nil, case let .number(id) = value,
                        let group = self.groups.first(where: { $0.id == Int64(id) }) {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        self.selected.wrappedValue = group
+                        self.selected.wrappedValue = GlobeSelection(peak: group.peak, group: group)
                         return
                     }
                     // Burbuja: acercarse hasta que se separe, inclinando la cámara
