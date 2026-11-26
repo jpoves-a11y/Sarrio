@@ -10,6 +10,7 @@ import { boundingBox, decodeTrack, encodeTrack, parseTrack, serializeSegments, t
 import { isVisibility } from "../lib/validation";
 import { ascentsForActivities, peaksById, toActivity, toAscent } from "../services/activities";
 import { getRelationship } from "../services/relationships";
+import { afterUpload } from "../services/userAchievements";
 import { canView, mustTrimTrack } from "../services/visibility";
 
 export const activitiesRoutes = new Hono<AppBindings>();
@@ -71,7 +72,12 @@ activitiesRoutes.post("/", bodyLimit({ maxSize: 4 * 1024 * 1024 }), async (c) =>
     .where(and(eq(activities.userId, userId), eq(activities.source, source), eq(activities.externalId, externalId)))
     .get();
   if (existing) {
-    return c.json({ activity: toActivity(existing), ascents: await ascentsForActivities(db, [existing.id]), created: false });
+    return c.json({
+      activity: toActivity(existing),
+      ascents: await ascentsForActivities(db, [existing.id]),
+      created: false,
+      newBadges: [],
+    });
   }
 
   const user = await db.select({ defaultVisibility: users.defaultVisibility }).from(users).where(eq(users.id, userId)).get();
@@ -129,11 +135,15 @@ activitiesRoutes.post("/", bodyLimit({ maxSize: 4 * 1024 * 1024 }), async (c) =>
         .returning()
     : [];
 
+  // Emblemas nuevos y retos cumplidos con esta actividad (la app enseña la celebración).
+  const newBadges = await afterUpload(db, userId);
+
   return c.json(
     {
       activity: toActivity(activity!),
       ascents: inserted.map((a) => toAscent(a, peakMap.get(a.peakId)!)),
       created: true,
+      newBadges,
       rejectedPeakIds: [...wanted.keys()].filter((id) => !verified.some(([v]) => v === id)),
     },
     201,

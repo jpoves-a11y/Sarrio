@@ -173,8 +173,10 @@ export const badges = sqliteTable("badges", {
   id: text("id").primaryKey(), // slug, p. ej. "first-summit"
   name: text("name").notNull(),
   description: text("description").notNull(),
-  icon: text("icon").notNull(), // nombre de SF Symbol o asset
+  icon: text("icon").notNull(), // nombre del asset en la app (Badges.xcassets)
   tier: text("tier", { enum: ["bronze", "silver", "gold", "special"] }).notNull(),
+  category: text("category").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
 });
 
 export const userBadges = sqliteTable(
@@ -183,22 +185,54 @@ export const userBadges = sqliteTable(
     userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     badgeId: text("badge_id").notNull().references(() => badges.id),
     ascentId: text("ascent_id").references(() => ascents.id, { onDelete: "set null" }),
+    activityId: text("activity_id").references(() => activities.id, { onDelete: "set null" }),
     earnedAt: integer("earned_at", { mode: "timestamp_ms" }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.badgeId] })],
 );
 
-export const challenges = sqliteTable("challenges", {
-  id: id(),
-  /** null = reto oficial de Sarrio. */
-  creatorId: text("creator_id").references(() => users.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description"),
-  visibility: text("visibility", { enum: visibilityValues }).notNull().default("public"),
-  startsAt: integer("starts_at", { mode: "timestamp_ms" }),
-  endsAt: integer("ends_at", { mode: "timestamp_ms" }),
-  createdAt: createdAt(),
-});
+export const challengeKindValues = ["metric", "peaks"] as const;
+export const challengeMetricValues = [
+  "elevation_gain",
+  "distance",
+  "summits",
+  "unique_peaks",
+  "activities",
+  "active_weeks",
+  "high_summits",
+  "sunrise_summits",
+] as const;
+export type ChallengeMetric = (typeof challengeMetricValues)[number];
+export const recurrenceValues = ["none", "monthly", "yearly"] as const;
+
+export const challenges = sqliteTable(
+  "challenges",
+  {
+    id: id(),
+    /** null = reto oficial de Sarrio. */
+    creatorId: text("creator_id").references(() => users.id, { onDelete: "cascade" }),
+    /** Identificador estable de los retos oficiales (siembra idempotente). */
+    slug: text("slug"),
+    title: text("title").notNull(),
+    description: text("description"),
+    visibility: text("visibility", { enum: visibilityValues }).notNull().default("public"),
+    kind: text("kind", { enum: challengeKindValues }).notNull().default("metric"),
+    metric: text("metric", { enum: challengeMetricValues }),
+    target: real("target"),
+    /** Solo actividades de este deporte (p. ej. trail_running). */
+    sport: text("sport"),
+    /** Altitud mínima para `high_summits`. */
+    minEle: real("min_ele"),
+    recurrence: text("recurrence", { enum: recurrenceValues }).notNull().default("none"),
+    /** Ventana dentro del año, "MM-DD..MM-DD" (puede cruzar el año: "12-21..03-20"). */
+    window: text("window"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    startsAt: integer("starts_at", { mode: "timestamp_ms" }),
+    endsAt: integer("ends_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("challenges_slug_uq").on(t.slug), index("challenges_creator_idx").on(t.creatorId)],
+);
 
 export const challengePeaks = sqliteTable(
   "challenge_peaks",

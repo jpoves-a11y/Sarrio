@@ -6,6 +6,7 @@ import { ascents, users } from "../db/schema";
 import { newId } from "../lib/ids";
 import { isVisibility } from "../lib/validation";
 import { ascentsWithPeaks, peaksById, toAscent } from "../services/activities";
+import { afterUpload } from "../services/userAchievements";
 
 export const ascentsRoutes = new Hono<AppBindings>();
 ascentsRoutes.use("*", requireAuth);
@@ -52,7 +53,8 @@ ascentsRoutes.post("/", async (c) => {
       visibility: (body.visibility as typeof user.defaultVisibility | undefined) ?? user.defaultVisibility,
     })
     .returning();
-  return c.json(toAscent(ascent!, peak), 201);
+  const newBadges = await afterUpload(db, c.var.userId);
+  return c.json({ ...toAscent(ascent!, peak), newBadges }, 201);
 });
 
 ascentsRoutes.patch("/:id", async (c) => {
