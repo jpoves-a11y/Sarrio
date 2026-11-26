@@ -51,7 +51,6 @@ final class LibraryStore {
             }
         }
     }
-    }
 
     private(set) var healthConnected: Bool
 
