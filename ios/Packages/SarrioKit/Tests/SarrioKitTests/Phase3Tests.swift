@@ -221,3 +221,39 @@ private let start = Date(timeIntervalSince1970: 1_784_000_000)
         #expect(throws: PeakBundle.BundleError.badRow(2)) { try PeakBundle(data: Data("#sarrio-peaks 1\nbroken".utf8)) }
     }
 }
+
+@Suite struct PeakSearchTests {
+    private let bundle: PeakBundle = {
+        let rows = [
+            "u0hu5\t1\t45.8326\t6.8652\t4808\tMont Blanc / Monte Bianco\t\tAlpes",
+            "u0hu6\t2\t45.8786\t6.8873\t4248\tMont Blanc du Tacul\t\tAlpes",
+            "u0j2b\t3\t45.5873\t7.2660\t3683\tPunta Nera della Grivola\t\tAlpes",
+            "u0hmq\t4\t45.5806\t7.4634\t3064\tPunta Nera\t\tAlpes",
+            "sp86w\t5\t42.6311\t0.6569\t3404\tAneto\tAneto\tPirineos",
+            "sp86x\t6\t42.6000\t0.6000\t2500\tTuca de l'Anèto\t\tPirineos",
+        ]
+        return try! PeakBundle(data: Data((["#sarrio-peaks 1", "#cells u0hu"] + rows).joined(separator: "\n").utf8))
+    }()
+
+    @Test func findsByPrefixIgnoringAccentsAndCase() {
+        #expect(bundle.search("punta nera").map(\.id) == [3, 4])
+        #expect(bundle.search("ANETO").map(\.id) == [5, 6])
+        #expect(bundle.search("anèt").first?.name == "Aneto")
+        #expect(bundle.search("bianco").first?.name == "Mont Blanc / Monte Bianco")
+    }
+
+    @Test func ranksPrefixThenWordThenContainsAndPrefersAscended() {
+        // "blanc": ninguno empieza por ella, los dos la tienen como palabra → el más alto primero
+        #expect(bundle.search("blanc").map(\.id) == [1, 2])
+        #expect(bundle.search("blanc", preferred: [2]).map(\.id) == [2, 1])
+        // "nera": palabra en ambas
+        #expect(bundle.search("nera").map(\.id) == [3, 4])
+        #expect(bundle.search("a").isEmpty) // demasiado corta
+        #expect(bundle.search("punta", limit: 1).count == 1)
+    }
+
+    @Test func keepsTheRange() {
+        #expect(bundle.search("aneto").first?.range == "Pirineos")
+        #expect(bundle.peaks(in: "u0hu").first?.range == "Alpes")
+    }
+}

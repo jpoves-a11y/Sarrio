@@ -9,9 +9,11 @@ public struct Peak: Sendable, Hashable, Codable, Identifiable {
     public var ele: Double?
     public var lat: Double
     public var lon: Double
+    /// Cordillera (Pirineos, Alpes…), si se sabe.
+    public var range: String?
 
-    public init(id: Int64, name: String, nameEs: String? = nil, ele: Double?, lat: Double, lon: Double) {
-        self.id = id; self.name = name; self.nameEs = nameEs; self.ele = ele; self.lat = lat; self.lon = lon
+    public init(id: Int64, name: String, nameEs: String? = nil, ele: Double?, lat: Double, lon: Double, range: String? = nil) {
+        self.id = id; self.name = name; self.nameEs = nameEs; self.ele = ele; self.lat = lat; self.lon = lon; self.range = range
     }
 
     public var displayName: String { nameEs ?? name }

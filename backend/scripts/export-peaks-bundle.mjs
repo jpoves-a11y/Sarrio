@@ -74,7 +74,7 @@ async function main() {
   }
 
   const version = (await db.execute("select value from peak_meta where key = 'dataset_version'")).rows[0]?.value ?? Date.now();
-  const rows = (await db.execute("select geohash, id, lat, lon, ele, name, name_es from peaks order by geohash, id")).rows;
+  const rows = (await db.execute("select geohash, id, lat, lon, ele, name, name_es, range from peaks order by geohash, id")).rows;
 
   const lines = [
     "#sarrio-peaks 1",
@@ -84,7 +84,7 @@ async function main() {
   ];
   for (const r of rows) {
     const ele = r.ele == null ? "" : String(Math.round(Number(r.ele)));
-    lines.push([r.geohash, r.id, Number(r.lat).toFixed(5), Number(r.lon).toFixed(5), ele, clean(r.name), clean(r.name_es)].join("\t"));
+    lines.push([r.geohash, r.id, Number(r.lat).toFixed(5), Number(r.lon).toFixed(5), ele, clean(r.name), clean(r.name_es), clean(r.range)].join("\t"));
   }
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, lines.join("\n") + "\n");
