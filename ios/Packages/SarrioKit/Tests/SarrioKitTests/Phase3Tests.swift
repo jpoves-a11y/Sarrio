@@ -179,3 +179,45 @@ private let start = Date(timeIntervalSince1970: 1_784_000_000)
         #expect(a.hasSuffix("-4"))
     }
 }
+
+@Suite struct PeakBundleTests {
+    private let sample = Data("""
+    #sarrio-peaks 1
+    #version 1784000000000
+    #cells sp86 sp84 sp87
+    sp84q\t2\t42.6747\t0.0347\t3355\tMonte Perdido\t
+    sp86w\t1001\t42.6311\t0.6569\t3404\tAneto\t
+    sp86x\t1002\t42.6467\t0.6378\t\tMaladeta\tMaladeta
+    """.utf8)
+
+    @Test func readsPeaksByCell() throws {
+        let bundle = try PeakBundle(data: sample)
+        #expect(bundle.version == 1_784_000_000_000)
+        #expect(bundle.count == 3)
+        #expect(bundle.peaks(in: "sp86").map(\.name) == ["Aneto", "Maladeta"])
+        #expect(bundle.peaks(in: "sp86")[1].ele == nil)
+        #expect(bundle.peaks(in: "sp86")[1].nameEs == "Maladeta")
+        #expect(bundle.peaks(in: "sp84").first?.ele == 3355)
+    }
+
+    @Test func knowsWhichCellsItCovers() throws {
+        let bundle = try PeakBundle(data: sample)
+        #expect(bundle.covers("sp87"))           // cubierta aunque no tenga picos
+        #expect(bundle.peaks(in: "sp87").isEmpty)
+        #expect(!bundle.covers("eytd"))           // fuera: hay que preguntar al servidor
+    }
+
+    @Test func detectsSummitsWithBundledPeaks() throws {
+        let bundle = try PeakBundle(data: sample)
+        let track = (0..<20).map { i in
+            TrackPoint(latitude: 42.62 + Double(i) * 0.0006, longitude: 0.6569, elevation: 3300 + Double(i) * 6)
+        }
+        let summits = PeakDetector().detect(track: track, candidates: bundle.peaks(in: "sp86"))
+        #expect(summits.map(\.peak.name) == ["Aneto"])
+    }
+
+    @Test func rejectsMalformedFiles() {
+        #expect(throws: PeakBundle.BundleError.badHeader) { try PeakBundle(data: Data("sp86w\t1\t1\t1\t\tX\t".utf8)) }
+        #expect(throws: PeakBundle.BundleError.badRow(2)) { try PeakBundle(data: Data("#sarrio-peaks 1\nbroken".utf8)) }
+    }
+}

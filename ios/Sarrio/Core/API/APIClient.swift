@@ -93,6 +93,12 @@ struct APIClient: Sendable {
         try await get("v1/peaks/pack/\(cell)")
     }
 
+    /// Versión del conjunto de picos del servidor (ms), o nil si no la tiene.
+    func peaksVersion() async throws -> Int64? {
+        struct Body: Decodable { var version: Int64? }
+        return try await get("v1/peaks/version", as: Body.self).version
+    }
+
     struct AppleSignInRequest: Encodable {
         var identityToken: String
         var nonce: String

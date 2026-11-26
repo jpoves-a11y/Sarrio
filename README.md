@@ -83,7 +83,7 @@ Estado actual de producción:
 node tools/peaks/fetch-peaks.mjs pirineos > peaks-pirineos.sql
 turso db shell sarrio < peaks-pirineos.sql
 ```
-Las regiones están en `tools/peaks/regions.json`: Pirineos, Sierra Nevada, Picos de Europa, Sistema Central, España y Alpes.
+Las regiones están en `tools/peaks/regions.json`: Pirineos, Sierra Nevada, Picos de Europa, Sistema Central y Alpes (en 6 teselas). Se importan con el workflow «Importar picos» y viajan dentro de la app: el workflow de TestFlight genera `peaks.tsv` desde Turso en cada build.
 
 ### 4. App iOS
 ```bash

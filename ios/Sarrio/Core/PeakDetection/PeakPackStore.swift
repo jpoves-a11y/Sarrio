@@ -1,13 +1,22 @@
 import Foundation
 import SarrioKit
 
-/// Descarga y cachea en disco los paquetes de picos por celda geohash de 4 caracteres,
-/// para detectar cumbres en el propio iPhone (también sin conexión).
+/// Picos para detectar cumbres en el iPhone, por celda geohash de 4 caracteres.
+///
+/// 1. **La copia de la app** (`peaks.tsv`, ver `PeakBundle`): Pirineos, Sierra Nevada, Picos de
+///    Europa, Sistema Central y Alpes, al instante y sin conexión.
+/// 2. **El servidor** (`GET /v1/peaks/pack/:cell`), con caché en disco de 30 días: para las zonas
+///    que la copia no cubre, o todas si el servidor tiene un conjunto más nuevo que la copia.
+///    Si la red falla en una zona cubierta, se usa la copia igualmente.
 actor PeakPackStore {
     private let api: APIClient
     private let directory: URL
     private var memory: [String: [Peak]] = [:]
     private let maxAge: TimeInterval = 30 * 24 * 3600
+    private var bundle: PeakBundle?
+    private var bundleLoaded = false
+    /// nil: aún no se ha preguntado; se pregunta una vez por arranque.
+    private var serverIsNewer: Bool?
 
     init(api: APIClient) {
         self.api = api
@@ -33,18 +42,61 @@ actor PeakPackStore {
 
     func peaks(in cell: String) async throws -> [Peak] {
         if let cached = memory[cell] { return cached }
+        let bundled = loadBundle()
+        if let bundled, bundled.covers(cell) {
+            let serverNewer = await isServerNewer(than: bundled)
+            if !serverNewer {
+                let peaks = bundled.peaks(in: cell)
+                memory[cell] = peaks
+                return peaks
+            }
+        }
+        do {
+            let peaks = try await serverPeaks(in: cell)
+            memory[cell] = peaks
+            return peaks
+        } catch {
+            // Sin red: si la copia cubre la zona, mejor sus picos que ninguno
+            guard let bundled, bundled.covers(cell) else { throw error }
+            return bundled.peaks(in: cell)
+        }
+    }
+
+    // MARK: - Copia de la app
+
+    private func loadBundle() -> PeakBundle? {
+        if bundleLoaded { return bundle }
+        bundleLoaded = true
+        guard let url = Bundle.main.url(forResource: "peaks", withExtension: "tsv"),
+              let data = try? Data(contentsOf: url, options: .mappedIfSafe) else { return nil }
+        bundle = try? PeakBundle(data: data)
+        return bundle
+    }
+
+    /// ¿Tiene el servidor un conjunto de picos más nuevo que la copia? Si no se puede saber, no.
+    private func isServerNewer(than bundled: PeakBundle) async -> Bool {
+        if let serverIsNewer { return serverIsNewer }
+        var newer = false
+        if let local = bundled.version, let remote = try? await api.peaksVersion() {
+            newer = remote > local
+        }
+        serverIsNewer = newer
+        return newer
+    }
+
+    // MARK: - Servidor
+
+    private func serverPeaks(in cell: String) async throws -> [Peak] {
         let file = directory.appending(path: "\(cell).json")
         if let attrs = try? FileManager.default.attributesOfItem(atPath: file.path),
            let modified = attrs[.modificationDate] as? Date,
            Date().timeIntervalSince(modified) < maxAge,
            let data = try? Data(contentsOf: file),
            let pack = try? JSONDecoder().decode(PeakPack.self, from: data) {
-            memory[cell] = pack.peaks
             return pack.peaks
         }
         let pack = try await api.peakPack(cell: cell)
         if let data = try? JSONEncoder().encode(pack) { try? data.write(to: file, options: .atomic) }
-        memory[cell] = pack.peaks
         return pack.peaks
     }
 }

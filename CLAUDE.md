@@ -7,13 +7,13 @@ El plan completo por fases está en el README.
 - **Sin Strava.** Su API Agreement prohíbe mostrar los datos de un usuario a otros. Fuentes: Apple Health, importar GPX/FIT, Polar AccessLink, y Garmin/Suunto/COROS cuando aprueben el acceso.
 - **Todo en planes gratuitos:**
   - Turso (libSQL) como base de datos;
-  - Cloudflare Workers (Hono + Drizzle) como API, desplegada con Workers Builds en cada push (raíz `backend`);
+  - Cloudflare Workers (Hono + Drizzle) como API (raíz `backend`). Workers Builds no está desplegando: tras cambiar el backend, despliega con `npx wrangler deploy` y aplica las migraciones en Turso;
   - sin R2: las rutas se guardarán comprimidas en Turso;
   - Mapbox para mapas.
 - **La app nunca accede a Turso directamente:** todo pasa por la API, que aplica la visibilidad (`backend/src/services/visibility.ts`) y las zonas de privacidad (`applyPrivacyZones`).
 - **Rutas:** se guardan en `activity_tracks` como gzip de JSON (`gz-json-v1`). La app las simplifica antes de subirlas (`ActivityUpload`) y el servidor comprueba cada cumbre contra la ruta.
 - **Replay 3D:** el motor (`SarrioKit/Replay`: plan, cámara, tiempos, sol) sigue los tiempos y la cámara del replay de KM2 (repo `runna-io`), sin la bandera. Se reproduce en Mapbox (`Features/Replay`) con un CADisplayLink, precargando antes todas las vistas; el tiempo atmosférico sale de WeatherKit y se pinta sobre el cristal (`WetGlassView`).
-- **La detección de cumbres se hace en el iPhone** (`SarrioKit.PeakDetector`), con paquetes de picos por celda geohash de 4 caracteres (`GET /v1/peaks/pack/:cell`).
+- **La detección de cumbres se hace en el iPhone** (`SarrioKit.PeakDetector`). Los picos viajan dentro de la app (`peaks.tsv`, `SarrioKit.PeakBundle`), generados en cada build de TestFlight desde Turso (`backend/scripts/export-peaks-bundle.mjs`). Solo se piden al servidor (`GET /v1/peaks/pack/:cell`) las celdas que la copia no cubre, o todas si `GET /v1/peaks/version` es más nuevo que la copia. Si importas regiones nuevas, añádelas a `BUNDLED_REGIONS` en ese script.
 - **Geohash:** la implementación de Swift (`Geo.geohash`), la del backend (`lib/geo.ts`) y la del script de picos tienen que dar el mismo resultado. Los tests fijan el valor de referencia `sp86w` para el Aneto.
 
 ## Comandos

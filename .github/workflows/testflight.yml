@@ -41,6 +41,15 @@ jobs:
       - name: Instalar XcodeGen
         run: brew install xcodegen
 
+      - name: Picos dentro de la app (peaks.tsv desde Turso)
+        working-directory: backend
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: |
+          npm ci --no-audit --no-fund
+          node scripts/export-peaks-bundle.mjs ../ios/Sarrio/Resources/peaks.tsv
+
       - name: Configuración y proyecto
         working-directory: ios
         env:
