@@ -38,15 +38,19 @@ final class LibraryStore {
 
     private let api: APIClient
     let sync: ActivitySync
-    private var observer: NSObjectProtocol?
+    private var changes: Task<Void, Never>?
 
     init(api: APIClient, sync: ActivitySync) {
         self.api = api
         self.sync = sync
         self.healthConnected = sync.healthKit.isConnected
-        observer = NotificationCenter.default.addObserver(forName: .sarrioLibraryChanged, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { Task { await self?.load() } }
+        // Las subidas en segundo plano (Apple Health, Share Extension) avisan para recargar.
+        changes = Task { [weak self] in
+            for await _ in NotificationCenter.default.notifications(named: .sarrioLibraryChanged) {
+                await self?.load()
+            }
         }
+    }
     }
 
     private(set) var healthConnected: Bool
