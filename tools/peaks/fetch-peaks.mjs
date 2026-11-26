@@ -60,13 +60,20 @@ export function toSql(elements, range) {
 
 async function fetchRegion([south, west, north, east]) {
   const query = `[out:json][timeout:180];node["natural"="peak"]["name"](${south},${west},${north},${east});out body;`;
-  const res = await fetch(OVERPASS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "sarrio-peaks-importer/0.1" },
-    body: "data=" + encodeURIComponent(query),
-  });
-  if (!res.ok) throw new Error(`Overpass ${res.status}: ${await res.text()}`);
-  return (await res.json()).elements;
+  // Overpass es público y a veces está saturado (429/502/503/504): reintenta con espera exponencial.
+  const retryable = new Set([429, 502, 503, 504]);
+  for (let attempt = 0, wait = 15; ; attempt++, wait *= 2) {
+    const res = await fetch(OVERPASS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "sarrio-peaks-importer/0.1" },
+      body: "data=" + encodeURIComponent(query),
+    });
+    if (res.ok) return (await res.json()).elements;
+    const text = await res.text();
+    if (!retryable.has(res.status) || attempt >= 5) throw new Error(`Overpass ${res.status}: ${text}`);
+    console.error(`Overpass ${res.status}; reintento en ${wait} s…`);
+    await new Promise((r) => setTimeout(r, wait * 1000));
+  }
 }
 
 async function main() {
