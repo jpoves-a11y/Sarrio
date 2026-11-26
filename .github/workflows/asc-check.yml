@@ -1,0 +1,68 @@
+name: Comprobar clave de App Store Connect
+
+# Diagnóstico de los secretos de TestFlight: comprueba su formato y prueba la clave contra la API de
+# Apple. Nunca imprime los valores. Se lanza a mano: Actions → Comprobar clave de App Store Connect.
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Diagnóstico
+        run: |
+          node --input-type=module <<'EOF'
+          import crypto from "node:crypto";
+          const { ASC_KEY_ID: kid = "", ASC_ISSUER_ID: iss = "", ASC_KEY_P8: p8 = "", APPLE_TEAM_ID: team = "", BUNDLE_ID: bundle = "" } = process.env;
+          const ok = (b) => (b ? "✅" : "❌");
+          const out = [];
+          out.push(`${ok(/^[A-Z0-9]{10}$/.test(kid.trim()))} ASC_KEY_ID: ${kid.trim().length} caracteres (deben ser 10, mayúsculas y números)${kid !== kid.trim() ? " · tiene espacios o saltos de línea alrededor" : ""}`);
+          out.push(`${ok(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(iss.trim()))} ASC_ISSUER_ID: ${/^[0-9a-f-]{36}$/i.test(iss.trim()) ? "tiene forma de UUID" : `no tiene forma de UUID (${iss.trim().length} caracteres)`}`);
+          const hasBegin = p8.includes("-----BEGIN PRIVATE KEY-----"), hasEnd = p8.includes("-----END PRIVATE KEY-----");
+          out.push(`${ok(hasBegin && hasEnd)} ASC_KEY_P8: cabecera BEGIN ${hasBegin ? "sí" : "NO"}, pie END ${hasEnd ? "sí" : "NO"}, ${p8.split("\n").length} líneas`);
+          out.push(`${ok(/^[A-Z0-9]{10}$/.test(team.trim()))} APPLE_TEAM_ID: ${team.trim().length} caracteres (deben ser 10)`);
+          out.push(`ℹ️ BUNDLE_ID termina en «${bundle.trim().split(".").pop()}»`);
+
+          let key;
+          try {
+            key = crypto.createPrivateKey(p8.trim());
+            out.push(`✅ La clave privada se puede leer (${key.asymmetricKeyType}, ${key.asymmetricKeyDetails?.namedCurve ?? "?"})`);
+          } catch (e) {
+            out.push(`❌ La clave privada no se puede leer: ${e.message}`);
+          }
+
+          if (key) {
+            const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+            const now = Math.floor(Date.now() / 1000);
+            const unsigned = `${b64({ alg: "ES256", kid: kid.trim(), typ: "JWT" })}.${b64({ iss: iss.trim(), iat: now, exp: now + 600, aud: "appstoreconnect-v1" })}`;
+            const sig = crypto.sign("sha256", Buffer.from(unsigned), { key, dsaEncoding: "ieee-p1363" }).toString("base64url");
+            const token = `${unsigned}.${sig}`;
+            const probe = async (path, what) => {
+              const res = await fetch(`https://api.appstoreconnect.apple.com${path}`, { headers: { Authorization: `Bearer ${token}` } });
+              const body = await res.json().catch(() => ({}));
+              const detail = body.errors?.[0]?.detail ?? "";
+              out.push(`${ok(res.ok)} ${what}: HTTP ${res.status}${detail ? ` · ${detail}` : ""}`);
+              return res.status;
+            };
+            const apps = await probe("/v1/apps?limit=1", "Autenticación (listar apps)");
+            if (apps === 200) {
+              await probe("/v1/certificates?limit=1", "Permiso para certificados (hace falta rol Admin)");
+              await probe("/v1/profiles?limit=1", "Permiso para perfiles");
+              await probe(`/v1/bundleIds?filter[identifier]=${encodeURIComponent(bundle.trim())}`, "App ID registrado");
+            } else if (apps === 401) {
+              out.push("👉 401: Apple no reconoce la clave. Suele ser que el Issuer ID no es el de «Claves de equipo», que Key ID y .p8 no son de la misma clave, o que la clave está revocada.");
+            }
+          }
+          const text = out.join("\n");
+          console.log(text);
+          await import("node:fs").then((fs) => fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, "```\n" + text + "\n```\n"));
+          EOF
