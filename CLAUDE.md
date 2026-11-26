@@ -14,6 +14,11 @@ El plan completo por fases está en el README.
 - **Rutas:** se guardan en `activity_tracks` como gzip de JSON (`gz-json-v1`). La app las simplifica antes de subirlas (`ActivityUpload`) y el servidor comprueba cada cumbre contra la ruta.
 - **Replay 3D:** el motor (`SarrioKit/Replay`: plan, cámara, tiempos, sol) sigue los tiempos y la cámara del replay de KM2 (repo `runna-io`), sin la bandera. Se reproduce en Mapbox (`Features/Replay`) con un CADisplayLink, precargando antes todas las vistas; el tiempo atmosférico sale de WeatherKit y se pinta sobre el cristal (`WetGlassView`).
 - **La detección de cumbres se hace en el iPhone** (`SarrioKit.PeakDetector`). Los picos viajan dentro de la app (`peaks.tsv`, `SarrioKit.PeakBundle`), generados en cada build de TestFlight desde Turso (`backend/scripts/export-peaks-bundle.mjs`). Solo se piden al servidor (`GET /v1/peaks/pack/:cell`) las celdas que la copia no cubre, o todas si `GET /v1/peaks/version` es más nuevo que la copia. Si importas regiones nuevas, añádelas a `BUNDLED_REGIONS` en ese script.
+- **Emblemas y retos:**
+  - Las reglas se evalúan en el servidor (`backend/src/services/achievements.ts`), en hora de Madrid. Las subidas devuelven `newBadges` y la app los celebra.
+  - El catálogo está en `services/catalog.ts` y su siembra en la migración 0003.
+  - Los dibujos salen de `tools/badges/badges.mjs`. Tras cambiarlos: `node tools/badges/build-assets.mjs` (genera `Badges.xcassets`).
+  - Las listas de cimas oficiales salen de `backend/scripts/seed-challenges.mjs`: ejecútalo tras importar picos.
 - **Geohash:** la implementación de Swift (`Geo.geohash`), la del backend (`lib/geo.ts`) y la del script de picos tienen que dar el mismo resultado. Los tests fijan el valor de referencia `sp86w` para el Aneto.
 
 ## Comandos

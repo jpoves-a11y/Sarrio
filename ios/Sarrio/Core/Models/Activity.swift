@@ -83,6 +83,8 @@ struct ActivityWithAscents: Decodable, Sendable {
     var ascents: [Ascent]
     var created: Bool?
     var rejectedPeakIds: [Int64]?
+    /// Emblemas que ha dado esta subida (para la celebración).
+    var newBadges: [NewBadge]?
 }
 
 /// `GET /v1/activities/:id`: incluye la ruta en segmentos `[[lat, lon, ele?, t?]]`.

@@ -23,6 +23,7 @@ struct SarrioApp: App {
             RootView()
                 .environment(services.session)
                 .environment(services.library)
+                .environment(services.achievements)
                 .environment(\.apiClient, services.api)
                 .environment(\.peakPackStore, services.peakPackStore)
                 .tint(Theme.Colors.accent)

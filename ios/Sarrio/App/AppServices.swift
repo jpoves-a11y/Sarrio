@@ -13,6 +13,7 @@ final class AppServices {
     let sync: ActivitySync
     let session: SessionStore
     let library: LibraryStore
+    let achievements: AchievementsStore
 
     private init() {
         MapPrefetcher.configureCache()
@@ -26,6 +27,7 @@ final class AppServices {
         self.sync = sync
         self.session = SessionStore(api: api)
         self.library = LibraryStore(api: api, sync: sync)
+        self.achievements = AchievementsStore(api: api)
         // Al desbloquear el iPhone, la sincronización con Salud que quedó pendiente
         let library = self.library
         unlockTask = Task {

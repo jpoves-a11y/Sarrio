@@ -19,7 +19,10 @@ struct RootView: View {
 }
 
 struct MainTabView: View {
+    @Environment(AchievementsStore.self) private var achievements
+
     var body: some View {
+        @Bindable var achievements = achievements
         TabView {
             NavigationStack { LibraryView() }
                 .tabItem { Label("Cumbres", systemImage: "mountain.2.fill") }
@@ -31,6 +34,10 @@ struct MainTabView: View {
                 .tabItem { Label("Retos", systemImage: "flag.checkered") }
             NavigationStack { ProfileView() }
                 .tabItem { Label("Perfil", systemImage: "person.crop.circle") }
+        }
+        // Emblemas nuevos de cualquier subida (importación, Apple Health, Polar): uno detrás de otro
+        .sheet(item: $achievements.celebration, onDismiss: { achievements.next() }) { badge in
+            BadgeCelebrationView(badge: badge)
         }
     }
 }

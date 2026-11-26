@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @Environment(SessionStore.self) private var session
     @Environment(LibraryStore.self) private var library
+    @Environment(AchievementsStore.self) private var achievements
     @State private var editing = false
 
     var body: some View {
@@ -11,14 +12,14 @@ struct ProfileView: View {
                 if let me = session.me {
                     header(me)
                     Card(elevation: .medium) {
-                        // Emblemas: fase 5.
                         StatRow(stats: [
                             ("Cumbres", "\(library.library?.summary.uniquePeaks ?? 0)", nil),
                             ("Desnivel", library.totalElevationGain.groupedInteger, "m"),
-                            ("Emblemas", "0", nil),
+                            ("Emblemas", "\(achievements.catalog?.earned ?? 0)", nil),
                         ])
                     }
                 }
+                badgesStrip
                 activitiesSection
                 Card(padding: 0) {
                     VStack(spacing: 0) {
@@ -35,11 +36,46 @@ struct ProfileView: View {
         .background(Theme.Colors.page)
         .navigationTitle("Perfil")
         .task { if library.library == nil { await library.load() } }
+        .task { await achievements.loadBadges() }
         .toolbar {
             Button("Editar") { editing = true }
         }
         .sheet(isPresented: $editing) {
             if let me = session.me { NavigationStack { EditProfileView(me: me) } }
+        }
+    }
+
+    /// Los tres últimos emblemas, en metal, con acceso a todos.
+    @ViewBuilder private var badgesStrip: some View {
+        let recent = Array(achievements.earned.prefix(3))
+        if !recent.isEmpty {
+            NavigationLink { BadgesView() } label: {
+                HStack(spacing: Theme.Spacing.m) {
+                    HStack(spacing: -14) {
+                        ForEach(Array(recent.enumerated()), id: \.element.id) { index, badge in
+                            BadgeMedal(icon: badge.icon, earned: true, size: 54)
+                                .elevation(.medium)
+                                .zIndex(Double(recent.count - index))
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(recent[0].name)
+                            .font(.sarrio(16, .semibold))
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("Último emblema")
+                            .font(.sarrio(13))
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Theme.Colors.textSecondary.opacity(0.6))
+                }
+                .padding(.vertical, Theme.Spacing.s)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.pressableCard)
         }
     }
 

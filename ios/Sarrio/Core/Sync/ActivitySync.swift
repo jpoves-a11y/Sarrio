@@ -4,6 +4,8 @@ import SarrioKit
 extension Notification.Name {
     /// Se han subido actividades nuevas: la biblioteca debe recargarse.
     static let sarrioLibraryChanged = Notification.Name("sarrio.libraryChanged")
+    /// Una subida ha dado emblemas nuevos (`object`: `[NewBadge]`).
+    static let sarrioBadgesEarned = Notification.Name("sarrio.badgesEarned")
 }
 
 /// Convierte archivos y entrenos de Apple Health en actividades subidas a la API,
@@ -241,6 +243,9 @@ actor ActivitySync {
             elevationGain: elevationGain
         )
         let response = try await api.uploadActivity(body)
+        if let badges = response.newBadges, !badges.isEmpty {
+            await MainActor.run { NotificationCenter.default.post(name: .sarrioBadgesEarned, object: badges) }
+        }
         return Outcome(activity: response.activity, ascents: response.ascents, isNew: response.created ?? true)
     }
 

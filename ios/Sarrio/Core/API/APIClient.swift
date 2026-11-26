@@ -47,7 +47,7 @@ struct APIClient: Sendable {
         try await send("GET", path, body: Optional<Empty>.none)
     }
 
-    func post<T: Decodable>(_ path: String, body: some Encodable) async throws -> T {
+    func post<T: Decodable>(_ path: String, body: some Encodable, as type: T.Type = T.self) async throws -> T {
         try await send("POST", path, body: body)
     }
 
@@ -192,4 +192,29 @@ struct APIClient: Sendable {
     func disconnectPolar() async throws { try await delete("v1/providers/polar") }
 
     func deleteAscent(id: String) async throws { try await delete("v1/ascents/\(id)") }
+
+    // MARK: Emblemas y retos
+
+    func badges() async throws -> BadgeCatalog { try await get("v1/badges") }
+
+    enum ChallengeScope: String { case featured, joined, mine }
+
+    func challenges(_ scope: ChallengeScope) async throws -> [Challenge] {
+        try await get("v1/challenges?scope=\(scope.rawValue)", as: ChallengeList.self).challenges
+    }
+
+    func challenge(id: String) async throws -> ChallengeDetail { try await get("v1/challenges/\(id)") }
+
+    func createChallenge(_ challenge: NewChallenge) async throws -> Challenge {
+        struct Body: Decodable { var challenge: Challenge }
+        return try await post("v1/challenges", body: challenge, as: Body.self).challenge
+    }
+
+    func joinChallenge(id: String) async throws {
+        _ = try await raw("POST", "v1/challenges/\(id)/join", body: Empty())
+    }
+
+    func leaveChallenge(id: String) async throws { try await delete("v1/challenges/\(id)/join") }
+
+    func deleteChallenge(id: String) async throws { try await delete("v1/challenges/\(id)") }
 }

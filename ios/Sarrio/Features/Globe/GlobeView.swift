@@ -178,7 +178,7 @@ struct GlobeView: View {
 }
 
 /// Ficha del pico elegido: flota sobre el mapa mientras la cámara orbita la cima.
-private struct PeakFlyCard: View {
+struct PeakFlyCard: View {
     var selection: GlobeSelection
     var close: () -> Void
 

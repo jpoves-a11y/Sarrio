@@ -19,6 +19,8 @@ struct GlobeSelection: Equatable {
 
 struct Globe3DMap: UIViewRepresentable {
     var groups: [PeakGroup]
+    /// Cimas aún por subir (p. ej. las que faltan de un reto de lista): banderillas grises.
+    var pending: [PeakRef] = []
     /// Pico elegido (lo pone el mapa al tocar, o el buscador, y lo puede quitar la vista).
     @Binding var selected: GlobeSelection?
     /// Cambia para volver a la vista de todas las cumbres.
@@ -33,13 +35,13 @@ struct Globe3DMap: UIViewRepresentable {
         mapView.ornaments.options.scaleBar.visibility = .hidden
         mapView.ornaments.options.compass.visibility = .adaptive
         context.coordinator.attach(to: mapView)
-        context.coordinator.update(groups: groups, overviewToken: overviewToken)
+        context.coordinator.update(groups: groups, pending: pending, overviewToken: overviewToken)
         return mapView
     }
 
     func updateUIView(_ mapView: MapView, context: Context) {
         context.coordinator.selected = $selected
-        context.coordinator.update(groups: groups, overviewToken: overviewToken)
+        context.coordinator.update(groups: groups, pending: pending, overviewToken: overviewToken)
         context.coordinator.syncSelection(selected)
     }
 
@@ -54,6 +56,7 @@ struct Globe3DMap: UIViewRepresentable {
         private var searchMarker: ViewAnnotation?
         private weak var mapView: MapView?
         private var groups: [PeakGroup] = []
+        private var pending: [PeakRef] = []
         private var drawnKey = ""
         private var overviewToken = -1
         private var styleReady = false
@@ -74,6 +77,9 @@ struct Globe3DMap: UIViewRepresentable {
         private static let peakLabelLayer = "globe-peak-label"
         private static let flagImage = "sarrio-flag"
         private static let groupImage = "sarrio-flag-group"
+        private static let pendingImage = "sarrio-flag-pending"
+        /// Gris de las cimas pendientes (el mismo de los emblemas bloqueados).
+        static let pendingColor = UIColor(red: 0.62, green: 0.63, blue: 0.66, alpha: 1)
 
         init(selected: Binding<GlobeSelection?>) { self.selected = selected }
 
@@ -115,8 +121,9 @@ struct Globe3DMap: UIViewRepresentable {
             }
         }
 
-        func update(groups: [PeakGroup], overviewToken: Int) {
+        func update(groups: [PeakGroup], pending: [PeakRef] = [], overviewToken: Int) {
             self.groups = groups
+            self.pending = pending
             draw()
             if overviewToken != self.overviewToken {
                 let first = self.overviewToken == -1
@@ -211,6 +218,12 @@ struct Globe3DMap: UIViewRepresentable {
                 try? map.addImage(SummitFlag.image(.single, color: accent, t: t, phase: Double(k) * 2.1), id: "\(Self.flagImage)-\(k)")
             }
             try? map.addImage(SummitFlag.image(.group, color: accent, t: t), id: Self.groupImage)
+            if !pending.isEmpty {
+                for k in 0..<Self.phases {
+                    try? map.addImage(SummitFlag.image(.single, color: Self.pendingColor, t: t, phase: Double(k) * 2.1),
+                                      id: "\(Self.pendingImage)-\(k)")
+                }
+            }
         }
 
         /// Unas 12 veces por segundo: suficiente para que ondeen sin cargar el mapa.
@@ -237,10 +250,21 @@ struct Globe3DMap: UIViewRepresentable {
 
         private func draw() {
             guard styleReady, let map = mapView?.mapboxMap else { return }
-            let key = groups.map { "\($0.id):\($0.ascents.count)" }.joined(separator: ",")
+            let key = groups.map { "\($0.id):\($0.ascents.count)" }.joined(separator: ",") + "|" + pending.map { "\($0.id)" }.joined(separator: ",")
             guard key != drawnKey else { return }
             drawnKey = key
-            let features = groups.map { group -> Feature in
+            if !pending.isEmpty { renderFlagImages(at: CACurrentMediaTime() - waveStart) }
+            let pendingFeatures = pending.map { peak -> Feature in
+                var feature = Feature(geometry: .point(Point(peak.coordinate)))
+                let ele = peak.ele.map { " · \(Int($0.rounded()).formatted()) m" } ?? ""
+                feature.properties = [
+                    "peakId": .number(Double(peak.id)),
+                    "flagImage": .string("\(Self.pendingImage)-\(Int(peak.id % Int64(Self.phases)))"),
+                    "label": .string(peak.displayName + ele),
+                ]
+                return feature
+            }
+            let features = pendingFeatures + groups.map { group -> Feature in
                 var feature = Feature(geometry: .point(Point(group.peak.coordinate)))
                 let ele = group.peak.ele.map { " · \(Int($0.rounded()).formatted()) m" } ?? ""
                 feature.properties = [
@@ -259,7 +283,7 @@ struct Globe3DMap: UIViewRepresentable {
         private func flyToOverview(duration: TimeInterval) {
             guard let mapView else { return }
             stopSpin()
-            let coordinates = groups.map(\.peak.coordinate)
+            let coordinates = groups.map(\.peak.coordinate) + pending.map(\.coordinate)
             let target: CameraOptions
             if coordinates.count >= 2 {
                 let padding = UIEdgeInsets(top: 120, left: 60, bottom: 220, right: 60)
@@ -386,6 +410,12 @@ struct Globe3DMap: UIViewRepresentable {
                        let group = self.groups.first(where: { $0.id == Int64(id) }) {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         self.selected.wrappedValue = GlobeSelection(peak: group.peak, group: group)
+                        return
+                    }
+                    if let value = feature.properties?["peakId"] ?? nil, case let .number(id) = value,
+                       let peak = self.pending.first(where: { $0.id == Int64(id) }) {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        self.selected.wrappedValue = GlobeSelection(peak: peak, group: nil)
                         return
                     }
                     // Burbuja: acercarse hasta que se separe, inclinando la cámara
