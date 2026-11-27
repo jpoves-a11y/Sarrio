@@ -208,6 +208,8 @@ final class SummitFlagView: UIView {
     private var plant: Double = 1
     private var plantStart: CFTimeInterval?
     private var impacted = false
+    /// En el vídeo el tiempo no es el del reloj: lo avanza `advance(dt:)`, fotograma a fotograma.
+    private var manualTime: Double?
     /// Dónde está el pie del mástil dentro de la vista (para anclarla al punto).
     let footX: CGFloat
     private let fixedSize: CGSize
@@ -265,7 +267,23 @@ final class SummitFlagView: UIView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    private var time: Double { CACurrentMediaTime() - start }
+    private var now: Double { manualTime ?? CACurrentMediaTime() }
+    private var time: Double { now - start }
+
+    /// Pasa a moverse solo con `advance(dt:)` (el vídeo), sin el refresco de pantalla.
+    func useManualClock() {
+        manualTime = 0
+        start = 0
+        link?.invalidate()
+        link = nil
+    }
+
+    /// Avanza `dt` segundos del reloj del vídeo y redibuja.
+    func advance(dt: Double) {
+        guard manualTime != nil else { return }
+        manualTime! += max(0, dt)
+        tick()
+    }
 
     /// Escondida arriba, a la espera de `plant()`.
     func setUnplanted() {
@@ -278,7 +296,7 @@ final class SummitFlagView: UIView {
         plant = 0
         impacted = false
         applyPose()
-        plantStart = CACurrentMediaTime() + delay
+        plantStart = now + delay
     }
 
     private func startLink() {
@@ -290,17 +308,17 @@ final class SummitFlagView: UIView {
 
     override func willMove(toWindow newWindow: UIWindow?) {
         super.willMove(toWindow: newWindow)
-        if newWindow == nil { link?.invalidate(); link = nil } else if link == nil { startLink() }
+        if newWindow == nil { link?.invalidate(); link = nil } else if link == nil, manualTime == nil { startLink() }
     }
 
     @objc private func tick() {
         if let begin = plantStart {
-            let k = (CACurrentMediaTime() - begin) / 1.1
+            let k = (now - begin) / 1.1
             if k >= 0 {
                 plant = min(1, k)
                 if plant >= 0.55 && !impacted {
                     impacted = true
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    if manualTime == nil { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
                 }
                 if plant >= 1 { plantStart = nil }
                 applyPose()

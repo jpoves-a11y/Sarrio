@@ -35,6 +35,8 @@ targets:
       - package: MapboxMaps
       - target: SarrioShare
         embed: true
+      - target: SarrioLive
+        embed: true
     entitlements:
       path: Sarrio/Sarrio.entitlements
       properties:
@@ -79,6 +81,10 @@ targets:
         # Apple la exige con el permiso de HealthKit aunque Sarrio solo lee (nunca escribe en Salud)
         NSHealthUpdateUsageDescription: >-
           Sarrio no escribe en Salud: solo lee tus entrenamientos para detectar las cumbres que has subido.
+        # El vídeo del replay: progreso en la pantalla de bloqueo y la isla mientras se prepara
+        NSSupportsLiveActivities: true
+        NSPhotoLibraryAddUsageDescription: >-
+          Sarrio guarda en tu fototeca los vídeos de tus rutas que decidas guardar.
         LSSupportsOpeningDocumentsInPlace: false
         CFBundleDocumentTypes:
           - CFBundleTypeName: GPS track
@@ -143,6 +149,28 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(SARRIO_BUNDLE_ID).share
         PROVISIONING_PROFILE_SPECIFIER: $(SARRIO_SHARE_PROFILE)
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+  SarrioLive:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: SarrioLive
+      - path: Shared
+    info:
+      path: SarrioLive/Info.plist
+      properties:
+        CFBundleDisplayName: Sarrio
+        UIAppFonts: [Geist-Regular.ttf, Geist-Medium.ttf, Geist-SemiBold.ttf, Geist-Bold.ttf]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(SARRIO_BUNDLE_ID).live
+        PROVISIONING_PROFILE_SPECIFIER: $(SARRIO_LIVE_PROFILE)
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES

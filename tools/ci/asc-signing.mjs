@@ -117,14 +117,16 @@ async function prepare(csrPath, outDir) {
   const bundle = BUNDLE_ID.trim();
   const appId = await ensureBundleId(bundle, "Sarrio");
   const shareId = await ensureBundleId(`${bundle}.share`, "Sarrio Share");
+  const liveId = await ensureBundleId(`${bundle}.live`, "Sarrio Live");
   for (const cap of ["HEALTHKIT", "SIGN_IN_WITH_APPLE", "PUSH_NOTIFICATIONS", "APP_GROUPS"]) await ensureCapability(appId, cap);
   await ensureCapability(shareId, "APP_GROUPS");
 
   await deleteCIProfiles();
   const appProfile = await createProfile(`${PROFILE_PREFIX} ${GITHUB_RUN_NUMBER} app`, appId, certId, path.join(outDir, "app.mobileprovision"));
   const shareProfile = await createProfile(`${PROFILE_PREFIX} ${GITHUB_RUN_NUMBER} share`, shareId, certId, path.join(outDir, "share.mobileprovision"));
+  const liveProfile = await createProfile(`${PROFILE_PREFIX} ${GITHUB_RUN_NUMBER} live`, liveId, certId, path.join(outDir, "live.mobileprovision"));
 
-  fs.writeFileSync(path.join(outDir, "signing.env"), `CERT_ID=${certId}\nAPP_PROFILE=${appProfile}\nSHARE_PROFILE=${shareProfile}\n`);
+  fs.writeFileSync(path.join(outDir, "signing.env"), `CERT_ID=${certId}\nAPP_PROFILE=${appProfile}\nSHARE_PROFILE=${shareProfile}\nLIVE_PROFILE=${liveProfile}\n`);
   console.log(`Certificado temporal y perfiles listos: «${appProfile}», «${shareProfile}»`);
 }
 

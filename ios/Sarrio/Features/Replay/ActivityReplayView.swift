@@ -33,6 +33,7 @@ struct ActivityReplayView: View {
     @State private var progress = ReplayProgress()
     @State private var playToken = 0
     @State private var weather = ReplayWeather()
+    @State private var videoJob: ReplayVideoRenderer.Job?
 
     init(activityId: String, segments: [[TrackPoint]], summits: [PeakRef], start: Date? = nil, end: Date? = nil,
          height: CGFloat? = 380, onExpand: (() -> Void)? = nil) {
@@ -58,7 +59,8 @@ struct ActivityReplayView: View {
                 .ignoresSafeArea(edges: height == nil ? .all : [])
                 ReplayLoadingCover(progress: progress)
                     .ignoresSafeArea(edges: height == nil ? .all : [])
-                ReplayChrome(plan: plan, progress: progress, weather: weather, onReplay: { playToken += 1 }, onExpand: onExpand)
+                ReplayChrome(plan: plan, progress: progress, weather: weather, onReplay: { playToken += 1 }, onExpand: onExpand,
+                             onVideo: { videoJob = makeVideoJob(plan) })
             } else {
                 Rectangle().fill(Theme.Colors.separator)
                     .overlay(Text("Esta actividad no tiene ruta").font(.sarrio(15)).foregroundStyle(Theme.Colors.textSecondary))
@@ -71,6 +73,18 @@ struct ActivityReplayView: View {
             weather = await ReplayWeatherLoader.load(activityId: activityId, center: plan.center.coordinate, start: start, end: end ?? start)
         }
         .accessibilityLabel("Animación de la ruta en 3D")
+        .fullScreenCover(item: $videoJob) { job in
+            ReplayVideoScreen(job: job)
+        }
+    }
+
+    private func makeVideoJob(_ plan: ReplayPlan) -> ReplayVideoRenderer.Job {
+        let top = summits.max { ($0.ele ?? 0) < ($1.ele ?? 0) }
+        return ReplayVideoRenderer.Job(
+            plan: plan, summits: summits, start: start, end: end, weather: weather,
+            title: top?.displayName ?? "tu ruta",
+            screenSize: UIScreen.main.bounds.size, screenScale: UIScreen.main.scale
+        )
     }
 }
 
@@ -322,6 +336,7 @@ private struct ReplayChrome: View {
     let weather: ReplayWeather
     var onReplay: () -> Void
     var onExpand: (() -> Void)?
+    var onVideo: (() -> Void)?
 
     var body: some View {
         let distance = plan.length * progress.fraction
@@ -355,6 +370,17 @@ private struct ReplayChrome: View {
                     AppleWeatherMark(onDark: true)
                 }
                 Spacer()
+                if progress.isFinished, let onVideo {
+                    Button(action: onVideo) {
+                        Label("Vídeo", systemImage: "square.and.arrow.up")
+                            .font(.sarrio(14, .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 9)
+                            .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+                            .elevation(.medium)
+                    }
+                    .transition(.scale.combined(with: .opacity))
+                }
                 if progress.isFinished {
                     Button(action: onReplay) {
                         Label("Repetir", systemImage: "arrow.counterclockwise")

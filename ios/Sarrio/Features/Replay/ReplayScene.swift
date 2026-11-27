@@ -29,6 +29,8 @@ final class ReplayScene {
     private let hiker = HikerDotView()
     private var hikerAnnotation: ViewAnnotation?
     private var summitMarkers: [(distance: Double, view: SummitFlagView)] = []
+    /// En el vídeo las banderas se mueven con su reloj (`stepFlags(dt:)`), no con el de la pantalla.
+    var videoClock = false
     private(set) var isReady = false
     private var lightPreset = "day"
     private var drawn: Double = 0
@@ -189,6 +191,7 @@ final class ReplayScene {
             let peak = summitForDistance(index)
             // Escondida arriba: cae y se clava cuando el montañero corona
             let view = SummitFlagView(name: peak.displayName, elevation: peak.ele, color: color, planted: false)
+            if videoClock { view.useManualClock() }
             mapView.viewAnnotations.add(view.annotation(at: CLLocationCoordinate2D(latitude: peak.lat, longitude: peak.lon)))
             summitMarkers.append((distance, view))
         }
@@ -265,6 +268,11 @@ final class ReplayScene {
         hiker.alpha = hikerAlpha
         hikerAnnotation?.annotatedFeature = .geometry(Point(plan.coordinate(at: drawn).coordinate))
         wetGlass.step(dt: dt)
+    }
+
+    /// Vídeo: las banderas avanzan `dt` segundos (caída, golpe y ondear).
+    func stepFlags(dt: Double) {
+        for marker in summitMarkers { marker.view.advance(dt: dt) }
     }
 
     func setHikerAlpha(_ alpha: CGFloat, animated: Bool) {

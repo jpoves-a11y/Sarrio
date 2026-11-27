@@ -95,7 +95,7 @@ jobs:
           # Perfiles donde Xcode los busca
           for dir in "$HOME/Library/MobileDevice/Provisioning Profiles" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
             mkdir -p "$dir"
-            for profile in app share; do
+            for profile in app share live; do
               uuid=$(security cms -D -i "$SIGN/$profile.mobileprovision" | plutil -extract UUID raw -)
               cp "$SIGN/$profile.mobileprovision" "$dir/$uuid.mobileprovision"
             done
@@ -119,6 +119,7 @@ jobs:
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             SARRIO_APP_PROFILE="$APP_PROFILE" \
             SARRIO_SHARE_PROFILE="$SHARE_PROFILE" \
+            SARRIO_LIVE_PROFILE="$LIVE_PROFILE" \
             OTHER_CODE_SIGN_FLAGS="--keychain $RUNNER_TEMP/signing.keychain-db" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             | tee "$RUNNER_TEMP/archive.log" | grep -E "error:|warning: .*Sarrio/|\*\* ARCHIVE" || true
@@ -147,6 +148,7 @@ jobs:
             <dict>
               <key>$BUNDLE_ID</key><string>$APP_PROFILE</string>
               <key>$BUNDLE_ID.share</key><string>$SHARE_PROFILE</string>
+              <key>$BUNDLE_ID.live</key><string>$LIVE_PROFILE</string>
             </dict>
             <key>uploadSymbols</key><true/>
             <key>manageAppVersionAndBuildNumber</key><false/>
