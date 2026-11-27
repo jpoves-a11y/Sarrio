@@ -11,11 +11,13 @@ final class AchievementsStore {
     private(set) var mine: [Challenge] = []
     private(set) var isLoadingChallenges = false
     var errorMessage: String?
-    /// Emblemas recién conseguidos que se celebran uno detrás de otro, en una sola pantalla.
+    /// Lo que se celebra tras una subida (sus cumbres y luego sus emblemas), uno detrás de otro en una
+    /// sola pantalla. La cola se guarda: si la salida llegó con la app cerrada, se celebra al abrirla.
     var isCelebrating = false
-    private(set) var pending: [NewBadge] = []
+    private(set) var pending: [CelebrationItem] = []
     private(set) var index = 0
-    var current: NewBadge? { pending.indices.contains(index) ? pending[index] : nil }
+    var current: CelebrationItem? { pending.indices.contains(index) ? pending[index] : nil }
+    private static let pendingKey = "pendingCelebrations"
 
     private let api: APIClient
     private var observers: [Task<Void, Never>] = []
@@ -23,11 +25,22 @@ final class AchievementsStore {
     init(api: APIClient) {
         self.api = api
         observers.append(Task { [weak self] in
-            for await note in NotificationCenter.default.notifications(named: .sarrioBadgesEarned) {
-                guard let badges = note.object as? [NewBadge] else { continue }
-                self?.enqueue(badges)
+            for await note in NotificationCenter.default.notifications(named: .sarrioOutingCelebrated) {
+                guard let celebration = note.object as? OutingCelebration else { continue }
+                var items: [CelebrationItem] = []
+                if let summits = celebration.summits { items.append(.summits(summits)) }
+                items += celebration.badges.map { .badge($0) }
+                self?.enqueue(items)
             }
         })
+        // Lo que quedó sin ver (llegó en segundo plano o se cerró la app a medias)
+        if let data = UserDefaults.standard.data(forKey: Self.pendingKey),
+           let saved = try? JSONDecoder().decode([CelebrationItem].self, from: data), !saved.isEmpty {
+            pending = saved
+            isCelebrating = true
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.pendingKey)
+        }
         // Cualquier subida cambia el progreso de los retos
         observers.append(Task { [weak self] in
             for await _ in NotificationCenter.default.notifications(named: .sarrioLibraryChanged) {
@@ -97,24 +110,40 @@ final class AchievementsStore {
     // MARK: Celebración
 
     /// Los que llegan durante una celebración se añaden al final: nunca interrumpen al que se está viendo.
-    private func enqueue(_ badges: [NewBadge]) {
-        let new = badges.filter { b in !pending.contains { $0.id == b.id } }
-        guard !new.isEmpty else { return }
+    private func enqueue(_ items: [CelebrationItem]) {
         if !isCelebrating {
             pending = []
             index = 0
         }
+        let new = items.filter { item in !pending.contains { $0.id == item.id } }
+        guard !new.isEmpty else { return }
         pending.append(contentsOf: new)
         isCelebrating = true
-        Task { await loadBadges() }
+        save()
+        if new.contains(where: { if case .badge = $0 { true } else { false } }) {
+            Task { await loadBadges() }
+        }
     }
 
-    /// Pasa al siguiente emblema; tras el último, cierra.
+    /// Pasa al siguiente; tras el último, cierra.
     func advance() {
         if index + 1 < pending.count {
             index += 1
         } else {
             isCelebrating = false
+            pending = []
+            index = 0
+        }
+        save()
+    }
+
+    /// Guarda lo que queda por ver.
+    private func save() {
+        let rest = pending.indices.contains(index) ? Array(pending[index...]) : []
+        if !rest.isEmpty, let data = try? JSONEncoder().encode(rest) {
+            UserDefaults.standard.set(data, forKey: Self.pendingKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: Self.pendingKey)
         }
     }
 }

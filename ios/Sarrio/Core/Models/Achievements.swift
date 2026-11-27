@@ -130,6 +130,42 @@ struct NewBadge: Codable, Hashable, Sendable, Identifiable {
     var icon: String
 }
 
+// MARK: - Celebraciones
+
+/// Las cumbres de una salida recién subida, para celebrarlas antes que sus emblemas.
+struct SummitCelebration: Codable, Hashable, Sendable {
+    struct Point: Codable, Hashable, Sendable { var lat: Double; var lon: Double }
+
+    var activityId: String
+    var title: String
+    var date: Date
+    var ascents: [Ascent]
+    /// La ruta simplificada (≤ 300 puntos), para el mapa 3D.
+    var route: [Point]
+
+    /// La cima más alta primero.
+    var sortedAscents: [Ascent] { ascents.sorted { ($0.peak.ele ?? 0) > ($1.peak.ele ?? 0) } }
+}
+
+/// Lo que celebra una subida: primero sus cumbres (si toca) y luego sus emblemas.
+struct OutingCelebration: Sendable {
+    var summits: SummitCelebration?
+    var badges: [NewBadge]
+}
+
+/// Una pantalla de la secuencia de celebración.
+enum CelebrationItem: Codable, Hashable, Sendable, Identifiable {
+    case summits(SummitCelebration)
+    case badge(NewBadge)
+
+    var id: String {
+        switch self {
+        case .summits(let s): "summits-\(s.activityId)"
+        case .badge(let b): "badge-\(b.id)"
+        }
+    }
+}
+
 // MARK: - Retos
 
 enum ChallengeKind: String, Codable, Sendable, TolerantEnum {

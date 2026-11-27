@@ -4,8 +4,8 @@ import SarrioKit
 extension Notification.Name {
     /// Se han subido actividades nuevas: la biblioteca debe recargarse.
     static let sarrioLibraryChanged = Notification.Name("sarrio.libraryChanged")
-    /// Una subida ha dado emblemas nuevos (`object`: `[NewBadge]`).
-    static let sarrioBadgesEarned = Notification.Name("sarrio.badgesEarned")
+    /// Una subida trae algo que celebrar: sus cumbres y sus emblemas (`object`: `OutingCelebration`).
+    static let sarrioOutingCelebrated = Notification.Name("sarrio.outingCelebrated")
 }
 
 /// Convierte archivos y entrenos de Apple Health en actividades subidas a la API,
@@ -243,8 +243,28 @@ actor ActivitySync {
             elevationGain: elevationGain
         )
         let response = try await api.uploadActivity(body)
-        if let badges = response.newBadges, !badges.isEmpty {
-            await MainActor.run { NotificationCenter.default.post(name: .sarrioBadgesEarned, object: badges) }
+        // Cumbres: siempre al importar un archivo; de Salud o Polar, solo salidas recientes (no todo
+        // el historial en la primera sincronización)
+        let created = response.created ?? true
+        let recent = Date.now.timeIntervalSince(response.activity.startAt) < 7 * 86_400
+        var summits: SummitCelebration?
+        if created, !response.ascents.isEmpty, source == .file || source == .manual || recent {
+            let step = max(1, parsed.points.count / 300)
+            let route = stride(from: 0, to: parsed.points.count, by: step).map {
+                SummitCelebration.Point(lat: parsed.points[$0].latitude, lon: parsed.points[$0].longitude)
+            }
+            summits = SummitCelebration(
+                activityId: response.activity.id,
+                title: response.activity.displayTitle,
+                date: response.activity.startAt,
+                ascents: response.ascents,
+                route: route
+            )
+        }
+        let badges = response.newBadges ?? []
+        if summits != nil || !badges.isEmpty {
+            let celebration = OutingCelebration(summits: summits, badges: badges)
+            await MainActor.run { NotificationCenter.default.post(name: .sarrioOutingCelebrated, object: celebration) }
         }
         return Outcome(activity: response.activity, ascents: response.ascents, isNew: response.created ?? true)
     }

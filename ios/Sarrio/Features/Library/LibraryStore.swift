@@ -91,11 +91,17 @@ final class LibraryStore {
         isImporting = true
         defer { isImporting = false }
         do {
-            lastImport = try await sync.importFile(at: url)
+            let outcome = try await sync.importFile(at: url)
             await load()
+            // Con cumbres nuevas ya salta la celebración; la hoja solo explica cuando no hay ninguna
+            if !Self.celebrated(outcome) { lastImport = outcome }
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private static func celebrated(_ outcome: ActivitySync.Outcome) -> Bool {
+        outcome.isNew && !outcome.ascents.isEmpty
     }
 
     /// Archivos que ha dejado la Share Extension.
@@ -104,7 +110,7 @@ final class LibraryStore {
         isImporting = true
         defer { isImporting = false }
         let result = await sync.processSharedInbox()
-        if result.outcomes.count == 1 { lastImport = result.outcomes[0] }
+        if result.outcomes.count == 1, !Self.celebrated(result.outcomes[0]) { lastImport = result.outcomes[0] }
         if !result.failures.isEmpty { errorMessage = result.failures.joined(separator: "\n") }
         await load()
     }

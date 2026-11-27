@@ -1,20 +1,25 @@
 import SwiftUI
 
-/// Todos los emblemas de una subida, uno detrás de otro en la misma pantalla. Cada uno se ve entero;
-/// tocar durante la animación la completa y tocar ya asentado pasa al siguiente.
+/// Lo que celebra una subida (sus cumbres y luego sus emblemas), uno detrás de otro en la misma
+/// pantalla. Cada uno se ve entero; tocar durante la animación la completa y tocar ya asentado avanza.
 struct BadgeCelebrationSequence: View {
     @Environment(AchievementsStore.self) private var achievements
 
     var body: some View {
         ZStack {
-            if let badge = achievements.current {
-                BadgeCelebrationView(
-                    badge: badge,
-                    position: achievements.pending.count > 1 ? (achievements.index + 1, achievements.pending.count) : nil,
-                    isLast: achievements.index + 1 >= achievements.pending.count,
-                    onNext: { withAnimation(.easeInOut(duration: 0.35)) { achievements.advance() } }
-                )
-                .id(badge.id)
+            if let item = achievements.current {
+                let position = achievements.pending.count > 1 ? (achievements.index + 1, achievements.pending.count) : nil
+                let isLast = achievements.index + 1 >= achievements.pending.count
+                let onNext = { withAnimation(.easeInOut(duration: 0.35)) { achievements.advance() } }
+                Group {
+                    switch item {
+                    case .summits(let summits):
+                        SummitCelebrationView(celebration: summits, position: position, isLast: isLast, onNext: onNext)
+                    case .badge(let badge):
+                        BadgeCelebrationView(badge: badge, position: position, isLast: isLast, onNext: onNext)
+                    }
+                }
+                .id(item.id)
                 .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 1.04)), removal: .opacity))
             }
         }
