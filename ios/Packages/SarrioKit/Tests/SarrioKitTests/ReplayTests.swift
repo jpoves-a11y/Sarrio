@@ -87,6 +87,30 @@ private func zigzagTrack() -> [TrackPoint] {
     }
 }
 
+@Suite struct TopSummitTests {
+    @Test func slowsDownAndStopsAtTheHighestSummit() throws {
+        let track = zigzagTrack()
+        // Dos cumbres: una a 1/4 (más baja) y la más alta a mitad
+        let low = GeoPoint(lat: track[150].latitude, lon: track[150].longitude)
+        let high = GeoPoint(lat: track[300].latitude, lon: track[300].longitude)
+        let timeline = ReplayTimeline(plan: try #require(ReplayPlan(track: track, summits: [low, high])))
+        let top = try #require(timeline.topSummitDistance)
+        #expect(abs(top - timeline.plan.summitDistances[1]) < 1)
+        func timeNear(_ center: Double, _ radius: Double) -> Double {
+            var inside = 0.0
+            let steps = 8000
+            for k in 0..<steps {
+                let d = timeline.distance(atRunTime: timeline.run * Double(k) / Double(steps))
+                if abs(d - center) < radius { inside += timeline.run / Double(steps) }
+            }
+            return inside
+        }
+        // Más tiempo junto a la más alta que junto a la otra, y una parada de verdad en la cima
+        #expect(timeNear(top, 100) > 2 * timeNear(timeline.plan.summitDistances[0], 100))
+        #expect(timeNear(top, 30) > ReplayTimeline.topSummitDwell * 0.7)
+    }
+}
+
 @Suite struct ReplayDirectorTests {
     @Test func cameraGlidesWithoutJumpsAndKeepsTheHikerInFrame() throws {
         let track = zigzagTrack()

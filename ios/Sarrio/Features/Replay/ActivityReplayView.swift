@@ -338,6 +338,7 @@ private struct ReplayChrome: View {
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
                 .environment(\.colorScheme, .dark)
                 Spacer()
+                SarrioWatermark()
                 if let onExpand {
                     roundButton("arrow.up.left.and.arrow.down.right", action: onExpand)
                 }
@@ -467,5 +468,24 @@ struct ElevationProfileView: View {
             context.fill(Path(ellipseIn: CGRect(x: marker.x - 4.5, y: marker.y - 4.5, width: 9, height: 9)), with: .color(.white))
             context.stroke(Path(ellipseIn: CGRect(x: marker.x - 4.5, y: marker.y - 4.5, width: 9, height: 9)), with: .color(Theme.Colors.accent), lineWidth: 2)
         }
+    }
+}
+
+
+/// Marca de agua de Sarrio sobre el replay: el sarrio y la palabra, en claro y con sombra.
+struct SarrioWatermark: View {
+    var height: CGFloat = 22
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image("SarrioMark").resizable().scaledToFit().frame(height: height)
+            Image("Wordmark").resizable().scaledToFit().frame(height: height * 0.62)
+        }
+        .environment(\.colorScheme, .dark)
+        .opacity(0.9)
+        .shadow(color: .black.opacity(0.5), radius: 3, y: 1)
+        .padding(.top, 6)
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
     }
 }

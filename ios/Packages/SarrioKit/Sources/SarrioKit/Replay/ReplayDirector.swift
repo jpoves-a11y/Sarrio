@@ -58,6 +58,26 @@ public struct ReplayTimeline: Sendable {
 
     /// Cuánto más despacio se pasa por una cumbre (en el punto más alto, 3 veces más lento).
     static let summitSlowdown = 2.0
+    /// En la cumbre más alta, más aún (6 veces más lento cerca de ella)…
+    static let topSummitSlowdown = 5.0
+    /// …y una parada en la cima para ver cómo se clava la bandera (segundos).
+    public static let topSummitDwell = 1.8
+
+    /// Metros hasta la cumbre más alta de la actividad (la de mayor altitud en la ruta), si hay cumbres.
+    public var topSummitDistance: Double? { Self.topSummit(of: plan) }
+
+    static func topSummit(of plan: ReplayPlan) -> Double? {
+        plan.summitDistances.max { a, b in elevation(plan, at: a) < elevation(plan, at: b) }
+    }
+
+    private static func elevation(_ plan: ReplayPlan, at distance: Double) -> Double {
+        var low = 0, high = plan.cumulative.count - 1
+        while high - low > 1 {
+            let mid = (low + high) / 2
+            if plan.cumulative[mid] <= distance { low = mid } else { high = mid }
+        }
+        return plan.elevations[low] ?? plan.elevations[high] ?? -.infinity
+    }
 
     /// Pesos acumulados de la distancia (frenada en cumbres), para invertir el avance.
     private let warpDistances: [Double]
@@ -68,6 +88,7 @@ public struct ReplayTimeline: Sendable {
         self.speed = speed
         // Densidad de tiempo: 1 en general, más alrededor de cada cumbre (una campana de ±σ)
         let sigma = max(60, plan.length * 0.012)
+        let top = Self.topSummit(of: plan)
         let samples = 400
         var distances: [Double] = []
         var weights: [Double] = [0]
@@ -78,8 +99,20 @@ public struct ReplayTimeline: Sendable {
             if k > 0 {
                 let mid = (d + distances[k - 1]) / 2
                 let bump = plan.summitDistances.reduce(0) { $0 + exp(-pow(mid - $1, 2) / (2 * sigma * sigma)) }
-                weights.append(weights[k - 1] + (1 + Self.summitSlowdown * min(1, bump)) * (d - distances[k - 1]))
+                var density = 1 + Self.summitSlowdown * min(1, bump)
+                if let top {
+                    density += (Self.topSummitSlowdown - Self.summitSlowdown) * exp(-pow(mid - top, 2) / (2 * sigma * sigma))
+                }
+                weights.append(weights[k - 1] + density * (d - distances[k - 1]))
             }
+        }
+        // La parada en la cima más alta: un tramo de «tiempo» en el que casi no se avanza
+        if let top, let base = weights.last, base > 0 {
+            let run = min(32, max(14, 10 + plan.length / 1000 * 1.6)) * min(2, max(0.4, speed))
+            let f = min(0.25, Self.topSummitDwell / run)
+            let dwell = base * f / (1 - f)
+            let k = min(samples, max(1, Int((top / max(1, plan.length) * Double(samples)).rounded(.up))))
+            for j in k...samples { weights[j] += dwell }
         }
         warpDistances = distances
         warpWeights = weights
