@@ -169,17 +169,23 @@ test("launch: fechas en hora de Madrid, con el cambio de horario", async () => {
   assert.deepEqual(checkKit().errors, []);
 });
 
-test("voice: el guion se lee sin notas de montaje y la petición va bien formada", async () => {
-  const { narration, synthesize } = await import("../voice.mjs");
-  assert.equal(narration("# toma 1\n[globo girando] ¿Cuántos picos?\n\nNosotros tampoco."), "¿Cuántos picos?\nNosotros tampoco.");
+test("voice: guion con ritmo y pausas por frase; las notas no se leen", async () => {
+  const { parseScript, narration, synthesize } = await import("../voice.mjs");
+  const script = "# toma 1\n@1.08 +0.4 Te reto [pause short] a decirlo [globo girando]\n\nNosotros tampoco.";
+  assert.deepEqual(parseScript(script), [
+    { rate: 1.08, after: 0.4, markup: "Te reto [pause short] a decirlo" },
+    { rate: 1, after: 0.25, markup: "Nosotros tampoco." },
+  ]);
+  assert.equal(narration(script), "Te reto a decirlo\nNosotros tampoco.");
   let sent;
   const fetchImpl = async (url, init) => {
     sent = { url, init };
-    return { ok: true, json: async () => ({ audioContent: Buffer.from("mp3").toString("base64") }) };
+    return { ok: true, json: async () => ({ audioContent: Buffer.from("wav").toString("base64") }) };
   };
-  const audio = await synthesize("Hola", { voice: "es-ES-Chirp3-HD-Kore", env: { GOOGLE_TTS_API_KEY: "k" }, fetchImpl });
-  assert.equal(audio.toString(), "mp3");
-  assert.match(sent.url, /text:synthesize$/);
-  assert.equal(JSON.parse(sent.init.body).voice.name, "es-ES-Chirp3-HD-Kore");
+  const audio = await synthesize("Hola [pause] tú", { voice: "es-ES-Chirp3-HD-Kore", rate: 1.1, env: { GOOGLE_TTS_API_KEY: "k" }, fetchImpl });
+  assert.equal(audio.toString(), "wav");
+  const body = JSON.parse(sent.init.body);
+  assert.equal(body.input.markup, "Hola [pause] tú");
+  assert.equal(body.audioConfig.speakingRate, 1.1);
   assert.equal(sent.init.headers["X-Goog-Api-Key"], "k");
 });
