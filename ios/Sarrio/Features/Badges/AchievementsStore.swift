@@ -11,9 +11,11 @@ final class AchievementsStore {
     private(set) var mine: [Challenge] = []
     private(set) var isLoadingChallenges = false
     var errorMessage: String?
-    /// Emblemas recién conseguidos que aún no se han celebrado (uno cada vez).
-    var celebration: NewBadge?
-    private var queue: [NewBadge] = []
+    /// Emblemas recién conseguidos que se celebran uno detrás de otro, en una sola pantalla.
+    var isCelebrating = false
+    private(set) var pending: [NewBadge] = []
+    private(set) var index = 0
+    var current: NewBadge? { pending.indices.contains(index) ? pending[index] : nil }
 
     private let api: APIClient
     private var observers: [Task<Void, Never>] = []
@@ -94,14 +96,25 @@ final class AchievementsStore {
 
     // MARK: Celebración
 
+    /// Los que llegan durante una celebración se añaden al final: nunca interrumpen al que se está viendo.
     private func enqueue(_ badges: [NewBadge]) {
-        queue.append(contentsOf: badges.filter { b in !queue.contains(b) && celebration != b })
-        if celebration == nil { next() }
+        let new = badges.filter { b in !pending.contains { $0.id == b.id } }
+        guard !new.isEmpty else { return }
+        if !isCelebrating {
+            pending = []
+            index = 0
+        }
+        pending.append(contentsOf: new)
+        isCelebrating = true
         Task { await loadBadges() }
     }
 
-    /// Pasa al siguiente emblema de la cola (o cierra).
-    func next() {
-        celebration = queue.isEmpty ? nil : queue.removeFirst()
+    /// Pasa al siguiente emblema; tras el último, cierra.
+    func advance() {
+        if index + 1 < pending.count {
+            index += 1
+        } else {
+            isCelebrating = false
+        }
     }
 }

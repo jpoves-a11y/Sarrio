@@ -57,8 +57,8 @@ struct MainTabView: View {
             await social.refreshBadge()
         }
         // Emblemas nuevos de cualquier subida (importación, Apple Health, Polar): uno detrás de otro
-        .sheet(item: $achievements.celebration, onDismiss: { achievements.next() }) { badge in
-            BadgeCelebrationView(badge: badge)
+        .fullScreenCover(isPresented: $achievements.isCelebrating) {
+            BadgeCelebrationSequence()
         }
         // Invitación de un amigo (sarrio://u/<usuario>)
         .sheet(item: $deepLinks.profile) { link in

@@ -1,9 +1,33 @@
 import SwiftUI
 
+/// Todos los emblemas de una subida, uno detrás de otro en la misma pantalla. Cada uno se ve entero;
+/// tocar durante la animación la completa y tocar ya asentado pasa al siguiente.
+struct BadgeCelebrationSequence: View {
+    @Environment(AchievementsStore.self) private var achievements
+
+    var body: some View {
+        ZStack {
+            if let badge = achievements.current {
+                BadgeCelebrationView(
+                    badge: badge,
+                    position: achievements.pending.count > 1 ? (achievements.index + 1, achievements.pending.count) : nil,
+                    isLast: achievements.index + 1 >= achievements.pending.count,
+                    onNext: { withAnimation(.easeInOut(duration: 0.35)) { achievements.advance() } }
+                )
+                .id(badge.id)
+                .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 1.04)), removal: .opacity))
+            }
+        }
+    }
+}
+
 /// Emblema nuevo: el medallón cae girando en 3D, se asienta con un muelle y vibra.
 struct BadgeCelebrationView: View {
     var badge: NewBadge
-    @Environment(\.dismiss) private var dismiss
+    /// «2 de 3» cuando hay varios.
+    var position: (Int, Int)?
+    var isLast = true
+    var onNext: () -> Void = {}
     @State private var landed = false
     @State private var spin: Double = 540
     @State private var settled = false
@@ -12,6 +36,12 @@ struct BadgeCelebrationView: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.l) {
+            if let position {
+                Text("\(position.0) de \(position.1)")
+                    .font(.sarrio(12, .semibold).monospacedDigit())
+                    .foregroundStyle(legend ? .white.opacity(0.6) : Theme.Colors.textSecondary)
+                    .padding(.top, Theme.Spacing.m)
+            }
             Spacer(minLength: Theme.Spacing.l)
             Text(legend ? "ERES LEYENDA" : "NUEVO EMBLEMA")
                 .font(.sarrio(12, .semibold))
@@ -52,7 +82,8 @@ struct BadgeCelebrationView: View {
             .offset(y: settled ? 0 : 16)
 
             Spacer()
-            Button("Seguir") { dismiss() }
+            Button(isLast ? "Seguir" : "Siguiente") { onNext() }
+                .disabled(!settled)
                 .buttonStyle(.primary)
                 .padding(.horizontal, Theme.Spacing.l)
                 .padding(.bottom, Theme.Spacing.m)
@@ -60,8 +91,16 @@ struct BadgeCelebrationView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(legend ? LegendColors.ink : Theme.Colors.page)
+        // Tocar: durante la animación la completa; ya asentado, pasa al siguiente
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if settled { onNext() } else { finishNow() }
+        }
         .sensoryFeedback(.success, trigger: settled) { _, now in now }
         .task {
+            // Espera a que la pantalla esté presentada: la caída se ve entera
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !settled else { return }
             // Cae girando…
             withAnimation(.spring(response: 0.85, dampingFraction: 0.62)) {
                 landed = true
@@ -69,9 +108,17 @@ struct BadgeCelebrationView: View {
             }
             try? await Task.sleep(for: .milliseconds(650))
             // …y se asienta
+            guard !settled else { return }
             withAnimation(Theme.Motion.spring) { settled = true }
         }
-        .presentationDetents([.large])
-        .interactiveDismissDisabled(!settled)
+    }
+
+    /// Salta la animación al estado final (sin pasar al siguiente emblema).
+    private func finishNow() {
+        withAnimation(.easeOut(duration: 0.2)) {
+            landed = true
+            spin = 0
+            settled = true
+        }
     }
 }

@@ -133,28 +133,45 @@ struct EditProfileView: View {
 
     private var photoHeader: some View {
         VStack(spacing: Theme.Spacing.s) {
-            ZStack(alignment: .bottomTrailing) {
-                AvatarView(name: displayName, userId: session.me?.id, avatarKey: session.me?.avatarKey, size: 96, image: localPhoto)
-                    .overlay { if uploading { Circle().fill(.black.opacity(0.35)); ProgressView().tint(.white) } }
-                Image(systemName: "camera.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 28, height: 28)
-                    .background(Theme.Colors.accent, in: Circle())
-                    .overlay(Circle().stroke(.white, lineWidth: 2))
+            // Tocar la foto hace lo mismo que «Cambiar foto»
+            if hasPhoto {
+                Menu { photoActions } label: { avatarImage }
+                    .accessibilityLabel("Cambiar foto de perfil")
+            } else {
+                Button { showPicker = true } label: { avatarImage }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Añadir foto de perfil")
             }
-            Menu {
-                Button { showPicker = true } label: { Label("Elegir foto", systemImage: "photo.on.rectangle") }
-                if session.me?.avatarKey != nil || localPhoto != nil {
-                    Button(role: .destructive) { Task { await removePhoto() } } label: { Label("Quitar foto", systemImage: "trash") }
-                }
-            } label: {
-                Text(session.me?.avatarKey == nil && localPhoto == nil ? "Añadir foto" : "Cambiar foto")
+            Menu { photoActions } label: {
+                Text(hasPhoto ? "Cambiar foto" : "Añadir foto")
                     .font(.sarrio(15, .semibold))
                     .foregroundStyle(Theme.Colors.accent)
             }
         }
         .padding(.vertical, Theme.Spacing.s)
+    }
+
+    private var hasPhoto: Bool { session.me?.avatarKey != nil || localPhoto != nil }
+
+    private var avatarImage: some View {
+        ZStack(alignment: .bottomTrailing) {
+            AvatarView(name: displayName, userId: session.me?.id, avatarKey: session.me?.avatarKey, size: 96, image: localPhoto)
+                .overlay { if uploading { Circle().fill(.black.opacity(0.35)); ProgressView().tint(.white) } }
+            Image(systemName: "camera.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(Theme.Colors.accent, in: Circle())
+                .overlay(Circle().stroke(Theme.Colors.page, lineWidth: 2))
+        }
+        .contentShape(Circle())
+    }
+
+    @ViewBuilder private var photoActions: some View {
+        Button { showPicker = true } label: { Label("Elegir foto", systemImage: "photo.on.rectangle") }
+        if hasPhoto {
+            Button(role: .destructive) { Task { await removePhoto() } } label: { Label("Quitar foto", systemImage: "trash") }
+        }
     }
 
     private func upload(_ jpeg: Data) async {
