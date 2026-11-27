@@ -444,22 +444,25 @@ private struct ReplayVideoOverlay: View {
 
 // MARK: - Live Activity
 
-/// La Live Activity del vídeo: progreso en la pantalla de bloqueo y la isla dinámica.
+/// La Live Activity del vídeo: progreso en la pantalla de bloqueo y la isla dinámica. Se guarda solo
+/// su identificador (la Activity no se puede pasar entre hilos) y se busca al actualizarla.
 @MainActor
 final class VideoExportLive {
-    private var activity: ActivityKit.Activity<VideoExportAttributes>?
+    private typealias LiveActivity = ActivityKit.Activity<VideoExportAttributes>
+    private var activityID: String?
     private var lastSent: (phase: VideoExportAttributes.Phase, fraction: Double, at: Date)?
 
     func start(title: String) {
-        guard activity == nil, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard activityID == nil, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let state = VideoExportAttributes.ContentState(phase: .loading, fraction: 0, remaining: nil)
-        activity = try? ActivityKit.Activity.request(attributes: VideoExportAttributes(title: title), content: .init(state: state, staleDate: nil))
+        activityID = (try? LiveActivity.request(attributes: VideoExportAttributes(title: title), content: .init(state: state, staleDate: nil)))?.id
         lastSent = (.loading, 0, .now)
     }
 
     /// Como mucho una vez por segundo (o al cambiar de fase).
-    func update(phase: VideoExportAttributes.Phase, fraction: Double, remaining: Double?, force: Bool = false, done: (@MainActor () -> Void)? = nil) {
-        guard let activity else { done?(); return }
+    func update(phase: VideoExportAttributes.Phase, fraction: Double, remaining: Double?, force: Bool = false,
+                done: (@MainActor @Sendable () -> Void)? = nil) {
+        guard let id = activityID else { done?(); return }
         if !force, let lastSent, lastSent.phase == phase,
            Date.now.timeIntervalSince(lastSent.at) < 1 || abs(fraction - lastSent.fraction) < 0.005 {
             done?()
@@ -467,19 +470,24 @@ final class VideoExportLive {
         }
         lastSent = (phase, fraction, .now)
         let state = VideoExportAttributes.ContentState(phase: phase, fraction: fraction, remaining: remaining)
-        Task {
-            await activity.update(.init(state: state, staleDate: nil))
-            done?()
+        Task.detached {
+            if let activity = LiveActivity.activities.first(where: { $0.id == id }) {
+                await activity.update(.init(state: state, staleDate: nil))
+            }
+            await done?()
         }
     }
 
     /// nil: se quita al momento (cancelado).
     func end(phase: VideoExportAttributes.Phase?) {
-        guard let activity else { return }
-        self.activity = nil
+        guard let id = activityID else { return }
+        activityID = nil
         let state = VideoExportAttributes.ContentState(phase: phase ?? .failed, fraction: phase == .done ? 1 : lastSent?.fraction ?? 0, remaining: nil)
         let policy: ActivityUIDismissalPolicy = phase == nil ? .immediate : .after(.now.addingTimeInterval(10 * 60))
-        Task { await activity.end(.init(state: state, staleDate: nil), dismissalPolicy: policy) }
+        Task.detached {
+            guard let activity = LiveActivity.activities.first(where: { $0.id == id }) else { return }
+            await activity.end(.init(state: state, staleDate: nil), dismissalPolicy: policy)
+        }
     }
 }
 
