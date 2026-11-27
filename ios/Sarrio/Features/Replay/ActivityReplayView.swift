@@ -350,13 +350,8 @@ private struct ReplayChrome: View {
                     .shadow(color: .black.opacity(0.55), radius: 3, y: 1)
             }
             HStack {
-                if weather.hasWeather, let url = weather.legalURL {
-                    Link(destination: url) {
-                        Label("Tiempo", systemImage: "apple.logo")
-                            .labelStyle(.titleAndIcon)
-                            .font(.sarrio(11, .semibold))
-                            .foregroundStyle(.white.opacity(0.85))
-                    }
+                if weather.hasWeather, weather.legalURL != nil {
+                    AppleWeatherMark(onDark: true)
                 }
                 Spacer()
                 if progress.isFinished {

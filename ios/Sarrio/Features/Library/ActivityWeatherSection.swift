@@ -51,13 +51,7 @@ struct ActivityWeatherSection: View {
                             .font(.sarrio(14, .medium))
                             .foregroundStyle(Theme.Colors.textPrimary)
                     }
-                    if let legalURL {
-                        Link(destination: legalURL) {
-                            Label("Datos: Apple Weather", systemImage: "apple.logo")
-                                .font(.sarrio(11, .medium))
-                                .foregroundStyle(Theme.Colors.textSecondary)
-                        }
-                    }
+                    if legalURL != nil { AppleWeatherMark() }
                 }
                 .transition(.opacity)
             } else if let failure {
@@ -187,5 +181,38 @@ enum ActivityWeatherLoader {
         case .snow, .heavySnow, .flurries, .blowingSnow, .blizzard, .sleet, .freezingDrizzle, .freezingRain, .hail, .wintryMix, .frigid: .snow
         default: .cloudy
         }
+    }
+}
+
+
+/// Atribución obligatoria de WeatherKit: la marca oficial de Apple Weather (la imagen que da Apple,
+/// clara u oscura según el fondo) y el enlace a su página legal.
+struct AppleWeatherMark: View {
+    /// Sobre un fondo oscuro (el replay): marca clara.
+    var onDark = false
+    @Environment(\.colorScheme) private var scheme
+    @State private var attribution: WeatherAttribution?
+
+    var body: some View {
+        Group {
+            if let attribution {
+                Link(destination: attribution.legalPageURL) {
+                    HStack(spacing: 6) {
+                        AsyncImage(url: (onDark || scheme == .dark) ? attribution.combinedMarkDarkURL : attribution.combinedMarkLightURL) { image in
+                            image.resizable().scaledToFit()
+                        } placeholder: {
+                            Text("Apple Weather").font(.sarrio(11, .semibold))
+                        }
+                        .frame(height: 12)
+                        Text("Fuentes legales")
+                            .font(.sarrio(11, .medium))
+                            .underline()
+                    }
+                    .foregroundStyle(onDark ? Color.white.opacity(0.85) : Theme.Colors.textSecondary)
+                }
+                .accessibilityLabel("Datos de Apple Weather. Fuentes legales")
+            }
+        }
+        .task { attribution = try? await WeatherService.shared.attribution }
     }
 }
