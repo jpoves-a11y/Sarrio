@@ -4,7 +4,8 @@
 //   node tools/social/voice.mjs voces                                  Lista las voces es-ES de Chirp 3: HD
 //   node tools/social/voice.mjs decir guion.txt salida.mp3 [voz]       Genera la narración de un guion
 //
-// La clave va en GOOGLE_TTS_API_KEY (en las sesiones en la nube la pone el proxy).
+// La clave va en GOOGLE_TTS_API_KEY; en las sesiones en la nube la pone el proxy (secreto del entorno),
+// y Node solo pasa por el proxy con NODE_USE_ENV_PROXY=1 delante del comando.
 // Las líneas del guion que empiezan por «#» o están entre [corchetes] son notas de montaje y no se leen.
 
 import fs from "node:fs";
@@ -24,8 +25,10 @@ export function narration(script) {
     .join("\n");
 }
 
+// Sin GOOGLE_TTS_API_KEY no se manda cabecera: en las sesiones en la nube la añade el proxy
+// (si mandáramos una de relleno, llegaría esa y Google la rechazaría).
 function headers(env) {
-  return { "Content-Type": "application/json", "X-Goog-Api-Key": env.GOOGLE_TTS_API_KEY || "proxy" };
+  return { "Content-Type": "application/json", ...(env.GOOGLE_TTS_API_KEY ? { "X-Goog-Api-Key": env.GOOGLE_TTS_API_KEY } : {}) };
 }
 
 export async function listVoices({ env = process.env, fetchImpl = fetch } = {}) {
