@@ -328,6 +328,14 @@ struct APIClient: Sendable {
 
     func badgeCounts() async throws -> BadgeCounts { try await get("v1/me/badge") }
 
+    struct PushTestResult: Decodable, Sendable {
+        struct Item: Decodable, Sendable { var status: Int; var reason: String }
+        var results: [Item]
+    }
+
+    /// Notificación de prueba a mis iPhone; devuelve lo que contesta Apple a cada uno.
+    func pushTest() async throws -> PushTestResult { try await post("v1/me/push-test", body: Empty()) }
+
     // MARK: Zonas de privacidad
 
     func privacyZones() async throws -> [PrivacyZone] {

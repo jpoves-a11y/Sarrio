@@ -35,14 +35,15 @@ struct MainTabView: View {
             NavigationStack { LibraryView() }
                 .tabItem { Label("Cumbres", systemImage: "mountain.2.fill") }
                 .tag(AppTab.summits)
-            NavigationStack { GlobeView() }
-                .tabItem { Label("Globo", systemImage: "globe.europe.africa.fill") }
-                .tag(AppTab.globe)
             NavigationStack { FeedView() }
                 .tabItem { Label("Amigos", systemImage: "person.2.fill") }
                 .tag(AppTab.friends)
                 // Novedades: avisos sin leer y lo nuevo de mis amigos
                 .badge(social.badgeTotal)
+            // El globo, en el centro
+            NavigationStack { GlobeView() }
+                .tabItem { Label("Globo", systemImage: "globe.europe.africa.fill") }
+                .tag(AppTab.globe)
             NavigationStack { AchievementsView() }
                 .tabItem { Label("Logros", systemImage: "medal") }
                 .tag(AppTab.achievements)
