@@ -1,6 +1,8 @@
 import { and, eq, gte, inArray, lt, ne } from "drizzle-orm";
 import type { Db } from "../db/client";
-import { activities, ascents, peaks } from "../db/schema";
+import { activities, activityTracks, ascents, peaks } from "../db/schema";
+import { haversine } from "../lib/geo";
+import { decodeTrack } from "../lib/track";
 import { localDate, localMidnight, MOUNTAIN_SPORTS, weekIndex } from "./achievements";
 
 type Act = {
@@ -13,7 +15,75 @@ type Act = {
   sportType: string;
   title: string | null;
 };
-type Asc = { id: string; activityId: string | null; peakId: number; summitedAt: number; name: string; nameEs: string | null; ele: number | null };
+type Asc = {
+  id: string;
+  activityId: string | null;
+  peakId: number;
+  summitedAt: number;
+  name: string;
+  nameEs: string | null;
+  ele: number | null;
+  lat: number;
+  lon: number;
+};
+
+/** Perfil de una cima para «Tu cordillera 3D»: toda la ruta con que se subió y dónde está la cumbre. */
+export type PeakProfile = {
+  activityId: string;
+  date: number;
+  /** 80 alturas de toda la ruta, muestreadas por distancia. */
+  elevations: number[];
+  /** Metros de toda la ruta. */
+  totalDistance: number;
+  /** Muestra más cercana a la cumbre. */
+  summitIndex: number;
+  /** Es la cima más alta de esa salida (se dibuja la ruta entera; las demás, subida y espejo). */
+  isRouteTop: boolean;
+  /** Metros y desnivel desde la salida hasta la cumbre. */
+  distance: number;
+  gain: number;
+};
+
+const PROFILE_SAMPLES = 80;
+
+/** Perfil de una ruta muestreado por distancia, con la cumbre más cercana a (lat, lon). */
+export function routeProfile(points: [number, number, number?, number?][], lat: number, lon: number) {
+  const pts = points.filter((p) => p[2] != null);
+  if (pts.length < 2) return null;
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1]! + haversine(pts[i - 1]![0], pts[i - 1]![1], pts[i]![0], pts[i]![1]));
+  const total = cum[cum.length - 1]!;
+  if (total <= 0) return null;
+  // Punto de la ruta más cercano a la cima
+  let best = 0, bestD = Infinity;
+  pts.forEach((p, i) => {
+    const d = haversine(p[0], p[1], lat, lon);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  const elevations: number[] = [];
+  let j = 0;
+  for (let k = 0; k < PROFILE_SAMPLES; k++) {
+    const target = (total * k) / (PROFILE_SAMPLES - 1);
+    while (j < cum.length - 2 && cum[j + 1]! < target) j++;
+    const span = cum[j + 1]! - cum[j]!;
+    const t = span > 0 ? (target - cum[j]!) / span : 0;
+    const e = pts[j]![2]! + (pts[j + 1]![2]! - pts[j]![2]!) * Math.min(1, Math.max(0, t));
+    elevations.push(Math.round(e));
+  }
+  // Desnivel hasta la cumbre, con histéresis de 3 m para no sumar el ruido
+  let gain = 0, ref = pts[0]![2]!;
+  for (let i = 1; i <= best; i++) {
+    const e = pts[i]![2]!;
+    if (e - ref >= 3) { gain += e - ref; ref = e; } else if (ref - e >= 3) ref = e;
+  }
+  return {
+    elevations,
+    totalDistance: Math.round(total),
+    summitIndex: Math.round((cum[best]! / total) * (PROFILE_SAMPLES - 1)),
+    distance: Math.round(cum[best]!),
+    gain: Math.round(gain),
+  };
+}
 
 export type Totals = { gain: number; distance: number; durationS: number; activities: number; summits: number; uniquePeaks: number };
 
@@ -74,6 +144,8 @@ async function load(db: Db, userId: string, opts: { onlyShared?: boolean } = {})
         name: peaks.name,
         nameEs: peaks.nameEs,
         ele: peaks.ele,
+        lat: peaks.lat,
+        lon: peaks.lon,
       })
       .from(ascents)
       .innerJoin(peaks, eq(ascents.peakId, peaks.id))
@@ -147,13 +219,34 @@ export async function userStats(db: Db, userId: string, year: number | null) {
     a && (f(a) ?? 0) > 0 ? { value: Math.round(f(a)!), activityId: a.id, date: a.startAt, title: a.title } : null;
   const highest = periodAscs.reduce<Asc | null>((m, a) => ((a.ele ?? 0) > (m?.ele ?? 0) ? a : m), null);
 
-  // Cimas únicas de siempre (para «Tu cordillera»)
-  const byPeak = new Map<number, { id: number; name: string; ele: number | null; count: number; last: number }>();
+  // Cimas únicas de siempre (para «Tu cordillera 3D»), con el perfil de su última subida con ruta
+  const byPeak = new Map<number, { id: number; name: string; ele: number | null; count: number; last: number; profile: PeakProfile | null }>();
   for (const a of ascs) {
-    const p = byPeak.get(a.peakId) ?? { id: a.peakId, name: a.nameEs ?? a.name, ele: a.ele, count: 0, last: 0 };
+    const p = byPeak.get(a.peakId) ?? { id: a.peakId, name: a.nameEs ?? a.name, ele: a.ele, count: 0, last: 0, profile: null };
     p.count += 1;
     p.last = Math.max(p.last, a.summitedAt);
     byPeak.set(a.peakId, p);
+  }
+  const latestWithRoute = new Map<number, Asc>();
+  for (const a of ascs) {
+    if (!a.activityId) continue;
+    const prev = latestWithRoute.get(a.peakId);
+    if (!prev || a.summitedAt > prev.summitedAt) latestWithRoute.set(a.peakId, a);
+  }
+  const neededActivities = [...new Set([...latestWithRoute.values()].map((a) => a.activityId!))];
+  if (neededActivities.length) {
+    const tracks = await db.select().from(activityTracks).where(inArray(activityTracks.activityId, neededActivities));
+    const decoded = new Map<string, Awaited<ReturnType<typeof decodeTrack>>>();
+    for (const t of tracks) decoded.set(t.activityId, await decodeTrack(t.data));
+    for (const [peakId, a] of latestWithRoute) {
+      const points = decoded.get(a.activityId!);
+      if (!points) continue;
+      const prof = routeProfile(points as [number, number, number?, number?][], a.lat, a.lon);
+      if (!prof) continue;
+      const sameRoute = ascs.filter((x) => x.activityId === a.activityId);
+      const isRouteTop = sameRoute.every((x) => (x.ele ?? 0) <= (a.ele ?? 0));
+      byPeak.get(peakId)!.profile = { activityId: a.activityId!, date: a.summitedAt, isRouteTop, ...prof };
+    }
   }
 
   return {

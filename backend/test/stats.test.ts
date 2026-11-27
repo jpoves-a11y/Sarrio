@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createTestApp } from "./helpers";
 import { peaks } from "../src/db/schema";
 import { climbRate } from "../src/lib/track";
+import { routeProfile } from "../src/services/stats";
 
 const ANETO = { id: 1001, name: "Aneto", ele: 3404, lat: 42.6311, lon: 0.6569, geohash: "sp86w" };
 const MALADETA = { id: 1002, name: "Maladeta", ele: 3308, lat: 42.6467, lon: 0.6378, geohash: "sp86x" };
@@ -35,6 +36,19 @@ describe("climb rate", () => {
   });
 });
 
+describe("peak profiles", () => {
+  it("samples the whole route and finds the summit", () => {
+    const prof = routeProfile(track as any, ANETO.lat, ANETO.lon)!;
+    expect(prof.elevations).toHaveLength(80);
+    expect(prof.elevations[0]).toBe(1900);
+    expect(Math.max(...prof.elevations)).toBeGreaterThan(3350);
+    // La cumbre está al final de la subida, antes de la bajada
+    expect(prof.elevations[prof.summitIndex]).toBeGreaterThan(3300);
+    expect(prof.gain).toBeGreaterThan(1400);
+    expect(prof.distance).toBeLessThan(prof.totalDistance);
+  });
+});
+
 describe("GET /v1/me/stats", () => {
   it("adds up the year, compares with the previous one and finds records", async () => {
     const { json, ana, upload } = await setup();
@@ -53,6 +67,8 @@ describe("GET /v1/me/stats", () => {
     expect(body.records.climbRate.value).toBe(500);
     expect(body.records.highestPeak).toMatchObject({ name: "Aneto", ele: 3404 });
     expect(body.peaks).toEqual([expect.objectContaining({ name: "Aneto", count: 1 })]);
+    expect(body.peaks[0].profile).toMatchObject({ isRouteTop: true, summitIndex: expect.any(Number) });
+    expect(body.peaks[0].profile.elevations).toHaveLength(80);
     expect(body.calendar.days.map((d: any) => d.date)).toEqual(expect.arrayContaining(["2026-03-10", "2026-07-14"]));
 
     const all = (await json("GET", "/v1/me/stats?year=all", ana.token)).body;
