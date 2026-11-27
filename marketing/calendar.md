@@ -32,7 +32,7 @@ Todo en vídeo: cada clip sale como Reel de Instagram (19:30) y en TikTok (21:00
 | 9 | Retos oficiales | «¿Cuántos picos te faltan? En Sarrio te retamos a subir unos cuantos más, a ver si eres capaz.» | `clip-retos-oficiales.mp4` |
 | 10 | Bluesky | «Aneto, Mulhacén, Torre Cerredo, Almanzor, Moncayo y Teide. ¿Cuántos llevas?» | — |
 | 12 | Amigos | «Subir montañas está bien, pero subirlas con amigos está mejor. Etiqueta a ese compañero que te ha visto en los peores momentos.» | `clip-amigos.mp4` |
-| 15 | Más cimas que el año pasado | Pendiente | `clip-estadisticas.mp4` |
+| 15 | Más cimas que el año pasado | «Pregunta incómoda: ¿más cimas que el año pasado, o menos? En Sarrio no hay forma de hacerse el despistado.» | `clip-estadisticas.mp4` |
 | 16 | Bluesky | «¿Cuántas cimas has subido este año? Sin mirar.» | — |
 
 ## Después

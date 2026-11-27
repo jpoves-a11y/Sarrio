@@ -4,7 +4,7 @@ dia: 15
 hora: "21:00"
 recursos: [clip-estadisticas.mp4]
 ---
-PENDIENTE: texto del día 15 (más cimas que el año pasado)
+Pregunta incómoda: ¿más cimas que el año pasado, o menos? En Sarrio no hay forma de hacerse el despistado.
 
 #montaña #cumbres #sarrio
 
