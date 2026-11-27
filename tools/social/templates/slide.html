@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: Geist; font-weight: 400; src: url("{{FONTS}}/Geist-Regular.ttf"); }
+  @font-face { font-family: Geist; font-weight: 500; src: url("{{FONTS}}/Geist-Medium.ttf"); }
+  @font-face { font-family: Geist; font-weight: 600; src: url("{{FONTS}}/Geist-SemiBold.ttf"); }
+  @font-face { font-family: Geist; font-weight: 700; src: url("{{FONTS}}/Geist-Bold.ttf"); }
+  :root { --sol: #E66A29; --sol-texto: #C4561F; --roca: #141417; --nieve: #FFFFFF; --niebla: #F6F6F7; --gris: #6B6B73; --filo: #E4E4E7; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1350px; }
+  body { font-family: Geist, sans-serif; background: var(--nieve); color: var(--roca); -webkit-font-smoothing: antialiased; }
+  body.roca { background: var(--roca); color: var(--nieve); --gris: #A1A1AA; --filo: #2E2E34; --sol-texto: var(--sol); }
+  .slide { position: relative; width: 1080px; height: 1350px; padding: 110px 96px 0; display: flex; flex-direction: column; }
+  .kicker { font-size: 26px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; font-variant: small-caps;
+            color: var(--sol-texto); padding-bottom: 22px; border-bottom: 1.5px solid var(--filo); }
+  .titulo { font-size: 104px; line-height: 1.02; font-weight: 700; letter-spacing: -0.035em; margin-top: 64px; }
+  .subtitulo { font-size: 40px; line-height: 1.35; font-weight: 400; color: var(--gris); margin-top: 40px; max-width: 840px; }
+  .cifra { font-size: 300px; line-height: 0.9; font-weight: 700; letter-spacing: -0.05em; color: var(--sol); margin-top: 90px; }
+  .unidad { font-size: 64px; font-weight: 600; letter-spacing: -0.02em; margin-top: 12px; }
+  .texto { font-size: 58px; line-height: 1.22; font-weight: 500; letter-spacing: -0.02em; margin-top: 72px; max-width: 880px; }
+  .lista { list-style: none; padding: 0; margin-top: 56px; }
+  .lista li { font-size: 44px; line-height: 1.25; font-weight: 500; padding: 30px 0; border-bottom: 1.5px solid var(--filo); display: flex; gap: 28px; }
+  .lista li b { color: var(--sol); font-weight: 700; min-width: 64px; }
+  .cierre { align-items: center; justify-content: center; text-align: center; padding-top: 0; }
+  .cierre img { width: 220px; }
+  .cierre .titulo { margin-top: 64px; font-size: 92px; }
+  .cierre .subtitulo { margin: 32px auto 0; }
+  .pie { position: absolute; left: 96px; right: 96px; bottom: 72px; display: flex; justify-content: space-between; align-items: center;
+         font-size: 24px; font-weight: 500; color: var(--gris); letter-spacing: 0.04em; }
+  .pie img { height: 48px; }
+  .gap { display: block; height: 0.55em; }
+  .atribucion { position: absolute; right: 96px; bottom: 136px; font-size: 20px; color: var(--gris); }
+</style>
+</head>
+<body class="{{FONDO}}">
+{{SLIDE}}
+</body>
+</html>

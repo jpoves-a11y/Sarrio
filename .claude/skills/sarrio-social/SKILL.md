@@ -59,9 +59,21 @@ Hashtags base, para elegir según la pieza: `#montaña #cumbres #picos #senderis
 Cada borrador es un `.md` en `marketing/queue/<fecha>/` con este frontmatter:
 
 ```yaml
-red: instagram-reel   # instagram-reel | instagram-carrusel | tiktok | youtube-short | bluesky | threads
-fecha: 2026-12-08T19:30:00+01:00
+red: instagram-reel   # ver la tabla de abajo
+fecha: 2026-12-08T19:30:00+01:00   # siempre con zona horaria (+01:00 en invierno, +02:00 en verano)
 recursos: [clip-aneto.mp4]
+alt: Texto alternativo de la imagen   # opcional; Bluesky
+portada: portada-aneto.jpg            # opcional; solo instagram-reel
 ```
 
+| `red` | Se publica | Recursos |
+|---|---|---|
+| `bluesky` | Sola | 0–4 imágenes (≤ 1 MB) |
+| `instagram-imagen` | Sola | 1 JPEG |
+| `instagram-carrusel` | Sola | 2–10 JPEG |
+| `instagram-reel` | Sola | 1 vídeo |
+| `tiktok`, `youtube-short`, `threads` | A mano | Vídeo (Threads: 0–1 imagen) |
+
 Después va el texto final y, al cierre, la línea `Funciones mencionadas:`. Nada se publica sin que una persona lo apruebe.
+
+Las imágenes de marca salen de `tools/social/render.mjs` (diapositivas desde un `slides.json`). Antes de abrir el PR, ejecuta `node tools/social/publish.mjs validate`.
