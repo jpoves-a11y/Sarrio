@@ -447,13 +447,13 @@ private struct ReplayVideoOverlay: View {
 /// La Live Activity del vídeo: progreso en la pantalla de bloqueo y la isla dinámica.
 @MainActor
 final class VideoExportLive {
-    private var activity: Activity<VideoExportAttributes>?
+    private var activity: ActivityKit.Activity<VideoExportAttributes>?
     private var lastSent: (phase: VideoExportAttributes.Phase, fraction: Double, at: Date)?
 
     func start(title: String) {
         guard activity == nil, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let state = VideoExportAttributes.ContentState(phase: .loading, fraction: 0, remaining: nil)
-        activity = try? Activity.request(attributes: VideoExportAttributes(title: title), content: .init(state: state, staleDate: nil))
+        activity = try? ActivityKit.Activity.request(attributes: VideoExportAttributes(title: title), content: .init(state: state, staleDate: nil))
         lastSent = (.loading, 0, .now)
     }
 
