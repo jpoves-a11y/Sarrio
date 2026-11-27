@@ -12,6 +12,7 @@ struct ActivityDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var detail: ActivityDetail?
     @State private var plan: ReplayPlan?
+    @State private var analysis: ActivityAnalysis?
     @State private var profileFraction: Double?
     @State private var visibility: Visibility
     @State private var confirmDelete = false
@@ -29,6 +30,23 @@ struct ActivityDetailView: View {
         (detail?.ascents ?? activity.ascents ?? []).sorted { $0.summitedAt < $1.summitedAt }
     }
 
+    /// Si alguna cima de esta salida ya la habías subido en otras: tu tiempo hasta la cumbre en cada vez.
+    private var summitHistory: (peak: PeakRef, entries: [(date: Date, seconds: Double, current: Bool)])? {
+        guard activity.userId == session.me?.id else { return nil }
+        let starts = Dictionary(store.activities.map { ($0.id, $0.startAt) }, uniquingKeysWith: { a, _ in a })
+        for ascent in ascents {
+            let all = (store.library?.ascents ?? []).filter { $0.peak.id == ascent.peak.id }
+            let entries = all.compactMap { a -> (date: Date, seconds: Double, current: Bool)? in
+                guard let id = a.activityId, let start = id == activity.id ? activity.startAt : starts[id] else { return nil }
+                let s = a.summitedAt.timeIntervalSince(start)
+                return s > 60 ? (date: a.summitedAt, seconds: s, current: id == activity.id) : nil
+            }
+            .sorted { $0.date < $1.date }
+            if entries.count >= 2, entries.contains(where: \.current) { return (ascent.peak, entries) }
+        }
+        return nil
+    }
+
     private var endDate: Date? { activity.durationS.map { activity.startAt.addingTimeInterval($0) } }
 
     var body: some View {
@@ -41,8 +59,14 @@ struct ActivityDetailView: View {
                 if let plan, plan.elevations.contains(where: { $0 != nil }) {
                     profileCard(plan).staggeredAppear(4)
                 }
+                if let analysis, !analysis.slopes.isEmpty {
+                    ActivityAnalysisSection(analysis: analysis).staggeredAppear(5)
+                }
+                if let history = summitHistory {
+                    SummitHistory(peak: history.peak, entries: history.entries).staggeredAppear(6)
+                }
                 // Editar y borrar, solo en las mías (las de amigos llegan desde el feed)
-                if activity.userId == session.me?.id { settingsCard.staggeredAppear(5) }
+                if activity.userId == session.me?.id { settingsCard.staggeredAppear(7) }
             }
             .padding(.horizontal, Theme.Spacing.m)
             .padding(.top, Theme.Spacing.s)
@@ -274,6 +298,7 @@ struct ActivityDetailView: View {
         do {
             let loaded = try await api.activity(id: activity.id)
             let points = loaded.segments.flatMap { $0 }
+            analysis = ActivityAnalysis(points: points)
             let built = ReplayPlan(track: points, summits: loaded.ascents.map { GeoPoint(lat: $0.peak.lat, lon: $0.peak.lon) })
             withAnimation(Theme.Motion.spring) {
                 detail = loaded

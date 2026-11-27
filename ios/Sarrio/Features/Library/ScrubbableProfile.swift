@@ -16,7 +16,7 @@ struct ScrubbableProfile: View {
         GeometryReader { geo in
             let size = CGSize(width: geo.size.width, height: height)
             ZStack(alignment: .topLeading) {
-                ElevationProfileView(plan: plan, fraction: 1, baseColor: Theme.Colors.separator, showsMarker: false, lineWidth: 2.4)
+                ElevationProfileView(plan: plan, fraction: 1, baseColor: Theme.Colors.separator, showsMarker: false, lineWidth: 2.4, slopeColored: true)
                     .frame(height: height)
                     .opacity(fraction == nil ? 1 : 0.55)
 

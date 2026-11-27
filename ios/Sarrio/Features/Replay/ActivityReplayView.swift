@@ -407,6 +407,8 @@ struct ElevationProfileView: View {
     /// Relleno degradado bajo lo recorrido (en las tarjetas); sobre el mapa, solo la línea.
     var filled = true
     var lineWidth: CGFloat = 2.2
+    /// La línea coloreada por pendiente (de suave a muy dura), en el detalle de la actividad.
+    var slopeColored = false
 
     static let samples = 120
 
@@ -451,7 +453,20 @@ struct ElevationProfileView: View {
                 context.fill(fill, with: .linearGradient(Gradient(colors: [Theme.Colors.accent.opacity(0.55), Theme.Colors.accent.opacity(0)]),
                                                          startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
             }
-            context.stroke(walked, with: .color(Theme.Colors.accent), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
+            if slopeColored {
+                // Cada tramo con el color de su pendiente
+                let step = plan.length / Double(samples)
+                for i in 1...done {
+                    var seg = Path()
+                    seg.move(to: point(i - 1))
+                    seg.addLine(to: point(i))
+                    let grade = step > 0 ? (values[i] - values[i - 1]) / step * 100 : 0
+                    context.stroke(seg, with: .color(SlopeColor.color(forGrade: grade)),
+                                   style: StrokeStyle(lineWidth: lineWidth + 0.6, lineCap: .round, lineJoin: .round))
+                }
+            } else {
+                context.stroke(walked, with: .color(Theme.Colors.accent), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
+            }
             guard showsMarker else { return }
             let marker = point(done)
             context.fill(Path(ellipseIn: CGRect(x: marker.x - 4.5, y: marker.y - 4.5, width: 9, height: 9)), with: .color(.white))
