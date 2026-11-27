@@ -1,0 +1,11 @@
+{
+  "nombre": "teaser",
+  "fondo": "roca",
+  "slides": [
+    { "tipo": "portada", "kicker": "Muy pronto en la App Store", "titulo": "Tu biblioteca de picos.", "subtitulo": "Todas las cimas que has subido, guardadas y en 3D." },
+    { "tipo": "texto", "kicker": "Vuelve a la cresta", "texto": "Cada ascensión, sobre un mapa 3D del relieve.\nLo giras, te acercas y estás otra vez arriba." },
+    { "tipo": "texto", "kicker": "Retos y emblemas", "texto": "Listas de cimas que completar y emblemas que solo se ganan subiendo." },
+    { "tipo": "texto", "kicker": "Con los tuyos", "texto": "Las cumbres se cuentan mejor acompañado." },
+    { "tipo": "cierre", "titulo": "Cada cumbre cuenta.", "subtitulo": "El {{fecha}}, en la App Store.", "fondo": "nieve" }
+  ]
+}

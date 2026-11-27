@@ -1,0 +1,17 @@
+{
+  "nombre": "emblemas",
+  "fondo": "nieve",
+  "slides": [
+    { "tipo": "portada", "kicker": "Emblemas", "titulo": "Se ganan subiendo.", "subtitulo": "Ninguno se compra. Cada uno tiene un día detrás." },
+    { "tipo": "emblemas", "kicker": "Algunos de ellos", "items": [
+      { "id": "first-summit", "nombre": "Primera cima" }, { "id": "alt-3000", "nombre": "Tresmil" }, { "id": "sunrise", "nombre": "Madrugador" },
+      { "id": "winter", "nombre": "Invernal" }, { "id": "four-seasons", "nombre": "Cuatro estaciones" }, { "id": "everest", "nombre": "Un Everest" } ] },
+    { "tipo": "lista", "kicker": "Cómo se ganan", "items": [
+      "Madrugador: hacer cima antes de que pase una hora del amanecer",
+      "Cuatro estaciones: una cima en primavera, verano, otoño e invierno del mismo año",
+      "Un Everest: 8.849 m de desnivel en una sola temporada" ] },
+    { "tipo": "emblemas", "kicker": "Y las leyendas", "titulo": "Para los que siempre miran hacia arriba.", "items": [
+      { "id": "king-pyrenees", "nombre": "Rey del Pirineo" }, { "id": "iberian-slam", "nombre": "Gran Slam Ibérico" }, { "id": "everesting", "nombre": "Tenzing" } ] },
+    { "tipo": "cierre", "titulo": "¿Cuál será tu primero?", "subtitulo": "Sarrio, en la App Store." }
+  ]
+}

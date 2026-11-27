@@ -1,15 +1,46 @@
-# Calendario: diciembre de 2026
+# Calendario: lanzamiento en la App Store
 
-Un tema por semana. Instagram: 2 piezas por semana al principio (más cuando haya clips). Bluesky: 2–3. Hora base: 19:30 (Madrid).
+Todo está preparado en `marketing/launch` y se activa cuando haya fecha:
 
-| Semana | Tema | Piezas | Necesita |
+```bash
+node tools/social/launch.mjs schedule 2027-03-02
+```
+
+Así se crea `marketing/queue/<fecha>-lanzamiento` con las fechas reales y las diapositivas. Revisa el PR y haz merge.
+
+## Mensaje
+
+Primero, lo que hace la app y por qué engancha:
+1. **Tu biblioteca de picos** con cada ascensión en un **mapa 3D**: girarlo, el replay.
+2. **Retos y emblemas.**
+3. **Con los tuyos:** amigos, feed, me gusta y comentarios.
+4. **Estadísticas:** tu año y la cordillera 3D.
+
+De dónde salen las rutas (Apple Health, archivos, Polar) o las cimas añadidas a mano se explicará más adelante, en piezas de «cómo funciona». No son protagonistas del lanzamiento.
+
+## Plan (D = día de lanzamiento, hora de Madrid)
+
+| Día | Red | Pieza | Necesita |
 |---|---|---|---|
-| 30 nov – 6 dic | **Presentación** | Carrusel «¿Te acuerdas de todas las cimas que has subido?» · Bluesky de presentación · Bluesky «cimas antiguas, a mano» · Carrusel «Cima de la semana: Aneto» | Nada (listo en `queue/2026-11-30`) |
-| 7 – 13 dic (puente) | **Revívelas** | Reel: replay 3D de una ascensión · Bluesky con el mismo clip en texto | Clip 1 |
-| 14 – 20 dic | **Lo compartido** | Reel: crear un reto e invitar a amigos · Carrusel «Cima de la semana: Mulhacén» | Clip 3 |
-| 21 – 27 dic | **Tu año** | Reel: estadísticas del año y la cordillera 3D · Bluesky «¿cuántas cimas este año?» | Clip 4 |
-| 28 dic – 3 ene | **La primera del año** | Reel: el globo con todas tus cumbres · Carrusel «¿Cuál será tu primera cima de 2027?» | Clip 5 |
+| D-7 | Instagram + Bluesky | Carrusel «Muy pronto: tu biblioteca de picos» | Listo |
+| D-3 | Instagram Reel | Biblioteca y globo | `clip-biblioteca.mp4` |
+| D-1 | Bluesky | «Mañana sale Sarrio» | Listo |
+| **D** 09:00 | Instagram + Bluesky | Carrusel de lanzamiento: biblioteca, 3D, tu año, retos y emblemas, amigos | Listo |
+| **D** 19:30 | Instagram Reel + TikTok | Replay 3D de una ascensión | `clip-replay.mp4` |
+| D+2 | Instagram | Carrusel de emblemas | Listo |
+| D+4 | Instagram Reel + TikTok | Crea tu propio reto | `clip-retos.mp4` |
+| D+7 | Instagram | Carrusel de retos oficiales | Listo |
+| D+8 | Bluesky | Gran Slam Ibérico | Listo |
+| D+10 | Instagram Reel | Amigos y feed | `clip-amigos.mp4` |
+| D+13 | Instagram Reel | Tu año en cimas | `clip-estadisticas.mp4` |
+| D+14 | Bluesky | «¿Cuántas cimas has subido este año?» | Listo |
 
-Emblemas (clip 2) entra en la semana en la que llegue el clip.
+TikTok se publica a mano (hasta que aprueben la API).
 
-Antes de cada pieza: comprobar que todo lo que menciona está en «Lo que ofrece hoy» de `brand/README.md`.
+## Después del lanzamiento
+
+Ritmo semanal: 2 Reels, 1 carrusel y 2–3 posts de Bluesky. Ideas, en este orden:
+- Cima de la semana (Aneto, Mulhacén, Torre Cerredo…): carrusel automático.
+- Un emblema o un reto oficial por semana.
+- Clips de tus salidas reales en 3D.
+- Más adelante, «cómo funciona»: Apple Health, archivos GPX, FIT y TCX, Polar, y las cimas antiguas añadidas a mano.

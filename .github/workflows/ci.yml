@@ -40,6 +40,8 @@ jobs:
       - run: node --test tools/social/test/*.test.mjs
       - name: Validar la cola de publicaciones
         run: node tools/social/publish.mjs validate
+      - name: Validar el kit de lanzamiento
+        run: node tools/social/launch.mjs check
 
   peaks-tool:
     runs-on: ubuntu-latest

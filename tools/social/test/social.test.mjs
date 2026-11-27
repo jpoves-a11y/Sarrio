@@ -157,3 +157,14 @@ test("mediaUrl respeta MEDIA_BASE_URL", () => {
   const post = { id: "2026-11-30/x.md" };
   assert.equal(mediaUrl(post, "a b.jpg", { MEDIA_BASE_URL: "https://cdn.example/q/" }), "https://cdn.example/q/2026-11-30/a%20b.jpg");
 });
+
+test("launch: fechas en hora de Madrid, con el cambio de horario", async () => {
+  const { humanDate, addDays, madridOffset, fill, checkKit } = await import("../launch.mjs");
+  assert.equal(humanDate("2027-03-02"), "2 de marzo");
+  assert.equal(addDays("2027-03-02", -7), "2027-02-23");
+  assert.equal(addDays("2027-02-27", 3), "2027-03-02");
+  assert.equal(madridOffset("2027-03-27", "19:30"), "+01:00");
+  assert.equal(madridOffset("2027-03-29", "19:30"), "+02:00");
+  assert.equal(fill("El {{fecha}}.", "2027-10-12"), "El 12 de octubre.");
+  assert.deepEqual(checkKit().errors, []);
+});

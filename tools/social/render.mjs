@@ -9,6 +9,7 @@
 //                 { "tipo": "cifra", "kicker": "…", "cifra": "3.404", "unidad": "m", "texto": "…" },
 //                 { "tipo": "texto", "kicker": "…", "texto": "…" },
 //                 { "tipo": "lista", "kicker": "…", "titulo": "…", "items": ["…"] },
+//                 { "tipo": "emblemas", "kicker": "…", "titulo": "…", "items": [{ "id": "alt-3000", "nombre": "Tresmil" }] },
 //                 { "tipo": "cierre", "titulo": "Cada cumbre cuenta.", "subtitulo": "…" } ] }
 // y genera <nombre>-01.jpg, <nombre>-02.jpg… en la carpeta del día (la de encima).
 // Cada diapositiva admite "fondo" y "atribucion" (texto pequeño abajo a la derecha, p. ej. «© OpenStreetMap»).
@@ -50,6 +51,17 @@ export function slideHtml(slide, { index, total, fondo }) {
         .map((it, i) => `<li><b>${String(i + 1).padStart(2, "0")}</b><span>${br(it)}</span></li>`)
         .join("")}</ul>`;
       break;
+    case "emblemas": {
+      // Los dibujos de la app (ios/Sarrio/Resources/Badges.xcassets). Cada item: { "id": "alt-3000", "nombre": "Tresmil" }.
+      const cells = (slide.items ?? [])
+        .map((b) => {
+          const png = pathToFileURL(path.join(ROOT, `ios/Sarrio/Resources/Badges.xcassets/badge-${b.id}.imageset/${b.id}.png`)).href;
+          return `<figure><img src="${png}" alt=""><figcaption>${esc(b.nombre)}</figcaption></figure>`;
+        })
+        .join("");
+      inner = `${kicker}${slide.titulo ? `<div class="titulo" style="font-size:72px">${br(slide.titulo)}</div>` : ""}<div class="emblemas">${cells}</div>`;
+      break;
+    }
     case "cierre":
       return `<div class="slide cierre"><img src="${mark}" alt=""><div class="titulo">${br(slide.titulo)}</div>${slide.subtitulo ? `<div class="subtitulo">${br(slide.subtitulo)}</div>` : ""}${atrib}</div>`;
     default:

@@ -1,0 +1,13 @@
+{
+  "nombre": "lanzamiento",
+  "fondo": "nieve",
+  "slides": [
+    { "tipo": "portada", "kicker": "Ya en la App Store", "titulo": "Cada cumbre cuenta.", "subtitulo": "Sarrio es tu biblioteca de picos: todas las cimas que subes, en un mismo sitio." },
+    { "tipo": "texto", "kicker": "Tu biblioteca", "texto": "Cada cima entra sola en tu biblioteca: Sarrio la encuentra en tu ruta.\nAbres una y ahí está tu día." },
+    { "tipo": "texto", "kicker": "En 3D", "texto": "La ruta, sobre el relieve en 3D y satélite. Gírala, acércate a la arista.\nO dale al replay y revívela hasta la cumbre, con el tiempo que hizo ese día." },
+    { "tipo": "texto", "kicker": "Tu año", "texto": "Tus cifras del año y una cordillera 3D hecha con tus propias cimas." },
+    { "tipo": "texto", "kicker": "Retos y emblemas", "texto": "Listas oficiales como los Tresmiles de la Maladeta o el Gran Slam Ibérico, retos que creas tú y emblemas que se ganan subiendo." },
+    { "tipo": "texto", "kicker": "Con los tuyos", "texto": "Sigue a tus amigos y mira sus cimas, sus emblemas y sus retos completados.\nUn me gusta, un comentario y a por la siguiente." },
+    { "tipo": "cierre", "titulo": "Cada cumbre cuenta.", "subtitulo": "Descárgala en la App Store." }
+  ]
+}
