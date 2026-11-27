@@ -168,3 +168,18 @@ test("launch: fechas en hora de Madrid, con el cambio de horario", async () => {
   assert.equal(fill("El {{fecha}}.", "2027-10-12"), "El 12 de octubre.");
   assert.deepEqual(checkKit().errors, []);
 });
+
+test("voice: el guion se lee sin notas de montaje y la petición va bien formada", async () => {
+  const { narration, synthesize } = await import("../voice.mjs");
+  assert.equal(narration("# toma 1\n[globo girando] ¿Cuántos picos?\n\nNosotros tampoco."), "¿Cuántos picos?\nNosotros tampoco.");
+  let sent;
+  const fetchImpl = async (url, init) => {
+    sent = { url, init };
+    return { ok: true, json: async () => ({ audioContent: Buffer.from("mp3").toString("base64") }) };
+  };
+  const audio = await synthesize("Hola", { voice: "es-ES-Chirp3-HD-Kore", env: { GOOGLE_TTS_API_KEY: "k" }, fetchImpl });
+  assert.equal(audio.toString(), "mp3");
+  assert.match(sent.url, /text:synthesize$/);
+  assert.equal(JSON.parse(sent.init.body).voice.name, "es-ES-Chirp3-HD-Kore");
+  assert.equal(sent.init.headers["X-Goog-Api-Key"], "k");
+});
