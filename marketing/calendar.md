@@ -21,24 +21,24 @@ De dónde salen las rutas (Apple Health, archivos, Polar) o las cimas añadidas 
 
 ## Plan (día 0 = primer día de publicaciones, hora de Madrid)
 
-| Día | Red | Pieza | Necesita |
-|---|---|---|---|
-| 0 | Instagram Reel | Biblioteca y globo | `clip-biblioteca.mp4` |
-| 2 | Instagram Reel + TikTok | Replay 3D de una ascensión | `clip-replay.mp4` |
-| 4 | Instagram | Carrusel de emblemas | Listo |
-| 6 | Instagram Reel + TikTok | Crea tu propio reto | `clip-retos.mp4` |
-| 9 | Instagram | Carrusel de retos oficiales | Listo |
-| 10 | Bluesky | Gran Slam Ibérico | Listo |
-| 12 | Instagram Reel | Amigos y feed | `clip-amigos.mp4` |
-| 15 | Instagram Reel | Tu año en cimas | `clip-estadisticas.mp4` |
-| 16 | Bluesky | «¿Cuántas cimas has subido este año?» | Listo |
+Todo en vídeo: cada clip sale como Reel de Instagram (19:30) y en TikTok (21:00, a mano por ahora). Bluesky, posts cortos de texto.
 
-TikTok se publica a mano hasta que aprueben la API. Los textos están pendientes de aprobar.
+| Día | Pieza | Texto | Clip |
+|---|---|---|---|
+| 0 | Biblioteca y globo | «¿Recuerdas todos los picos que has subido? Nosotros tampoco, por eso hicimos Sarrio.» | `clip-biblioteca.mp4` |
+| 2 | Replay 3D | «Revive tus cimas en Sarrio.» | `clip-replay.mp4` |
+| 4 | Rey del Pirineo | «¿Quién será capaz de ser el primer Rey del Pirineo?» | `clip-emblemas.mp4` |
+| 6 | Crea tu reto | Pendiente | `clip-retos.mp4` |
+| 9 | Retos oficiales | «¿Cuántos picos te faltan? En Sarrio te retamos a subir unos cuantos más, a ver si eres capaz.» | `clip-retos-oficiales.mp4` |
+| 10 | Bluesky | «Aneto, Mulhacén, Torre Cerredo, Almanzor, Moncayo y Teide. ¿Cuántos llevas?» | — |
+| 12 | Amigos | «Subir montañas está bien, pero subirlas con amigos está mejor. Etiqueta a ese compañero que te ha visto en los peores momentos.» | `clip-amigos.mp4` |
+| 15 | Velocidad de subida | «¿Estarás subiendo montañas más rápido que el año pasado? Compruébalo en Sarrio.» | `clip-estadisticas.mp4` |
+| 16 | Bluesky | «¿Cuántas cimas has subido este año? Sin mirar.» | — |
 
 ## Después
 
-Ritmo semanal: 2 Reels, 1 carrusel y 2–3 posts de Bluesky.
-- Cima de la semana (Aneto, Mulhacén, Torre Cerredo…): carrusel automático.
+Ritmo semanal: 2–3 vídeos y 2–3 posts de Bluesky.
+- Cima de la semana (Aneto, Mulhacén, Torre Cerredo…).
 - Un emblema o un reto oficial por semana.
 - Clips de salidas reales en 3D.
 - Más adelante, «cómo funciona»: Apple Health, archivos GPX, FIT y TCX, Polar, y las cimas antiguas añadidas a mano.

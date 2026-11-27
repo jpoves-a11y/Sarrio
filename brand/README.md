@@ -62,11 +62,13 @@ En marketing, redes, la App Store y la web **solo se menciona lo que la app ofre
 - Ficha de cada ascensión: ruta en 3D sobre satélite, perfil de desnivel interactivo, análisis y el tiempo que hizo.
 - Replay 3D de la ascensión, con el tiempo atmosférico de ese día.
 - Globo 3D con todas tus cumbres.
-- Estadísticas: el año en cifras y una cordillera 3D con tus cimas.
-- Emblemas, con su celebración al conseguirlos.
-- Retos: listas oficiales de cimas y retos que crea cualquiera, a los que se unen otros.
-- Amigos: feed, me gusta, comentarios, notificaciones y perfiles con foto.
+- Estadísticas: el año en cifras comparado con el anterior, la velocidad de subida (m/h) con su tendencia y una cordillera 3D con tus cimas.
+- Emblemas, con su celebración al conseguirlos, y las leyendas (Rey del Pirineo, Gran Slam Ibérico, Tenzing…).
+- Retos: listas oficiales (Tresmiles de la Maladeta, Techos de Sierra Nevada, Grandes de Picos de Europa, Gredos, Cuatromiles de los Alpes, Gran Slam Ibérico, Rey del Pirineo), con el progreso y cada cima marcada, y retos que crea cada uno con los picos que quiera.
+- Amigos: buscar e invitar con un enlace; en el feed, sus cimas, sus emblemas y sus retos completados, con me gusta y comentarios; notificaciones y perfiles con foto.
 - Privacidad: zonas de privacidad (ocultan el inicio y el final de tus rutas) y visibilidad de cada cosa.
+
+**Qué contar primero**: la biblioteca con cada cima en un mapa 3D (y el replay), los retos y emblemas, los amigos y las estadísticas. De dónde salen las rutas (Apple Health, archivos, Polar) y las cimas añadidas a mano se explican más adelante, no son protagonistas.
 
 **Lo que NO se menciona**: fotos en las actividades (solo existe la foto de perfil), Garmin, Suunto, COROS, Strava, Android, rankings ni ninguna función que aún sea un plan.
 

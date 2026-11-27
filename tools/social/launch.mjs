@@ -102,6 +102,8 @@ export async function schedule(launchDay) {
   if (!/^\d{4}-\d\d-\d\d$/.test(launchDay)) throw new Error("la fecha va como 2027-03-02");
   const { errors } = checkKit();
   if (errors.length) throw new Error(`el kit tiene errores:\n${errors.join("\n")}`);
+  const pending = kitPieces().filter((f) => fs.readFileSync(path.join(KIT, f), "utf8").includes("PENDIENTE"));
+  if (pending.length) throw new Error(`hay textos sin aprobar: ${pending.join(", ")}`);
   const out = path.join(QUEUE, `${launchDay}-arranque`);
   if (fs.existsSync(out)) throw new Error(`ya existe ${path.relative(ROOT, out)}`);
   fs.mkdirSync(out, { recursive: true });
