@@ -2,7 +2,7 @@ import { and, eq, ne } from "drizzle-orm";
 import { Hono } from "hono";
 import type { AppBindings } from "../env";
 import { requireAuth } from "../auth/session";
-import { devices, privacyZones, users } from "../db/schema";
+import { avatars, devices, privacyZones, users } from "../db/schema";
 import { newId } from "../lib/ids";
 import { badgeCount } from "../services/badgeCount";
 import { sendToUser } from "../services/push";
@@ -119,6 +119,12 @@ meRoutes.patch("/", async (c) => {
     if (!isVisibility(body.defaultVisibility)) return c.json({ error: "invalid_visibility" }, 400);
     update.defaultVisibility = body.defaultVisibility;
   }
+  if (body.city !== undefined) {
+    if (body.city !== null && typeof body.city !== "string") return c.json({ error: "invalid_city" }, 400);
+    const city = typeof body.city === "string" ? body.city.trim() : "";
+    if (city.length > 60) return c.json({ error: "invalid_city" }, 400);
+    update.city = city || null;
+  }
 
   if (Object.keys(update).length > 0) {
     await c.var.db.update(users).set(update).where(eq(users.id, c.var.userId));
@@ -126,6 +132,34 @@ meRoutes.patch("/", async (c) => {
   const user = await c.var.db.select().from(users).where(eq(users.id, c.var.userId)).get();
   if (!user) return c.json({ error: "not_found" }, 404);
   return c.json(toMe(user));
+});
+
+// ---------------------------------------------------------------------------
+// Foto de perfil: JPEG pequeño (la app la recorta y la deja en 512 px)
+// ---------------------------------------------------------------------------
+
+const MAX_AVATAR = 300 * 1024;
+
+meRoutes.put("/avatar", async (c) => {
+  const data = new Uint8Array(await c.req.arrayBuffer());
+  if (data.length === 0 || data.length > MAX_AVATAR) return c.json({ error: "invalid_avatar_size" }, 400);
+  // JPEG: empieza por FF D8 FF
+  if (data[0] !== 0xff || data[1] !== 0xd8 || data[2] !== 0xff) return c.json({ error: "invalid_avatar_format" }, 400);
+  const db = c.var.db;
+  await db
+    .insert(avatars)
+    .values({ userId: c.var.userId, data: Buffer.from(data) })
+    .onConflictDoUpdate({ target: avatars.userId, set: { data: Buffer.from(data), updatedAt: new Date() } });
+  // Clave nueva en cada foto: la URL cambia y ningún caché sirve la antigua
+  const avatarKey = newId();
+  await db.update(users).set({ avatarKey }).where(eq(users.id, c.var.userId));
+  return c.json({ avatarKey });
+});
+
+meRoutes.delete("/avatar", async (c) => {
+  await c.var.db.delete(avatars).where(eq(avatars.userId, c.var.userId));
+  await c.var.db.update(users).set({ avatarKey: null }).where(eq(users.id, c.var.userId));
+  return c.json({ avatarKey: null });
 });
 
 /** Borrado de cuenta (obligatorio en la App Store). Las tablas dependientes caen en cascada. */

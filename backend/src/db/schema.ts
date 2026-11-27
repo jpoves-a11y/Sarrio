@@ -35,6 +35,8 @@ export const users = sqliteTable(
     displayName: text("display_name").notNull(),
     avatarKey: text("avatar_key"),
     bio: text("bio"),
+    /** Ciudad, opcional (texto libre, p. ej. «Jaca, Huesca»). */
+    city: text("city"),
     defaultVisibility: text("default_visibility", { enum: visibilityValues }).notNull().default("friends"),
     /** Última vez que abrió la pestaña Amigos: lo de sus amigos posterior cuenta como novedad. */
     feedSeenAt: integer("feed_seen_at", { mode: "timestamp_ms" }),
@@ -42,6 +44,16 @@ export const users = sqliteTable(
   },
   (t) => [uniqueIndex("users_apple_sub_uq").on(t.appleSub), uniqueIndex("users_username_uq").on(t.username)],
 );
+
+/**
+ * Foto de perfil (JPEG de 512 px, unos 50 KB) en la propia base de datos: sin R2.
+ * `users.avatar_key` es su versión: cambia al subir una nueva y va en la URL pública.
+ */
+export const avatars = sqliteTable("avatars", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  data: blob("data", { mode: "buffer" }).notNull(),
+  updatedAt: createdAt(),
+});
 
 /** Conexiones OAuth con proveedores (Polar, Garmin…). Los tokens se guardan cifrados (AES-GCM). */
 export const providerConnections = sqliteTable(

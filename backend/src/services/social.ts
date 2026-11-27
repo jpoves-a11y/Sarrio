@@ -56,6 +56,7 @@ export const publicUserColumns = {
   displayName: users.displayName,
   bio: users.bio,
   avatarKey: users.avatarKey,
+  city: users.city,
 };
 
 export async function displayName(db: Db, id: string) {
@@ -64,7 +65,8 @@ export async function displayName(db: Db, id: string) {
 }
 
 export async function publicUsers(db: Db, ids: string[]) {
-  if (!ids.length) return new Map<string, { id: string; username: string; displayName: string; bio: string | null; avatarKey: string | null }>();
+  if (!ids.length)
+    return new Map<string, { id: string; username: string; displayName: string; bio: string | null; avatarKey: string | null; city: string | null }>();
   const rows = await db.select(publicUserColumns).from(users).where(inArray(users.id, [...new Set(ids)]));
   return new Map(rows.map((u) => [u.id, u]));
 }

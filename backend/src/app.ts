@@ -7,6 +7,7 @@ import { verifyAppleIdentityToken } from "./auth/apple";
 import { activitiesRoutes } from "./routes/activities";
 import { ascentsRoutes } from "./routes/ascents";
 import { authRoutes } from "./routes/auth";
+import { avatarsRoutes } from "./routes/avatars";
 import { badgesRoutes } from "./routes/badges";
 import { challengesRoutes } from "./routes/challenges";
 import { commentsRoutes, feedRoutes, likesRoutes } from "./routes/feed";
@@ -58,6 +59,7 @@ export function createApp(deps: Deps = defaultDeps) {
   v1.route("/comments", commentsRoutes);
   v1.route("/notifications", notificationsRoutes);
   app.route("/v1", v1);
+  app.route("/avatars", avatarsRoutes);
 
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   app.onError((err, c) => {

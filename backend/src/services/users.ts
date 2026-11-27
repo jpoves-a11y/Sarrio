@@ -14,6 +14,7 @@ export function toMe(u: UserRow) {
     displayName: u.displayName,
     bio: u.bio,
     avatarKey: u.avatarKey,
+    city: u.city,
     defaultVisibility: u.defaultVisibility,
     createdAt: u.createdAt.getTime(),
   };
@@ -21,7 +22,7 @@ export function toMe(u: UserRow) {
 
 /** Representación pública (lo que ve otro usuario). */
 export function toPublicUser(u: UserRow) {
-  return { id: u.id, username: u.username, displayName: u.displayName, bio: u.bio, avatarKey: u.avatarKey };
+  return { id: u.id, username: u.username, displayName: u.displayName, bio: u.bio, avatarKey: u.avatarKey, city: u.city };
 }
 
 async function availableUsername(db: Db, seed: string): Promise<string> {
