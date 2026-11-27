@@ -28,6 +28,7 @@ struct Me: Codable, Equatable, Sendable {
     var displayName: String
     var bio: String?
     var avatarKey: String?
+    var city: String?
     var defaultVisibility: Visibility
     var createdAt: Date
 }
@@ -39,6 +40,7 @@ struct PublicUser: Codable, Hashable, Identifiable, Sendable {
     var displayName: String
     var bio: String?
     var avatarKey: String?
+    var city: String?
 }
 
 struct AuthResponse: Decodable, Sendable {
@@ -51,5 +53,6 @@ struct ProfileUpdate: Encodable, Sendable {
     var username: String?
     var displayName: String?
     var bio: String?
+    var city: String?
     var defaultVisibility: Visibility?
 }

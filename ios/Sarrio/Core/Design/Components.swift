@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Bloque blanco que flota sobre el fondo gris: la unidad visual básica de la app.
 /// Bloque de contenido. Minimalista por defecto: sin caja ni sombra, solo aire y un filo fino
@@ -179,10 +180,16 @@ extension ButtonStyle where Self == SecondaryButtonStyle {
     static var secondary: SecondaryButtonStyle { SecondaryButtonStyle() }
 }
 
-/// Avatar circular con iniciales (las fotos llegarán con R2).
+/// Avatar circular: la foto de perfil si la hay (con caché) o, mientras carga y si no, las iniciales.
 struct AvatarView: View {
     var name: String
+    var userId: String? = nil
+    var avatarKey: String? = nil
     var size: CGFloat = 44
+    /// Imagen local recién recortada (antes de que vuelva del servidor).
+    var image: UIImage? = nil
+
+    @State private var loaded: UIImage?
 
     private var initials: String {
         let parts = name.split(separator: " ").prefix(2)
@@ -191,15 +198,48 @@ struct AvatarView: View {
     }
 
     var body: some View {
-        Circle()
-            .fill(Theme.Colors.accent.opacity(0.12))
-            .frame(width: size, height: size)
-            .overlay(
+        ZStack {
+            Circle().fill(Theme.Colors.accent.opacity(0.12))
+            if let photo = image ?? loaded {
+                Image(uiImage: photo).resizable().scaledToFill().transition(.opacity)
+            } else {
                 Text(initials)
                     .font(.sarrio(size * 0.38, .semibold))
                     .foregroundStyle(Theme.Colors.accent)
-            )
-            .accessibilityHidden(true)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .accessibilityHidden(true)
+        .task(id: avatarKey) {
+            guard let userId, let avatarKey else { loaded = nil; return }
+            let photo = await AvatarCache.shared.image(userId: userId, key: avatarKey)
+            withAnimation(.easeOut(duration: 0.2)) { loaded = photo }
+        }
+    }
+}
+
+/// Fotos de perfil ya descargadas: en memoria y en el caché HTTP del sistema (son inmutables).
+@MainActor
+final class AvatarCache {
+    static let shared = AvatarCache()
+    private let memory = NSCache<NSString, UIImage>()
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.urlCache = URLCache(memoryCapacity: 8 << 20, diskCapacity: 80 << 20, directory: nil)
+        config.requestCachePolicy = .returnCacheDataElseLoad
+        return URLSession(configuration: config)
+    }()
+
+    func image(userId: String, key: String) async -> UIImage? {
+        let cacheKey = "\(userId)/\(key)" as NSString
+        if let hit = memory.object(forKey: cacheKey) { return hit }
+        let url = AppConfig.apiBaseURL.appending(path: "avatars/\(userId)/\(key).jpg")
+        guard let (data, response) = try? await session.data(from: url),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let image = UIImage(data: data) else { return nil }
+        memory.setObject(image, forKey: cacheKey)
+        return image
     }
 }
 

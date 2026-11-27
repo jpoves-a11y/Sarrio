@@ -101,13 +101,14 @@ struct PersonRow: View {
     var body: some View {
         NavigationLink { UserProfileView(username: person.username) } label: {
             HStack(spacing: Theme.Spacing.m) {
-                AvatarView(name: person.displayName, size: 40)
+                AvatarView(name: person.displayName, userId: person.id, avatarKey: person.avatarKey, size: 40)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(person.displayName)
                         .font(.sarrio(16, .semibold))
                         .foregroundStyle(Theme.Colors.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("@\(person.username)").font(.sarrio(13)).foregroundStyle(Theme.Colors.textSecondary)
+                    Text(person.city.map { "@\(person.username) · \($0)" } ?? "@\(person.username)")
+                        .font(.sarrio(13)).foregroundStyle(Theme.Colors.textSecondary)
                 }
                 Spacer(minLength: Theme.Spacing.s)
                 action

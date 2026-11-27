@@ -50,7 +50,7 @@ struct CommentsSheet: View {
 
     private func row(_ c: FeedComment) -> some View {
         HStack(alignment: .top, spacing: Theme.Spacing.s) {
-            AvatarView(name: c.author.displayName, size: 30)
+            AvatarView(name: c.author.displayName, userId: c.author.id, avatarKey: c.author.avatarKey, size: 30)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(c.author.displayName).font(.sarrio(14, .semibold)).foregroundStyle(Theme.Colors.textPrimary)

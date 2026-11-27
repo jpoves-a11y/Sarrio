@@ -77,13 +77,14 @@ struct UserProfileView: View {
     private func header(_ p: UserProfile) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             HStack(spacing: Theme.Spacing.m) {
-                AvatarView(name: p.displayName, size: 64)
+                AvatarView(name: p.displayName, userId: p.id, avatarKey: p.avatarKey, size: 64)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(p.displayName)
                         .font(.sarrio(26, .bold))
                         .foregroundStyle(Theme.Colors.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("@\(p.username)").font(.sarrio(14)).foregroundStyle(Theme.Colors.textSecondary)
+                    Text(p.city.map { "@\(p.username) · \($0)" } ?? "@\(p.username)")
+                        .font(.sarrio(14)).foregroundStyle(Theme.Colors.textSecondary)
                 }
             }
             if let bio = p.bio, !bio.isEmpty {

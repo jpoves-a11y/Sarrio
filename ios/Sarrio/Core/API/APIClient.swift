@@ -13,6 +13,9 @@ enum APIError: Error, LocalizedError, Equatable {
         case .http(_, "invalid_username"?): "El usuario debe tener entre 3 y 20 caracteres: letras, números, punto o guion bajo."
         case .http(_, "invalid_display_name"?): "El nombre no puede estar vacío."
         case .http(_, "invalid_bio"?): "La bio puede tener como máximo 280 caracteres."
+        case .http(_, "invalid_city"?): "La ciudad puede tener como máximo 60 caracteres."
+        case .http(_, "invalid_avatar_size"?): "La foto es demasiado grande."
+        case .http(_, "invalid_avatar_format"?): "La foto tiene que ser JPEG."
         case .http(_, "invalid_track"?): "La ruta del archivo no es válida."
         case .http(413, _): "La actividad es demasiado grande."
         case .http(_, "polar_not_configured"?): "La conexión con Polar aún no está activada en el servidor."
@@ -120,6 +123,29 @@ struct APIClient: Sendable {
     func updateMe(_ update: ProfileUpdate) async throws -> Me { try await patch("v1/me", body: update) }
 
     func deleteAccount() async throws { try await delete("v1/me") }
+
+    // MARK: Foto de perfil
+
+    /// URL pública de una foto de perfil (inmutable: la clave cambia con cada foto nueva).
+    func avatarURL(userId: String, key: String) -> URL {
+        baseURL.appending(path: "avatars/\(userId)/\(key).jpg")
+    }
+
+    /// Sube la foto (JPEG ya recortado) y devuelve su clave nueva.
+    func uploadAvatar(_ jpeg: Data) async throws -> String {
+        var request = URLRequest(url: baseURL.appending(path: "v1/me/avatar"))
+        request.httpMethod = "PUT"
+        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        if let token = bearerToken() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let (data, response) = try await session.upload(for: request, from: jpeg)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        struct Body: Decodable { var avatarKey: String?; var error: String? }
+        let body = try? Self.decoder.decode(Body.self, from: data)
+        guard (200..<300).contains(status), let key = body?.avatarKey else { throw APIError.http(status: status, code: body?.error) }
+        return key
+    }
+
+    func deleteAvatar() async throws { try await delete("v1/me/avatar") }
 
     func user(username: String) async throws -> UserProfile {
         let name = username.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? username

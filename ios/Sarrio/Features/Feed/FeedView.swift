@@ -129,7 +129,7 @@ struct FeedCard: View {
             UserProfileView(username: item.actor.username)
         } label: {
             HStack(spacing: Theme.Spacing.s) {
-                AvatarView(name: item.actor.displayName, size: 34)
+                AvatarView(name: item.actor.displayName, userId: item.actor.id, avatarKey: item.actor.avatarKey, size: 34)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(isMine ? "Tú" : item.actor.displayName)
                         .font(.sarrio(15, .semibold))

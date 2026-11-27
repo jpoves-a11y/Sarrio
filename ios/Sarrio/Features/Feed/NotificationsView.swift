@@ -23,7 +23,7 @@ struct NotificationsView: View {
 
     private func row(_ n: AppNotification) -> some View {
         HStack(alignment: .center, spacing: Theme.Spacing.m) {
-            AvatarView(name: n.actor?.displayName ?? "Sarrio", size: 38)
+            AvatarView(name: n.actor?.displayName ?? "Sarrio", userId: n.actor?.id, avatarKey: n.actor?.avatarKey, size: 38)
             VStack(alignment: .leading, spacing: 2) {
                 (Text(n.actor?.displayName ?? "Sarrio").font(.sarrio(15, .semibold)) + Text(" " + n.text).font(.sarrio(15)))
                     .foregroundStyle(Theme.Colors.textPrimary)

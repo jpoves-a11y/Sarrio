@@ -15,6 +15,7 @@ struct Person: Codable, Hashable, Sendable, Identifiable {
     var displayName: String
     var bio: String?
     var avatarKey: String?
+    var city: String?
     var friendStatus: FriendStatus?
     var since: Date?
 }
@@ -47,12 +48,14 @@ struct UserProfile: Decodable, Sendable {
     var username: String
     var displayName: String
     var bio: String?
+    var avatarKey: String?
+    var city: String?
     var friendStatus: FriendStatus
     var summary: Summary
     var ascents: [Ascent]
     var badges: [EarnedBadge]
 
-    private enum CodingKeys: String, CodingKey { case id, username, displayName, bio, friendStatus, summary, ascents, badges }
+    private enum CodingKeys: String, CodingKey { case id, username, displayName, bio, avatarKey, city, friendStatus, summary, ascents, badges }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -60,6 +63,8 @@ struct UserProfile: Decodable, Sendable {
         username = try c.decode(String.self, forKey: .username)
         displayName = try c.decode(String.self, forKey: .displayName)
         bio = try c.decodeIfPresent(String.self, forKey: .bio)
+        avatarKey = try c.decodeIfPresent(String.self, forKey: .avatarKey)
+        city = try c.decodeIfPresent(String.self, forKey: .city)
         friendStatus = try c.decode(FriendStatus.self, forKey: .friendStatus)
         summary = try c.decode(Summary.self, forKey: .summary)
         ascents = try c.decode(LossyArray<Ascent>.self, forKey: .ascents).elements

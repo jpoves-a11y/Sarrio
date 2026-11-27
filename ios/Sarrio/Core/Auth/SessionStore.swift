@@ -76,6 +76,18 @@ final class SessionStore {
         state = .signedIn(try await api.updateMe(update))
     }
 
+    /// Foto nueva (o ninguna): se ve al instante en toda la app.
+    func setAvatar(_ jpeg: Data?) async throws {
+        guard var me else { return }
+        if let jpeg {
+            me.avatarKey = try await api.uploadAvatar(jpeg)
+        } else {
+            try await api.deleteAvatar()
+            me.avatarKey = nil
+        }
+        state = .signedIn(me)
+    }
+
     func deleteAccount() async throws {
         try await api.deleteAccount()
         signOut()

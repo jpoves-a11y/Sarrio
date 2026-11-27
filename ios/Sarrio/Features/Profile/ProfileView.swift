@@ -115,12 +115,12 @@ struct ProfileView: View {
     private func header(_ me: Me) -> some View {
         Card {
             HStack(spacing: Theme.Spacing.m) {
-                AvatarView(name: me.displayName, size: 64)
+                AvatarView(name: me.displayName, userId: me.id, avatarKey: me.avatarKey, size: 64)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(me.displayName)
                         .font(.sarrio(22, .bold))
                         .foregroundStyle(Theme.Colors.textPrimary)
-                    Text("@\(me.username)")
+                    Text(me.city.map { "@\(me.username) · \($0)" } ?? "@\(me.username)")
                         .font(.sarrio(15))
                         .foregroundStyle(Theme.Colors.textSecondary)
                 }
