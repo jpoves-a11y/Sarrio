@@ -15,10 +15,22 @@ struct ActivityWeatherSection: View {
     @State private var summary: WeatherSummary?
     @State private var legalURL: URL?
     @State private var failure: String?
+    @State private var loading = true
 
     var body: some View {
-        Group {
-            if let summary {
+        // Un VStack siempre presente: un Group vacío no existe y su .task no llega a ejecutarse
+        VStack(alignment: .leading, spacing: 0) {
+            if loading {
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    SectionHeader(title: "El tiempo")
+                    HStack(spacing: Theme.Spacing.s) {
+                        ProgressView().controlSize(.small)
+                        Text("Cargando el tiempo de la salida…")
+                            .font(.sarrio(13))
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                    }
+                }
+            } else if let summary {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     SectionHeader(title: "El tiempo")
                     bar(summary)
@@ -60,12 +72,14 @@ struct ActivityWeatherSection: View {
                 .transition(.opacity)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .task(id: activityId) {
             let loaded = await ActivityWeatherLoader.load(activityId: activityId, center: center, start: start, end: end, summitAt: summit?.at)
             withAnimation(Theme.Motion.spring) {
                 summary = loaded.summary
                 legalURL = loaded.legalURL
                 failure = loaded.failure
+                loading = false
             }
         }
     }
