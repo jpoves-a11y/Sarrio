@@ -16,6 +16,8 @@ struct Card<Content: View>: View {
                 .padding(padding)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.Colors.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+                // En oscuro la sombra apenas se ve: un filo fino separa la tarjeta del fondo
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.Colors.separator, lineWidth: 0.5))
                 .elevation(.high)
         } else {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) { content }

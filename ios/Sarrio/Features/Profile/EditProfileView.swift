@@ -44,12 +44,13 @@ struct EditProfileView: View {
             Section {
                 TextField("Nombre", text: $displayName)
                     .textContentType(.name)
-                HStack(spacing: 2) {
-                    Text("@").foregroundStyle(Theme.Colors.textSecondary)
-                    TextField("usuario", text: $username)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                // El usuario se eligió al registrarse y no se cambia
+                HStack {
+                    Text("@\(username)").foregroundStyle(Theme.Colors.textSecondary)
+                    Spacer()
+                    Image(systemName: "lock").font(.system(size: 13)).foregroundStyle(Theme.Colors.textSecondary)
                 }
+                .accessibilityLabel("Usuario @\(username), no se puede cambiar")
                 TextField("Bio", text: $bio, axis: .vertical)
                     .lineLimit(2...4)
             } footer: {
@@ -186,7 +187,6 @@ struct EditProfileView: View {
         defer { saving = false }
         do {
             try await session.update(ProfileUpdate(
-                username: username,
                 displayName: displayName,
                 bio: bio,
                 city: city.trimmingCharacters(in: .whitespaces),

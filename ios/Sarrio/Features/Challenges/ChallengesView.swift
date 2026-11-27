@@ -213,6 +213,8 @@ struct LegendsSection: View {
         .padding(Theme.Spacing.m)
         .background(LegendColors.ink, in: RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous))
+        // Filo dorado tenue: separa el bloque del fondo también en modo oscuro
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.hero, style: .continuous).stroke(LegendColors.gold.opacity(0.28), lineWidth: 0.75))
         .elevation(.high)
     }
 }

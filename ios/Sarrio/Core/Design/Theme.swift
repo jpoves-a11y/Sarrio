@@ -9,15 +9,25 @@ import UIKit
 ///   e interacción física (inclinación al tocar, muelles, háptica). Nada de adornos planos.
 enum Theme {
     enum Colors {
+        // Claro y oscuro: cada color cambia con la apariencia (sigue al iPhone o a Ajustes → Apariencia).
         static let accent = Color.accentColor
         static let background = Color(uiColor: .systemBackground)
-        static let groupedBackground = Color(red: 0.965, green: 0.965, blue: 0.97)
-        /// Fondo de las pantallas: blanco limpio (los bloques no llevan caja, solo filos finos).
-        static let page = Color.white
-        static let surface = Color.white
-        static let textPrimary = Color(red: 0.08, green: 0.08, blue: 0.09)
-        static let textSecondary = Color(red: 0.42, green: 0.43, blue: 0.45)
-        static let separator = Color.black.opacity(0.07)
+        static let groupedBackground = dynamic(light: (0.965, 0.965, 0.97), dark: (0.082, 0.086, 0.094))
+        /// Fondo de las pantallas: blanco limpio en claro, casi negro en oscuro (sin caja, solo filos finos).
+        static let page = dynamic(light: (1, 1, 1), dark: (0.055, 0.059, 0.063))
+        /// Lo que flota (tarjetas sobre mapas, hojas): blanco en claro, gris muy oscuro en oscuro.
+        static let surface = dynamic(light: (1, 1, 1), dark: (0.102, 0.106, 0.114))
+        static let textPrimary = dynamic(light: (0.08, 0.08, 0.09), dark: (0.95, 0.95, 0.953))
+        static let textSecondary = dynamic(light: (0.42, 0.43, 0.45), dark: (0.604, 0.616, 0.639))
+        static let separator = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark
+            ? UIColor.white.withAlphaComponent(0.10) : UIColor.black.withAlphaComponent(0.07) })
+
+        private static func dynamic(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
+            Color(uiColor: UIColor { trait in
+                let c = trait.userInterfaceStyle == .dark ? dark : light
+                return UIColor(red: c.0, green: c.1, blue: c.2, alpha: 1)
+            })
+        }
     }
 
     enum Spacing {
@@ -74,4 +84,26 @@ extension Font {
     static let screenTitle = Font.sarrio(30, .bold)
     /// Cifra protagonista (altitud de la cima más alta, total de cumbres…).
     static let heroValue = Font.sarrio(44, .semibold).monospacedDigit()
+}
+
+/// Apariencia elegida en Ajustes: la del iPhone (por defecto), clara u oscura.
+enum Appearance: String, CaseIterable, Identifiable {
+    case system, light, dark
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: "Sistema"
+        case .light: "Claro"
+        case .dark: "Oscuro"
+        }
+    }
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
 }

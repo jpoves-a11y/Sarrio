@@ -10,6 +10,8 @@ enum APIError: Error, LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .http(_, "username_taken"?): "Ese nombre de usuario ya está cogido."
+        case .http(_, "username_reserved"?): "Ese nombre de usuario no está disponible."
+        case .http(_, "username_locked"?): "Tu nombre de usuario ya no se puede cambiar."
         case .http(_, "invalid_username"?): "El usuario debe tener entre 3 y 20 caracteres: letras, números, punto o guion bajo."
         case .http(_, "invalid_display_name"?): "El nombre no puede estar vacío."
         case .http(_, "invalid_bio"?): "La bio puede tener como máximo 280 caracteres."
@@ -121,6 +123,23 @@ struct APIClient: Sendable {
     func me() async throws -> Me { try await get("v1/me") }
 
     func updateMe(_ update: ProfileUpdate) async throws -> Me { try await patch("v1/me", body: update) }
+
+    struct UsernameAvailability: Decodable, Sendable {
+        var username: String
+        var available: Bool
+        var reason: String?
+    }
+
+    func usernameAvailability(_ username: String) async throws -> UsernameAvailability {
+        let q = username.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+        return try await get("v1/users/available?username=\(q)")
+    }
+
+    /// Elegir el usuario (una sola vez).
+    func chooseUsername(_ username: String) async throws -> Me {
+        struct Body: Encodable { var username: String }
+        return try await post("v1/me/username", body: Body(username: username))
+    }
 
     func deleteAccount() async throws { try await delete("v1/me") }
 

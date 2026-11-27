@@ -76,6 +76,11 @@ final class SessionStore {
         state = .signedIn(try await api.updateMe(update))
     }
 
+    /// Elegir el usuario al registrarse (queda fijo).
+    func chooseUsername(_ username: String) async throws {
+        state = .signedIn(try await api.chooseUsername(username))
+    }
+
     /// Foto nueva (o ninguna): se ve al instante en toda la app.
     func setAvatar(_ jpeg: Data?) async throws {
         guard var me else { return }

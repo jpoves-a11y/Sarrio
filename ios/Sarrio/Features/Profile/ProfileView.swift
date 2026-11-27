@@ -19,12 +19,10 @@ struct ProfileView: View {
                         ])
                     }
                 }
-                badgesStrip
+                badgesShowcase
                 activitiesSection
                 Card(padding: 0) {
                     VStack(spacing: 0) {
-                        NavigationRow(icon: "medal", title: "Emblemas") { BadgesView() }
-                        Divider().padding(.leading, 52)
                         NavigationRow(icon: "person.2", title: "Amigos") { FriendsView() }
                         Divider().padding(.leading, 52)
                         NavigationRow(icon: "gearshape", title: "Ajustes") { SettingsView() }
@@ -45,39 +43,71 @@ struct ProfileView: View {
         }
     }
 
-    /// Los tres últimos emblemas, en metal, con acceso a todos.
-    @ViewBuilder private var badgesStrip: some View {
-        let recent = Array(achievements.earned.prefix(3))
-        if !recent.isEmpty {
-            NavigationLink { BadgesView() } label: {
-                HStack(spacing: Theme.Spacing.m) {
-                    HStack(spacing: -14) {
-                        ForEach(Array(recent.enumerated()), id: \.element.id) { index, badge in
-                            BadgeMedal(icon: badge.icon, earned: true, size: 54)
-                                .elevation(.medium)
-                                .background { if badge.tier == .legend { LegendAura(size: 54, onDark: false) } }
-                                .zIndex(Double(recent.count - index))
+    /// Vitrina de emblemas: el recuento grande, una barra fina y los mejores en grande (primero las
+    /// Leyendas con su aura). Sin ninguno aún, los más cercanos en gris. Toda la vitrina abre Emblemas.
+    private var badgesShowcase: some View {
+        let catalog = achievements.catalog
+        let tierRank: [BadgeTier: Int] = [.legend: 0, .special: 1, .gold: 2, .silver: 3, .bronze: 4]
+        let best = achievements.earned.sorted {
+            let a = tierRank[$0.tier] ?? 9, b = tierRank[$1.tier] ?? 9
+            return a != b ? a < b : ($0.earnedAt ?? .distantPast) > ($1.earnedAt ?? .distantPast)
+        }
+        let shown = best.isEmpty ? Array(achievements.closest.prefix(3)) : Array(best.prefix(8))
+        return NavigationLink { BadgesView() } label: {
+            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("EMBLEMAS")
+                        .font(.sarrio(12, .semibold))
+                        .tracking(1.4)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                    Spacer()
+                    if let catalog {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("\(catalog.earned)").font(.sarrio(26, .semibold).monospacedDigit()).foregroundStyle(Theme.Colors.textPrimary)
+                            Text("de \(catalog.total)").font(.sarrio(14, .medium)).foregroundStyle(Theme.Colors.textSecondary)
                         }
                     }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(recent[0].name)
-                            .font(.sarrio(16, .semibold))
-                            .foregroundStyle(Theme.Colors.textPrimary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text("Último emblema")
-                            .font(.sarrio(13))
-                            .foregroundStyle(Theme.Colors.textSecondary)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Theme.Colors.textSecondary.opacity(0.6))
+                    Image(systemName: "chevron.right").font(.system(size: 13)).foregroundStyle(Theme.Colors.textSecondary.opacity(0.6))
                 }
-                .padding(.vertical, Theme.Spacing.s)
-                .contentShape(Rectangle())
+                if let catalog {
+                    ProgressBar(fraction: Double(catalog.earned) / Double(max(catalog.total, 1)), height: 2)
+                }
+                if shown.isEmpty {
+                    Text("Sube tu primera cima y conseguirás tu primer emblema.")
+                        .font(.sarrio(14)).foregroundStyle(Theme.Colors.textSecondary)
+                } else {
+                    if best.isEmpty {
+                        Text("Te falta poco").font(.sarrio(14, .medium)).foregroundStyle(Theme.Colors.textSecondary)
+                    }
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: Theme.Spacing.l) {
+                            ForEach(shown) { badge in
+                                VStack(spacing: 6) {
+                                    BadgeMedal(icon: badge.icon, earned: badge.isEarned || badge.tier == .legend,
+                                               progress: badge.isEarned ? nil : badge.progress?.fraction, size: 76, shine: badge.tier == .legend)
+                                        .opacity(badge.isEarned || badge.tier != .legend ? 1 : 0.55)
+                                        .elevation(badge.isEarned ? .medium : .low)
+                                        .background { if badge.tier == .legend && badge.isEarned { LegendAura(size: 76, onDark: false) } }
+                                        .frame(width: 92, height: 92)
+                                    Text(badge.name)
+                                        .font(.sarrio(12, .semibold))
+                                        .foregroundStyle(badge.isEarned ? Theme.Colors.textPrimary : Theme.Colors.textSecondary)
+                                        .multilineTextAlignment(.center)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .frame(width: 92)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .scrollClipDisabled()
+                }
             }
-            .buttonStyle(.pressableCard)
+            .padding(.vertical, Theme.Spacing.m)
+            .contentShape(Rectangle())
+            .overlay(alignment: .bottom) { Rectangle().fill(Theme.Colors.separator).frame(height: 0.5) }
         }
+        .buttonStyle(.pressableCard)
     }
 
     /// Últimas salidas de montaña (con o sin cimas) y acceso a todas.

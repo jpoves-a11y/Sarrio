@@ -29,6 +29,8 @@ struct Me: Codable, Equatable, Sendable {
     var bio: String?
     var avatarKey: String?
     var city: String?
+    /// Ya eligió su usuario: no se puede cambiar.
+    var usernameLocked: Bool?
     var defaultVisibility: Visibility
     var createdAt: Date
 }
@@ -50,7 +52,6 @@ struct AuthResponse: Decodable, Sendable {
 }
 
 struct ProfileUpdate: Encodable, Sendable {
-    var username: String?
     var displayName: String?
     var bio: String?
     var city: String?

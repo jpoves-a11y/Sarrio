@@ -6,6 +6,8 @@ struct SarrioApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     private let services = AppServices.shared
+    /// Ajustes → Apariencia: la del iPhone (por defecto), clara u oscura.
+    @AppStorage("appearance") private var appearance: Appearance = .system
 
     init() {
         // Geist también en las barras del sistema (títulos, pestañas, controles segmentados)
@@ -29,8 +31,7 @@ struct SarrioApp: App {
                 .environment(\.apiClient, services.api)
                 .environment(\.peakPackStore, services.peakPackStore)
                 .tint(Theme.Colors.accent)
-                // Estética clara por decisión de diseño.
-                .preferredColorScheme(.light)
+                .preferredColorScheme(appearance.colorScheme)
                 .task { await services.session.restore() }
                 // GPX/FIT/TCX abiertos desde Archivos, Mail, AirDrop…
                 .onOpenURL { url in

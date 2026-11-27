@@ -27,7 +27,7 @@ struct ScrubbableProfile: View {
                         .frame(width: 1, height: height)
                         .offset(x: p.x - 0.5)
                     Circle()
-                        .fill(.white)
+                        .fill(Theme.Colors.surface)
                         .frame(width: 11, height: 11)
                         .overlay(Circle().stroke(Theme.Colors.accent, lineWidth: 2.5))
                         .offset(x: p.x - 5.5, y: p.y - 5.5)

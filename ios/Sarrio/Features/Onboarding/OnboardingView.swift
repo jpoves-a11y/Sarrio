@@ -2,6 +2,7 @@ import AuthenticationServices
 import SwiftUI
 
 struct OnboardingView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(SessionStore.self) private var session
 
     var body: some View {
@@ -48,7 +49,7 @@ struct OnboardingView: View {
             } onCompletion: { result in
                 Task { await session.handleAppleResult(result) }
             }
-            .signInWithAppleButtonStyle(.black)
+            .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
             .frame(height: 52)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.button, style: .continuous))
 

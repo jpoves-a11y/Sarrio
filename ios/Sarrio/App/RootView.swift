@@ -10,8 +10,13 @@ struct RootView: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             case .signedOut:
                 OnboardingView()
-            case .signedIn:
-                MainTabView()
+            case let .signedIn(me):
+                // El usuario se elige una vez, antes de entrar
+                if me.usernameLocked == false {
+                    ChooseUsernameView()
+                } else {
+                    MainTabView()
+                }
             }
         }
         .animation(.easeInOut(duration: 0.2), value: session.state)

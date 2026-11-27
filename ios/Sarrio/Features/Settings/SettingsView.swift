@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @AppStorage("appearance") private var appearance: Appearance = .system
     @Environment(SessionStore.self) private var session
     @Environment(LibraryStore.self) private var library
     @State private var confirmDelete = false
@@ -35,6 +36,14 @@ struct SettingsView: View {
                 Text("Fuentes de datos")
             } footer: {
                 Text("Con Apple Health conectado, los entrenos nuevos con GPS se suben solos, también con la app cerrada. Puedes compartir archivos a Sarrio desde cualquier app.")
+            }
+            Section("Apariencia") {
+                Picker(selection: $appearance) {
+                    ForEach(Appearance.allCases) { Text($0.title).tag($0) }
+                } label: {
+                    Label("Tema", systemImage: "circle.lefthalf.filled")
+                }
+                .pickerStyle(.menu)
             }
             Section("Privacidad") {
                 NavigationLink { PrivacyZonesView() } label: { Label("Zonas privadas", systemImage: "eye.slash") }
