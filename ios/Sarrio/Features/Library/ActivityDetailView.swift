@@ -62,6 +62,16 @@ struct ActivityDetailView: View {
                 if let analysis, !analysis.slopes.isEmpty {
                     ActivityAnalysisSection(analysis: analysis).staggeredAppear(5)
                 }
+                if let center = plan?.center, let end = endDate {
+                    ActivityWeatherSection(
+                        activityId: activity.id,
+                        center: CLLocationCoordinate2D(latitude: center.lat, longitude: center.lon),
+                        start: activity.startAt,
+                        end: end,
+                        summit: ascents.max { ($0.peak.ele ?? 0) < ($1.peak.ele ?? 0) }.map { (name: $0.peak.displayName, at: $0.summitedAt) }
+                    )
+                    .staggeredAppear(6)
+                }
                 if let history = summitHistory {
                     SummitHistory(peak: history.peak, entries: history.entries).staggeredAppear(6)
                 }

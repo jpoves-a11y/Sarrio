@@ -78,11 +78,26 @@ struct UserStats: Decodable, Sendable {
         var id: String { activityId }
     }
 
+    /// Perfil de la última subida con ruta de una cima (para «Tu cordillera 3D»).
+    struct PeakProfile: Decodable, Sendable {
+        var activityId: String
+        var date: Date
+        /// 80 alturas de toda la ruta.
+        var elevations: [Double]
+        var totalDistance: Double
+        var summitIndex: Int
+        /// La más alta de su salida: se dibuja la ruta entera; si no, subida y espejo.
+        var isRouteTop: Bool
+        var distance: Double
+        var gain: Double
+    }
+
     struct Peak: Decodable, Sendable, Identifiable {
         var id: Int64
         var name: String
         var ele: Double?
         var count: Int
+        var profile: PeakProfile?
     }
 
     var year: Int?

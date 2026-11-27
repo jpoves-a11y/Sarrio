@@ -17,7 +17,7 @@ struct StatsView: View {
                 if let stats {
                     YearHero(stats: stats, year: year)
                     GainChart(stats: stats, year: year)
-                    if !stats.peaks.isEmpty { RidgeView(peaks: stats.peaks) }
+                    if !stats.peaks.isEmpty { Ridge3DBlock(peaks: stats.peaks) }
                     CalendarHeatmap(calendar: stats.calendar, streak: stats.streak)
                     RecordsRow(records: stats.records)
                     if stats.climbRates.count >= 2 { ClimbRateChart(points: stats.climbRates) }
@@ -165,7 +165,11 @@ struct GainChart: View {
                     .frame(width: 190)
                 }
             }
-            if year == nil {
+            if year != nil && stats.totals.activities == 0 {
+                Text("Aún no hay salidas en \(String(year!)).")
+                    .font(.sarrio(15)).foregroundStyle(Theme.Colors.textSecondary)
+                    .padding(.vertical, Theme.Spacing.l)
+            } else if year == nil {
                 yearlyBars
             } else if mode == 0, let cumulative = stats.cumulative {
                 cumulativeChart(cumulative)
@@ -177,10 +181,17 @@ struct GainChart: View {
 
     // Acumulado: tu año contra el anterior, con las líneas de Everest
     private func cumulativeChart(_ c: UserStats.Cumulative) -> some View {
-        let current = c.current.enumerated().map { GainPoint(index: $0.offset, day: Int($0.element[0]), gain: $0.element[1]) }
-        let previous = c.previous.enumerated().map { GainPoint(index: $0.offset, day: Int($0.element[0]), gain: $0.element[1]) }
-        let top = max(current.last?.gain ?? 0, previous.last?.gain ?? 0, 8849)
-        let everests = (1...max(1, Int(top / 8849))).map { Double($0) * 8849 }
+        // Cada curva empieza en 0 el 1 de enero y sigue plana hasta hoy (o fin de año): con una sola
+        // salida se ve un escalón, no un punto suelto que no se dibuja
+        let isCurrentYear = year == Calendar.current.component(.year, from: .now)
+        let today = Calendar.current.ordinality(of: .day, in: .year, for: .now) ?? 365
+        let current = series(c.current, until: isCurrentYear ? today : 365)
+        let previous = series(c.previous, until: 365)
+        let maxGain = max(current.last?.gain ?? 0, previous.last?.gain ?? 0, 100)
+        // El Everest se dibuja solo si cabe (o si estás a menos del 40 % de él)
+        let showsFirstEverest = maxGain >= 8849 * 0.6
+        let top = max(maxGain * 1.15, showsFirstEverest ? 8849 * 1.08 : 0)
+        let everests = stride(from: 8849.0, through: top, by: 8849).map { $0 }
         let value = selectedDay.flatMap { d in current.last { $0.day <= d } }
         return VStack(alignment: .leading, spacing: 6) {
             Text(value.map { "\($0.gain.groupedInteger) m · \(dayLabel($0.day))" } ?? " ")
@@ -212,6 +223,17 @@ struct GainChart: View {
                         .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                         .interpolationMethod(.stepEnd)
                 }
+                ForEach(c.current.indices, id: \.self) { i in
+                    PointMark(x: .value("Día", Int(c.current[i][0])), y: .value("m", c.current[i][1]))
+                        .foregroundStyle(Theme.Colors.accent).symbolSize(28)
+                }
+                if c.current.count == 1, let only = c.current.first {
+                    PointMark(x: .value("Día", Int(only[0])), y: .value("m", only[1]))
+                        .foregroundStyle(Theme.Colors.accent).symbolSize(60)
+                        .annotation(position: .top, alignment: .trailing) {
+                            Text("\(only[1].groupedInteger) m").font(.sarrio(12, .bold)).foregroundStyle(Theme.Colors.accent)
+                        }
+                }
                 if let value {
                     RuleMark(x: .value("Día", value.day)).foregroundStyle(Theme.Colors.textPrimary.opacity(0.25))
                     PointMark(x: .value("Día", value.day), y: .value("m", value.gain))
@@ -219,6 +241,7 @@ struct GainChart: View {
                 }
             }
             .chartXScale(domain: 1...366)
+            .chartYScale(domain: 0...top)
             .chartXAxis {
                 AxisMarks(values: [1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]) { v in
                     AxisValueLabel { Text(Self.months[(v.index) % 12]).font(.sarrio(10)) }
@@ -239,6 +262,18 @@ struct GainChart: View {
         }
     }
 
+    /// Serie para el gráfico: (1, 0), los puntos de cada salida y la última altura alargada hasta `until`.
+    private func series(_ raw: [[Double]], until: Int) -> [GainPoint] {
+        var out = [GainPoint(index: 0, day: 1, gain: 0)]
+        for (i, p) in raw.enumerated() where p.count >= 2 {
+            out.append(GainPoint(index: i + 1, day: max(1, Int(p[0])), gain: p[1]))
+        }
+        if let last = out.last, last.day < until {
+            out.append(GainPoint(index: out.count, day: until, gain: last.gain))
+        }
+        return out
+    }
+
     // Por mes: barras, el mes récord en acento y la media
     private var monthlyBars: some View {
         let months = stats.monthly
@@ -252,7 +287,9 @@ struct GainChart: View {
                 .foregroundStyle(Theme.Colors.textPrimary)
             Chart {
                 ForEach(months) { m in
-                    BarMark(x: .value("Mes", m.month), y: .value("m", m.gain), width: .ratio(0.62))
+                    // Un mes con desnivel siempre se ve, aunque al lado haya uno enorme
+                    BarMark(x: .value("Mes", m.month), y: .value("m", m.gain > 0 ? max(m.gain, (best.flatMap { b in months.first { $0.month == b }?.gain } ?? 0) * 0.025) : 0),
+                            width: .ratio(0.62))
                         .foregroundStyle(m.month == best && m.gain > 0 ? Theme.Colors.accent : Theme.Colors.accent.opacity(0.35))
                         .cornerRadius(3)
                 }
