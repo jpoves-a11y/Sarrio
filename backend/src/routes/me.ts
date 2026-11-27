@@ -6,7 +6,7 @@ import { avatars, devices, privacyZones, users } from "../db/schema";
 import { newId } from "../lib/ids";
 import { badgeCount } from "../services/badgeCount";
 import { sendToUser } from "../services/push";
-import { isValidUsername, isVisibility, normalizeUsername } from "../lib/validation";
+import { isVisibility, normalizeUsername, usernameProblem } from "../lib/validation";
 import { toMe } from "../services/users";
 
 export const meRoutes = new Hono<AppBindings>();
@@ -16,6 +16,33 @@ meRoutes.get("/", async (c) => {
   const user = await c.var.db.select().from(users).where(eq(users.id, c.var.userId)).get();
   if (!user) return c.json({ error: "not_found" }, 404);
   return c.json(toMe(user));
+});
+
+/** Elegir el nombre de usuario: una sola vez, al registrarse. Después queda fijo. */
+meRoutes.post("/username", async (c) => {
+  const body = await c.req.json<Record<string, unknown>>().catch(() => null);
+  if (typeof body?.username !== "string") return c.json({ error: "invalid_username" }, 400);
+  const db = c.var.db;
+  const me = await db.select().from(users).where(eq(users.id, c.var.userId)).get();
+  if (!me) return c.json({ error: "not_found" }, 404);
+  if (me.usernameLockedAt) return c.json({ error: "username_locked" }, 409);
+  const username = normalizeUsername(body.username);
+  const problem = usernameProblem(username);
+  if (problem) return c.json({ error: problem === "reserved" ? "username_reserved" : "invalid_username" }, 400);
+  const taken = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.username, username), ne(users.id, c.var.userId)))
+    .get();
+  if (taken) return c.json({ error: "username_taken" }, 409);
+  try {
+    await db.update(users).set({ username, usernameLockedAt: new Date() }).where(eq(users.id, c.var.userId));
+  } catch {
+    // Otra persona lo ha cogido en el mismo instante (índice único)
+    return c.json({ error: "username_taken" }, 409);
+  }
+  const user = await db.select().from(users).where(eq(users.id, c.var.userId)).get();
+  return c.json(toMe(user!));
 });
 
 /** Novedades para el número del icono y de la pestaña Amigos. */
@@ -91,17 +118,12 @@ meRoutes.patch("/", async (c) => {
 
   const update: Partial<typeof users.$inferInsert> = {};
 
+  // El usuario se elige una sola vez (POST /v1/me/username) y no se cambia después. Versiones
+  // anteriores de la app lo mandan siempre al guardar: se acepta si es el mismo.
   if (body.username !== undefined) {
-    if (typeof body.username !== "string") return c.json({ error: "invalid_username" }, 400);
-    const username = normalizeUsername(body.username);
-    if (!isValidUsername(username)) return c.json({ error: "invalid_username" }, 400);
-    const taken = await c.var.db
-      .select({ id: users.id })
-      .from(users)
-      .where(and(eq(users.username, username), ne(users.id, c.var.userId)))
-      .get();
-    if (taken) return c.json({ error: "username_taken" }, 409);
-    update.username = username;
+    const current = await c.var.db.select({ username: users.username }).from(users).where(eq(users.id, c.var.userId)).get();
+    if (typeof body.username !== "string" || normalizeUsername(body.username) !== current?.username)
+      return c.json({ error: "username_locked" }, 400);
   }
   if (body.displayName !== undefined) {
     if (typeof body.displayName !== "string") return c.json({ error: "invalid_display_name" }, 400);

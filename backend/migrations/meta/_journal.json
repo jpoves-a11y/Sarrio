@@ -64,6 +64,13 @@
       "when": 1795764745429,
       "tag": "0008_avatars_city",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1795766426066,
+      "tag": "0009_username_lock",
+      "breakpoints": true
     }
   ]
 }

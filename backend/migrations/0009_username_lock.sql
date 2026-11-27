@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `username_locked_at` integer;

@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import type { AppBindings } from "../env";
 import { requireAuth } from "../auth/session";
 import { ascents, badges, userBadges, users } from "../db/schema";
-import { normalizeUsername } from "../lib/validation";
+import { normalizeUsername, usernameProblem } from "../lib/validation";
 import { ascentsWithPeaks } from "../services/activities";
 import { getRelationship } from "../services/relationships";
 import { blockedIds, friendStatus, publicUserColumns } from "../services/social";
@@ -12,6 +12,19 @@ import { canView } from "../services/visibility";
 
 export const usersRoutes = new Hono<AppBindings>();
 usersRoutes.use("*", requireAuth);
+
+/** ¿Está libre este usuario? `reason`: invalid, reserved o taken. */
+usersRoutes.get("/available", async (c) => {
+  const username = normalizeUsername(c.req.query("username") ?? "");
+  const problem = usernameProblem(username);
+  if (problem) return c.json({ username, available: false, reason: problem });
+  const taken = await c.var.db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.username, username), ne(users.id, c.var.userId)))
+    .get();
+  return c.json({ username, available: !taken, reason: taken ? "taken" : null });
+});
 
 /** Buscar personas por usuario o nombre (sin bloqueados), con el estado de amistad. */
 usersRoutes.get("/search", async (c) => {

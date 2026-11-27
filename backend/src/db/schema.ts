@@ -37,6 +37,8 @@ export const users = sqliteTable(
     bio: text("bio"),
     /** Ciudad, opcional (texto libre, p. ej. «Jaca, Huesca»). */
     city: text("city"),
+    /** Cuándo eligió su usuario: desde entonces no se puede cambiar. */
+    usernameLockedAt: integer("username_locked_at", { mode: "timestamp_ms" }),
     defaultVisibility: text("default_visibility", { enum: visibilityValues }).notNull().default("friends"),
     /** Última vez que abrió la pestaña Amigos: lo de sus amigos posterior cuenta como novedad. */
     feedSeenAt: integer("feed_seen_at", { mode: "timestamp_ms" }),

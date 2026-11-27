@@ -15,6 +15,8 @@ export function toMe(u: UserRow) {
     bio: u.bio,
     avatarKey: u.avatarKey,
     city: u.city,
+    /** Si ya eligió su usuario (entonces no se puede cambiar). */
+    usernameLocked: u.usernameLockedAt != null,
     defaultVisibility: u.defaultVisibility,
     createdAt: u.createdAt.getTime(),
   };

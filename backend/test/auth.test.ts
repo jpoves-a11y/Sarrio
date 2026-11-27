@@ -49,11 +49,14 @@ describe("/v1/me", () => {
     const { token } = await signIn("001", "Lucía");
     const res = await request("PATCH", "/v1/me", {
       token,
-      body: { username: "Lucia.Pirineo", bio: "  Tresmiles  ", defaultVisibility: "public" },
+      body: { bio: "  Tresmiles  ", defaultVisibility: "public" },
     });
     expect(res.status).toBe(200);
     const me = (await res.json()) as any;
-    expect(me).toMatchObject({ username: "lucia.pirineo", bio: "Tresmiles", defaultVisibility: "public" });
+    expect(me).toMatchObject({ bio: "Tresmiles", defaultVisibility: "public", usernameLocked: false });
+    // El usuario se elige una vez
+    const chosen = await request("POST", "/v1/me/username", { token, body: { username: "Lucia.Pirineo" } });
+    expect(((await chosen.json()) as any)).toMatchObject({ username: "lucia.pirineo", usernameLocked: true });
     expect(((await (await request("GET", "/v1/me", { token })).json()) as any).username).toBe("lucia.pirineo");
   });
 
@@ -61,8 +64,7 @@ describe("/v1/me", () => {
     const { request, signIn } = await createTestApp();
     await signIn("001", "Ana");
     const { token } = await signIn("002", "Bea");
-    expect((await request("PATCH", "/v1/me", { token, body: { username: "ana" } })).status).toBe(409);
-    expect((await request("PATCH", "/v1/me", { token, body: { username: "a" } })).status).toBe(400);
+    expect((await request("PATCH", "/v1/me", { token, body: { username: "otra" } })).status).toBe(400);
     expect((await request("PATCH", "/v1/me", { token, body: { defaultVisibility: "everyone" } })).status).toBe(400);
     expect((await request("PATCH", "/v1/me", { token, body: { displayName: "" } })).status).toBe(400);
   });

@@ -10,6 +10,19 @@ export function isValidUsername(u: string): boolean {
   return USERNAME_RE.test(u) && !u.includes("..");
 }
 
+/** Usuarios que nadie puede coger (marca, soporte, rutas). */
+export const RESERVED_USERNAMES = new Set([
+  "admin", "administrador", "sarrio", "soporte", "support", "help", "ayuda", "api", "app", "www",
+  "root", "staff", "equipo", "team", "oficial", "official", "moderador", "mod", "me", "yo", "null", "undefined",
+]);
+
+/** Por qué no vale un usuario (null si vale): formato o reservado. */
+export function usernameProblem(u: string): "invalid" | "reserved" | null {
+  if (!isValidUsername(u)) return "invalid";
+  if (RESERVED_USERNAMES.has(u)) return "reserved";
+  return null;
+}
+
 export function isVisibility(v: unknown): v is Visibility {
   return typeof v === "string" && (visibilityValues as readonly string[]).includes(v);
 }
