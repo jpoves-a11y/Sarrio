@@ -1,12 +1,10 @@
 ---
 red: instagram-reel
-dia: -3
+dia: 0
 hora: "19:30"
 recursos: [clip-biblioteca.mp4]
 ---
-Tu biblioteca de picos. Todas tus cimas, en el globo y una a una.
-
-El {{fecha}}, en la App Store.
+Todas tus cimas, en un mismo sitio.
 
 #montaña #cumbres #picos #montañismo #pirineos #sarrio
 

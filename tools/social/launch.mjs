@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// Kit de lanzamiento (marketing/launch): piezas con «dia» relativo al lanzamiento en vez de fecha.
+// Kit de arranque (marketing/launch): el primer bloque de contenido, con la app ya publicada.
+// Cada pieza lleva «dia» relativo al día en que empieza a publicarse, en vez de fecha.
 //
 //   node tools/social/launch.mjs check               Valida el kit (CI)
-//   node tools/social/launch.mjs schedule 2027-03-02 Lo pasa a la cola con fechas reales
+//   node tools/social/launch.mjs schedule 2027-03-02 Lo pasa a la cola empezando ese día
 //
-// «schedule» crea marketing/queue/<fecha>-lanzamiento/: cambia {{fecha}} por «2 de marzo», calcula
+// «schedule» crea marketing/queue/<fecha>-arranque/: cambia {{fecha}} por «2 de marzo» si aparece, calcula
 // cada fecha en hora de Madrid, genera las diapositivas y copia los clips de marketing/clips/inbox.
 // Los clips que falten se avisan (y la validación de la cola fallará hasta que estén).
 
@@ -78,7 +79,7 @@ export function checkKit() {
     }
     const { meta } = post;
     const fileErrors = [];
-    if (!/^-?\d+$/.test(meta.dia ?? "")) fileErrors.push("falta «dia» (entero, relativo al lanzamiento)");
+    if (!/^\d+$/.test(meta.dia ?? "")) fileErrors.push("falta «dia» (0, 1, 2…: días desde el arranque)");
     if (!/^\d\d:\d\d$/.test(meta.hora ?? "")) fileErrors.push("falta «hora» (HH:MM, hora de Madrid)");
     // Validamos como si ya tuviera fecha, con la fecha más larga posible en el texto.
     const sample = parsePost(fill(src, "2027-09-30"));
@@ -101,7 +102,7 @@ export async function schedule(launchDay) {
   if (!/^\d{4}-\d\d-\d\d$/.test(launchDay)) throw new Error("la fecha va como 2027-03-02");
   const { errors } = checkKit();
   if (errors.length) throw new Error(`el kit tiene errores:\n${errors.join("\n")}`);
-  const out = path.join(QUEUE, `${launchDay}-lanzamiento`);
+  const out = path.join(QUEUE, `${launchDay}-arranque`);
   if (fs.existsSync(out)) throw new Error(`ya existe ${path.relative(ROOT, out)}`);
   fs.mkdirSync(out, { recursive: true });
 

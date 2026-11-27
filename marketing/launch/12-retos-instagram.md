@@ -1,6 +1,6 @@
 ---
 red: instagram-carrusel
-dia: 7
+dia: 9
 hora: "19:30"
 recursos: [retos-01.jpg, retos-02.jpg, retos-03.jpg, retos-04.jpg]
 ---

@@ -1,6 +1,6 @@
 ---
 red: instagram-carrusel
-dia: 2
+dia: 4
 hora: "19:30"
 recursos: [emblemas-01.jpg, emblemas-02.jpg, emblemas-03.jpg, emblemas-04.jpg, emblemas-05.jpg]
 ---

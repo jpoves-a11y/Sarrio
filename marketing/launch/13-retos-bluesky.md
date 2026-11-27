@@ -1,6 +1,6 @@
 ---
 red: bluesky
-dia: 8
+dia: 10
 hora: "19:30"
 recursos: [retos-02.jpg]
 alt: Lista de retos oficiales de Sarrio: Tresmiles de la Maladeta, Techos de Sierra Nevada, Grandes de Picos de Europa, Gredos, Gran Slam Ibérico y Rey del Pirineo.

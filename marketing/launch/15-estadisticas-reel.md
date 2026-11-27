@@ -1,6 +1,6 @@
 ---
 red: instagram-reel
-dia: 13
+dia: 15
 hora: "19:30"
 recursos: [clip-estadisticas.mp4]
 ---

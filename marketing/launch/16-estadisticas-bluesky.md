@@ -1,6 +1,6 @@
 ---
 red: bluesky
-dia: 14
+dia: 16
 hora: "19:30"
 ---
 Pregunta seria: ¿cuántas cimas has subido este año?

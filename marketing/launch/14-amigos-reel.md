@@ -1,6 +1,6 @@
 ---
 red: instagram-reel
-dia: 10
+dia: 12
 hora: "19:30"
 recursos: [clip-amigos.mp4]
 ---

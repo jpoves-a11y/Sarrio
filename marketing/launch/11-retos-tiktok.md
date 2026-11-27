@@ -1,6 +1,6 @@
 ---
 red: tiktok
-dia: 4
+dia: 6
 hora: "21:00"
 recursos: [clip-retos.mp4]
 ---
