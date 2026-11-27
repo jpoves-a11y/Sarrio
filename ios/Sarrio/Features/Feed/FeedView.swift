@@ -27,6 +27,7 @@ struct FeedView: View {
                     }
                 } else {
                     if social.friends?.incoming.isEmpty == false { requestsBanner }
+                    MonthLeaderboard()
                     ForEach(Array(social.items.enumerated()), id: \.element.id) { index, item in
                         FeedCard(item: item) { commentsFor = item }
                             .staggeredAppear(min(index, 6))

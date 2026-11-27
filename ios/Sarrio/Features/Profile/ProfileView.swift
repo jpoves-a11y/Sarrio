@@ -20,6 +20,7 @@ struct ProfileView: View {
                     }
                 }
                 badgesShowcase
+                YearStrip()
                 activitiesSection
                 Card(padding: 0) {
                     VStack(spacing: 0) {

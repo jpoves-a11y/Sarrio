@@ -333,6 +333,20 @@ struct APIClient: Sendable {
         var results: [Item]
     }
 
+    /// Estadísticas del perfil: un año, o `nil` para siempre.
+    func stats(year: Int?) async throws -> UserStats {
+        try await get("v1/me/stats?year=\(year.map(String.init) ?? "all")")
+    }
+
+    func myRoutes() async throws -> [RouteLine] {
+        struct Body: Decodable { var routes: [RouteLine] }
+        return try await get("v1/me/routes", as: Body.self).routes
+    }
+
+    func leaderboard(metric: String) async throws -> Leaderboard {
+        try await get("v1/friends/leaderboard?metric=\(metric)")
+    }
+
     /// Notificación de prueba a mis iPhone; devuelve lo que contesta Apple a cada uno.
     func pushTest() async throws -> PushTestResult { try await post("v1/me/push-test", body: Empty()) }
 
