@@ -114,7 +114,7 @@ El CI compila y testea la app en los runners macOS de GitHub en cada push (job `
   - [x] amigos y feed;
   - [x] likes y comentarios;
   - notificaciones push;
-  - visibilidad y zonas de privacidad;
+  - [x] visibilidad y zonas de privacidad;
   - [x] bloquear y reportar.
 - [ ] **Fase 7**: Polar; después Garmin, Suunto y COROS.
 - [ ] **Fase 8**: App Store. Incluye:

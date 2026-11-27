@@ -2,7 +2,8 @@ import { and, eq, ne } from "drizzle-orm";
 import { Hono } from "hono";
 import type { AppBindings } from "../env";
 import { requireAuth } from "../auth/session";
-import { devices, users } from "../db/schema";
+import { devices, privacyZones, users } from "../db/schema";
+import { newId } from "../lib/ids";
 import { badgeCount } from "../services/badgeCount";
 import { sendToUser } from "../services/push";
 import { isValidUsername, isVisibility, normalizeUsername } from "../lib/validation";
@@ -46,6 +47,37 @@ meRoutes.post("/push-test", async (c) => {
   } catch (e) {
     return c.json({ error: "push_failed", detail: String(e) }, 502);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Zonas de privacidad: los demás no ven el tramo de tus rutas dentro de ellas
+// ---------------------------------------------------------------------------
+
+const MAX_ZONES = 10;
+
+meRoutes.get("/privacy-zones", async (c) => {
+  const zones = await c.var.db.select().from(privacyZones).where(eq(privacyZones.userId, c.var.userId));
+  return c.json({ zones: zones.map(({ id, lat, lon, radiusM }) => ({ id, lat, lon, radiusM })) });
+});
+
+meRoutes.post("/privacy-zones", async (c) => {
+  const body = await c.req.json<Record<string, unknown>>().catch(() => null);
+  const lat = Number(body?.lat), lon = Number(body?.lon), radiusM = Math.round(Number(body?.radiusM ?? 500));
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180)
+    return c.json({ error: "invalid_location" }, 400);
+  if (!Number.isFinite(radiusM) || radiusM < 100 || radiusM > 2000) return c.json({ error: "invalid_radius" }, 400);
+  const db = c.var.db;
+  const existing = await db.select({ id: privacyZones.id }).from(privacyZones).where(eq(privacyZones.userId, c.var.userId));
+  if (existing.length >= MAX_ZONES) return c.json({ error: "too_many_zones" }, 400);
+  const [zone] = await db.insert(privacyZones).values({ id: newId(), userId: c.var.userId, lat, lon, radiusM }).returning();
+  return c.json({ id: zone!.id, lat: zone!.lat, lon: zone!.lon, radiusM: zone!.radiusM }, 201);
+});
+
+meRoutes.delete("/privacy-zones/:id", async (c) => {
+  await c.var.db
+    .delete(privacyZones)
+    .where(and(eq(privacyZones.id, c.req.param("id")), eq(privacyZones.userId, c.var.userId)));
+  return c.body(null, 204);
 });
 
 meRoutes.delete("/devices/:token", async (c) => {

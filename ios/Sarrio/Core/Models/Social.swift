@@ -195,3 +195,11 @@ struct NotificationList: Decodable, Sendable {
         notifications = try c.decode(LossyArray<AppNotification>.self, forKey: .notifications).elements
     }
 }
+
+/// Zona de privacidad: los demás no ven el tramo de tus rutas dentro del círculo.
+struct PrivacyZone: Codable, Hashable, Sendable, Identifiable {
+    var id: String
+    var lat: Double
+    var lon: Double
+    var radiusM: Int
+}

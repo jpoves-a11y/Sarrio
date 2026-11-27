@@ -283,6 +283,20 @@ struct APIClient: Sendable {
 
     func badgeCounts() async throws -> BadgeCounts { try await get("v1/me/badge") }
 
+    // MARK: Zonas de privacidad
+
+    func privacyZones() async throws -> [PrivacyZone] {
+        struct Body: Decodable { var zones: [PrivacyZone] }
+        return try await get("v1/me/privacy-zones", as: Body.self).zones
+    }
+
+    func addPrivacyZone(lat: Double, lon: Double, radiusM: Int) async throws -> PrivacyZone {
+        struct Body: Encodable { var lat: Double; var lon: Double; var radiusM: Int }
+        return try await post("v1/me/privacy-zones", body: Body(lat: lat, lon: lon, radiusM: radiusM))
+    }
+
+    func deletePrivacyZone(id: String) async throws { try await delete("v1/me/privacy-zones/\(id)") }
+
     /// He abierto Amigos: devuelve las novedades que quedan.
     func markFeedSeen() async throws -> BadgeCounts { try await post("v1/feed/seen", body: Empty()) }
 

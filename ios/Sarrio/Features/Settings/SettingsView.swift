@@ -37,7 +37,7 @@ struct SettingsView: View {
                 Text("Con Apple Health conectado, los entrenos nuevos con GPS se suben solos, también con la app cerrada. Puedes compartir archivos a Sarrio desde cualquier app.")
             }
             Section("Privacidad") {
-                Label("Zonas privadas", systemImage: "eye.slash")
+                NavigationLink { PrivacyZonesView() } label: { Label("Zonas privadas", systemImage: "eye.slash") }
             }
             Section("Información") {
                 NavigationLink { CreditsView() } label: { Label("Créditos y licencias", systemImage: "info.circle") }
