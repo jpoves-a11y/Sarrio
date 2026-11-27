@@ -28,8 +28,8 @@ Todo en vídeo: cada clip sale como Reel de Instagram (19:30) y en TikTok (21:00
 | 0 | Biblioteca y globo | «¿Recuerdas todos los picos que has subido? Nosotros tampoco, por eso hicimos Sarrio.» | `clip-biblioteca.mp4` |
 | 2 | Replay 3D | «Revive tus cimas en Sarrio.» | `clip-replay.mp4` |
 | 4 | Rey del Pirineo | «¿Quién será capaz de ser el primer Rey del Pirineo?» | `clip-emblemas.mp4` |
-| 6 | Celebración de un emblema | «Sabemos que el subidón de subir ese pico al que le tienes ganas es incomparable, pero estos emblemas te pueden hacer el apaño.» | `clip-emblema-celebracion.mp4` |
-| 9 | Retos oficiales | «¿Cuántos picos te faltan? En Sarrio te retamos a subir unos cuantos más, a ver si eres capaz.» | `clip-retos-oficiales.mp4` |
+| 6 | Retos oficiales | «¿Cuántos picos te faltan? En Sarrio te retamos a subir unos cuantos más, a ver si eres capaz.» | `clip-retos-oficiales.mp4` |
+| 9 | Celebración de un emblema | «Sabemos que el subidón de subir ese pico al que le tienes ganas es incomparable, pero estos emblemas te pueden hacer el apaño.» | `clip-emblema-celebracion.mp4` |
 | 10 | Bluesky | «Aneto, Mulhacén, Torre Cerredo, Almanzor, Moncayo y Teide. ¿Cuántos llevas?» | — |
 | 12 | Amigos | «Subir montañas está bien, pero subirlas con amigos está mejor. Etiqueta a ese compañero que te ha visto en los peores momentos.» | `clip-amigos.mp4` |
 | 15 | Más cimas que el año pasado | «Pregunta incómoda: ¿más cimas que el año pasado, o menos? En Sarrio no hay forma de hacerse el despistado.» | `clip-estadisticas.mp4` |
