@@ -1,0 +1,1 @@
+ALTER TABLE `activities` ADD `climb_rate_mh` real;

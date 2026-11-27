@@ -6,7 +6,7 @@ import { requireAuth } from "../auth/session";
 import { activities, activityTracks, ascents, privacyZones, providerConnections, users, type Source, type Visibility } from "../db/schema";
 import { applyPrivacyZones } from "../lib/geo";
 import { newId } from "../lib/ids";
-import { boundingBox, decodeTrack, encodeTrack, parseTrack, serializeSegments, trackReaches } from "../lib/track";
+import { boundingBox, climbRate, decodeTrack, encodeTrack, parseTrack, serializeSegments, trackReaches } from "../lib/track";
 import { isVisibility } from "../lib/validation";
 import { ascentsForActivities, peaksById, toActivity, toAscent } from "../services/activities";
 import { getRelationship } from "../services/relationships";
@@ -108,6 +108,7 @@ activitiesRoutes.post("/", bodyLimit({ maxSize: 4 * 1024 * 1024 }), async (c) =>
       durationS: durationS == null ? null : Math.round(durationS),
       distanceM: distanceM ?? null,
       elevGainM: elevGainM ?? null,
+      climbRateMh: climbRate(track),
       minLat: box?.minLat,
       minLon: box?.minLon,
       maxLat: box?.maxLat,

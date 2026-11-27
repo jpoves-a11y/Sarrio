@@ -135,6 +135,8 @@ export const activities = sqliteTable(
     durationS: integer("duration_s"),
     distanceM: real("distance_m"),
     elevGainM: real("elev_gain_m"),
+    /** Velocidad media de subida (m/h) en los tramos de subida, calculada de la ruta al subirla. */
+    climbRateMh: real("climb_rate_mh"),
     minLat: real("min_lat"),
     minLon: real("min_lon"),
     maxLat: real("max_lat"),

@@ -4,7 +4,8 @@ import type { AppBindings } from "../env";
 import { requireAuth } from "../auth/session";
 import { blocks, friendships, reports, users } from "../db/schema";
 import { newId } from "../lib/ids";
-import { displayName, friendStatus, isBlockedEitherWay, notify, publicUsers } from "../services/social";
+import { displayName, friendIds, friendStatus, isBlockedEitherWay, notify, publicUsers } from "../services/social";
+import { monthlyLeaderboard, type LeaderMetric } from "../services/stats";
 
 export const friendsRoutes = new Hono<AppBindings>();
 friendsRoutes.use("*", requireAuth);
@@ -34,6 +35,21 @@ friendsRoutes.get("/", async (c) => {
     friends: pick((r) => r.status === "accepted"),
     incoming: pick((r) => r.status === "pending" && r.addresseeId === me),
     outgoing: pick((r) => r.status === "pending" && r.requesterId === me),
+  });
+});
+
+/** Clasificación del mes entre mis amigos y yo: `?metric=gain|summits|distance`. */
+friendsRoutes.get("/leaderboard", async (c) => {
+  const metric = (c.req.query("metric") ?? "gain") as LeaderMetric;
+  if (!["gain", "summits", "distance"].includes(metric)) return c.json({ error: "invalid_metric" }, 400);
+  const ids = [c.var.userId, ...(await friendIds(c.var.db, c.var.userId))];
+  const board = await monthlyLeaderboard(c.var.db, ids, metric);
+  const people = await publicUsers(c.var.db, ids);
+  return c.json({
+    metric,
+    from: board.from,
+    to: board.to,
+    rows: board.rows.filter((r) => people.has(r.userId)).map((r) => ({ user: people.get(r.userId)!, value: r.value, isMe: r.userId === c.var.userId })),
   });
 });
 

@@ -5,6 +5,9 @@ import { requireAuth } from "../auth/session";
 import { avatars, devices, privacyZones, users } from "../db/schema";
 import { newId } from "../lib/ids";
 import { badgeCount } from "../services/badgeCount";
+import { userStats } from "../services/stats";
+import { activities, activityTracks } from "../db/schema";
+import { decodeTrack } from "../lib/track";
 import { sendToUser } from "../services/push";
 import { isVisibility, normalizeUsername, usernameProblem } from "../lib/validation";
 import { toMe } from "../services/users";
@@ -43,6 +46,37 @@ meRoutes.post("/username", async (c) => {
   }
   const user = await db.select().from(users).where(eq(users.id, c.var.userId)).get();
   return c.json(toMe(user!));
+});
+
+/** Estadísticas del perfil: `?year=2026` o `?year=all`. */
+meRoutes.get("/stats", async (c) => {
+  const raw = c.req.query("year") ?? String(new Date().getUTCFullYear());
+  const year = raw === "all" ? null : Number(raw);
+  if (year !== null && (!Number.isInteger(year) || year < 1990 || year > 2100)) return c.json({ error: "invalid_year" }, 400);
+  return c.json(await userStats(c.var.db, c.var.userId, year));
+});
+
+/** Todas mis rutas, ligeras (80 puntos cada una), para el mapa de «todas tus rutas». */
+meRoutes.get("/routes", async (c) => {
+  const db = c.var.db;
+  const rows = await db
+    .select({ id: activities.id, data: activityTracks.data })
+    .from(activityTracks)
+    .innerJoin(activities, eq(activityTracks.activityId, activities.id))
+    .where(eq(activities.userId, c.var.userId));
+  const routes = [];
+  for (const r of rows) {
+    const points = await decodeTrack(r.data);
+    if (points.length < 2) continue;
+    const step = Math.max(1, Math.ceil(points.length / 80));
+    routes.push({
+      activityId: r.id,
+      points: points
+        .filter((_, i) => i % step === 0 || i === points.length - 1)
+        .map((p) => [Math.round(p[0] * 1e5) / 1e5, Math.round(p[1] * 1e5) / 1e5]),
+    });
+  }
+  return c.json({ routes });
 });
 
 /** Novedades para el número del icono y de la pestaña Amigos. */

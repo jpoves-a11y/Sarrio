@@ -71,6 +71,13 @@
       "when": 1795766426066,
       "tag": "0009_username_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1795771195018,
+      "tag": "0010_climb_rate",
+      "breakpoints": true
     }
   ]
 }

@@ -72,3 +72,32 @@ export async function decodeTrack(data: Uint8Array | ArrayBuffer): Promise<Track
 export function serializeSegments(segments: TrackPoint[][]) {
   return segments.map((s) => s.map(toJsonPoint));
 }
+
+/**
+ * Velocidad de subida (m/h): el desnivel ganado en los tramos de subida dividido por el tiempo en
+ * ellos. Se mide en ventanas de al menos 60 s para no sumar el ruido del GPS; las paradas no
+ * cuentan. Sin tiempos, o con menos de 10 min subiendo, no hay dato. Tope de 3.000 m/h (errores).
+ */
+export function climbRate(points: TrackPoint[]): number | null {
+  let gain = 0;
+  let time = 0;
+  let start: TrackPoint | null = null;
+  for (const p of points) {
+    if (p[2] == null || p[3] == null) continue;
+    if (!start) {
+      start = p;
+      continue;
+    }
+    const dt = p[3] - start[3]!;
+    if (dt < 60) continue;
+    const de = p[2] - start[2]!;
+    // Ventanas largas sin datos (pausas del reloj) no cuentan como subida
+    if (de > 1 && dt <= 900) {
+      gain += de;
+      time += dt;
+    }
+    start = p;
+  }
+  if (time < 600 || gain <= 0) return null;
+  return Math.min(3000, Math.round((gain / time) * 3600));
+}
