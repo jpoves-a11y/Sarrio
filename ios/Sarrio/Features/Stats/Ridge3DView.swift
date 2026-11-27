@@ -9,6 +9,7 @@ import UIKit
 struct Ridge3DBlock: View {
     let peaks: [UserStats.Peak]
     @State private var selected: Int?
+    @State private var labels = RidgeLabelPositions()
     @Environment(\.colorScheme) private var scheme
 
     private static let limit = 20
@@ -25,8 +26,9 @@ struct Ridge3DBlock: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             SectionHeader(title: "Tu cordillera · \(list.count) cimas")
             ZStack(alignment: .bottomTrailing) {
-                Ridge3DScene(rows: list, selected: $selected, dark: scheme == .dark)
+                Ridge3DScene(rows: list, selected: $selected, dark: scheme == .dark, labels: labels)
                     .frame(height: 320)
+                    .overlay { labelsOverlay(list) }
                 Text("Gira con el dedo · toca una cima")
                     .font(.sarrio(10, .medium))
                     .foregroundStyle(Theme.Colors.textSecondary)
@@ -40,6 +42,37 @@ struct Ridge3DBlock: View {
             }
         }
         .animation(Theme.Motion.spring, value: selected)
+    }
+
+    /// Nombre y altitud de cada pico en su sitio del eje de profundidad, siempre dentro del recuadro.
+    private func labelsOverlay(_ list: [UserStats.Peak]) -> some View {
+        GeometryReader { geo in
+            ForEach(Array(list.enumerated()), id: \.offset) { i, peak in
+                if let item = labels.items[i], item.visible {
+                    let isSelected = selected == i
+                    let text = "\(peak.name) · \((peak.ele ?? 0).groupedInteger)"
+                    Text(text)
+                        .font(.sarrio(isSelected ? 12 : 10.5, isSelected ? .bold : .semibold))
+                        .foregroundStyle(isSelected ? Theme.Colors.accent : Theme.Colors.textPrimary)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Theme.Colors.page.opacity(0.75), in: RoundedRectangle(cornerRadius: 3, style: .continuous))
+                        .opacity(selected == nil || isSelected ? 1 - Double(item.depth) * 0.35 : 0.35)
+                        .alignmentGuide(.leading) { d in
+                            // A la izquierda del eje, pero sin salirse por ningún lado
+                            let x = item.point.x - d.width - 6
+                            return -min(max(2, x), max(2, geo.size.width - d.width - 2))
+                        }
+                        .alignmentGuide(.top) { d in
+                            -min(max(2, item.point.y - d.height / 2), max(2, geo.size.height - d.height - 2))
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .allowsHitTesting(false)
+                }
+            }
+        }
     }
 
     private func card(_ p: UserStats.Peak) -> some View {
@@ -75,13 +108,28 @@ struct Ridge3DBlock: View {
     }
 }
 
-/// La escena 3D (SceneKit): filas de perfiles extruidos, banderillas, etiquetas y una rejilla base.
+/// Dónde cae en pantalla el eje de cada fila (lo calcula la escena al moverse la cámara).
+@MainActor
+@Observable
+final class RidgeLabelPositions {
+    struct Item: Equatable {
+        var point: CGPoint
+        /// 0 delante … 1 al fondo (para atenuar las de atrás).
+        var depth: CGFloat
+        var visible: Bool
+    }
+    var items: [Int: Item] = [:]
+}
+
+/// La escena 3D (SceneKit): filas de perfiles extruidos, banderillas y una rejilla base. Los nombres
+/// no van dentro de la escena: se dibujan encima en SwiftUI (nítidos y sin cortarse en los bordes).
 private struct Ridge3DScene: UIViewRepresentable {
     let rows: [UserStats.Peak]
     @Binding var selected: Int?
     let dark: Bool
+    let labels: RidgeLabelPositions
 
-    func makeCoordinator() -> Coordinator { Coordinator(selected: $selected) }
+    func makeCoordinator() -> Coordinator { Coordinator(selected: $selected, labels: labels) }
 
     func makeUIView(context: Context) -> SCNView {
         let view = SCNView()
@@ -91,6 +139,7 @@ private struct Ridge3DScene: UIViewRepresentable {
         view.defaultCameraController.interactionMode = .orbitTurntable
         view.defaultCameraController.inertiaEnabled = true
         view.rendersContinuously = false
+        view.delegate = context.coordinator
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tapped(_:)))
         view.addGestureRecognizer(tap)
         let reset = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.reset(_:)))
@@ -109,8 +158,13 @@ private struct Ridge3DScene: UIViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject {
+    final class Coordinator: NSObject, SCNSceneRendererDelegate {
         var selected: Binding<Int?>
+        let labels: RidgeLabelPositions
+        /// Puntos del eje de profundidad (inicio de cada fila), en coordenadas de la escena.
+        private var anchors: [SCNVector3] = []
+        nonisolated(unsafe) private var renderAnchors: [SCNVector3] = []
+        nonisolated(unsafe) private var lastSent: [Int: RidgeLabelPositions.Item] = [:]
         weak var view: SCNView?
         private var builtKey = ""
         private var rowNodes: [SCNNode] = []
@@ -121,7 +175,31 @@ private struct Ridge3DScene: UIViewRepresentable {
         private static let width: Float = 7
         private static let height: Float = 2.6
 
-        init(selected: Binding<Int?>) { self.selected = selected }
+        init(selected: Binding<Int?>, labels: RidgeLabelPositions) {
+            self.selected = selected
+            self.labels = labels
+        }
+
+        /// En cada fotograma: proyecta el eje de cada fila a la pantalla y, si ha cambiado, lo publica.
+        nonisolated func renderer(_ renderer: SCNSceneRenderer, didRenderScene scene: SCNScene, atTime time: TimeInterval) {
+            let anchors = renderAnchors
+            guard !anchors.isEmpty else { return }
+            var out: [Int: RidgeLabelPositions.Item] = [:]
+            let count = CGFloat(max(anchors.count - 1, 1))
+            for (i, a) in anchors.enumerated() {
+                let p = renderer.projectPoint(a)
+                // z fuera de 0…1: detrás de la cámara o fuera del volumen visible
+                let visible = p.z > 0 && p.z < 1
+                out[i] = RidgeLabelPositions.Item(point: CGPoint(x: CGFloat(p.x), y: CGFloat(p.y)), depth: CGFloat(i) / count, visible: visible)
+            }
+            let changed = out.count != lastSent.count || out.contains { k, v in
+                guard let old = lastSent[k] else { return true }
+                return abs(old.point.x - v.point.x) > 0.5 || abs(old.point.y - v.point.y) > 0.5 || old.visible != v.visible
+            }
+            guard changed else { return }
+            lastSent = out
+            Task { @MainActor [labels] in labels.items = out }
+        }
 
         func build(rows: [UserStats.Peak], dark: Bool) {
             let key = rows.map { "\($0.id)" }.joined(separator: ",") + (dark ? "d" : "l")
@@ -143,6 +221,7 @@ private struct Ridge3DScene: UIViewRepresentable {
             let sy = Self.height / Float(top)
 
             rowNodes = []
+            var newAnchors: [SCNVector3] = []
             for (i, pts) in shapes.enumerated() {
                 let z = -Float(i) * Self.spacing
                 let row = SCNNode()
@@ -196,19 +275,8 @@ private struct Ridge3DScene: UIViewRepresentable {
                 flagNode.position = SCNVector3(summitX + 0.08, min(summitY, Self.height) + 0.23, 0.03)
                 row.addChildNode(flagNode)
 
-                // Nombre en el eje de profundidad, mirando siempre a la cámara
-                let label = SCNText(string: "\(rows[i].name)  \(Int((rows[i].ele ?? 0).rounded())) m", extrusionDepth: 0)
-                label.font = UIFont.sarrio(10, .semibold)
-                label.flatness = 0.2
-                label.firstMaterial?.lightingModel = .constant
-                label.firstMaterial?.diffuse.contents = ink
-                let labelNode = SCNNode(geometry: label)
-                labelNode.scale = SCNVector3(0.018, 0.018, 0.018)
-                let (minB, maxB) = labelNode.boundingBox
-                labelNode.pivot = SCNMatrix4MakeTranslation(maxB.x, (minB.y + maxB.y) / 2, 0)
-                labelNode.position = SCNVector3(-Self.width / 2 - 0.25, 0.08, 0)
-                labelNode.constraints = [SCNBillboardConstraint()]
-                row.addChildNode(labelNode)
+                // El nombre se dibuja encima (SwiftUI): aquí solo el punto del eje de profundidad
+                newAnchors.append(SCNVector3(-Self.width / 2, 0.12, z))
 
                 scene.rootNode.addChildNode(row)
                 rowNodes.append(row)
@@ -232,16 +300,20 @@ private struct Ridge3DScene: UIViewRepresentable {
             scene.rootNode.addChildNode(SCNNode(geometry: grid))
 
             // Cámara de tres cuartos mirando al centro de la sierra
-            let center = SCNVector3(0, Self.height * 0.35, -depth / 2)
+            // Mira un poco a la izquierda del centro: el eje de los nombres queda dentro del encuadre
+            let center = SCNVector3(-0.4, Self.height * 0.35, -depth / 2)
             let camera = SCNCamera()
             camera.fieldOfView = 40
             camera.zNear = 0.05
             cameraNode = SCNNode()
             cameraNode.camera = camera
-            cameraNode.position = SCNVector3(Self.width * 0.55, Self.height * 1.5 + depth * 0.15, 5.8 + depth * 0.15)
+            cameraNode.position = SCNVector3(Self.width * 0.45, Self.height * 1.5 + depth * 0.18, 6.6 + depth * 0.2)
             cameraNode.look(at: center)
             scene.rootNode.addChildNode(cameraNode)
 
+            anchors = newAnchors
+            renderAnchors = newAnchors
+            lastSent = [:]
             view.scene = scene
             view.pointOfView = cameraNode
             view.defaultCameraController.target = center

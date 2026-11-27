@@ -14,6 +14,7 @@ struct ActivityWeatherSection: View {
 
     @State private var summary: WeatherSummary?
     @State private var legalURL: URL?
+    @State private var failure: String?
 
     var body: some View {
         Group {
@@ -47,6 +48,16 @@ struct ActivityWeatherSection: View {
                     }
                 }
                 .transition(.opacity)
+            } else if let failure {
+                // Sin datos: se dice por qué en vez de desaparecer sin más
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    SectionHeader(title: "El tiempo")
+                    Label(failure, systemImage: "cloud.slash")
+                        .font(.sarrio(13))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .transition(.opacity)
             }
         }
         .task(id: activityId) {
@@ -54,6 +65,7 @@ struct ActivityWeatherSection: View {
             withAnimation(Theme.Motion.spring) {
                 summary = loaded.summary
                 legalURL = loaded.legalURL
+                failure = loaded.failure
             }
         }
     }
@@ -115,13 +127,15 @@ struct ActivityWeatherSection: View {
 /// Tiempo histórico por horas de WeatherKit (desde agosto de 2021), resumido. Uno por actividad.
 @MainActor
 enum ActivityWeatherLoader {
-    private static var cache: [String: (summary: WeatherSummary?, legalURL: URL?)] = [:]
+    typealias Result = (summary: WeatherSummary?, legalURL: URL?, failure: String?)
+    private static var cache: [String: Result] = [:]
     private static let historyStart = Date(timeIntervalSince1970: 1_627_776_000)
 
     static func load(activityId: String, center: CLLocationCoordinate2D, start: Date, end: Date, summitAt: Date?) async
-        -> (summary: WeatherSummary?, legalURL: URL?) {
+        -> Result {
         if let cached = cache[activityId] { return cached }
-        guard start > historyStart, CLLocationCoordinate2DIsValid(center) else { return (nil, nil) }
+        guard CLLocationCoordinate2DIsValid(center) else { return (nil, nil, nil) }
+        guard start > historyStart else { return (nil, nil, "Apple Weather solo tiene datos desde agosto de 2021.") }
         do {
             let location = CLLocation(latitude: center.latitude, longitude: center.longitude)
             let forecast = try await WeatherService.shared.weather(
@@ -139,11 +153,13 @@ enum ActivityWeatherLoader {
             }
             let summary = WeatherSummary(hours: hours, from: start, to: end, summitAt: summitAt)
             let legal = summary == nil ? nil : try? await WeatherService.shared.attribution.legalPageURL
-            let result = (summary: summary, legalURL: legal)
+            let result: Result = (summary, legal, summary == nil ? "Apple Weather no tiene datos de esas horas." : nil)
             if !Task.isCancelled { cache[activityId] = result }
             return result
         } catch {
-            return (nil, nil)
+            // No se cachea: se reintenta la próxima vez que se abra
+            let ns = error as NSError
+            return (nil, nil, "No se pudo cargar el tiempo de Apple Weather (\(ns.domain) \(ns.code)).")
         }
     }
 

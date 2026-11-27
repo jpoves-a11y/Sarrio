@@ -47,6 +47,10 @@ struct ActivityDetailView: View {
         return nil
     }
 
+    /// Sin ruta (o mientras se carga): la cima más alta sirve para pedir el tiempo.
+    private var fallbackCenter: GeoPoint? {
+        ascents.max { ($0.peak.ele ?? 0) < ($1.peak.ele ?? 0) }.map { GeoPoint(lat: $0.peak.lat, lon: $0.peak.lon) }
+    }
     private var endDate: Date? { activity.durationS.map { activity.startAt.addingTimeInterval($0) } }
 
     var body: some View {
@@ -62,12 +66,12 @@ struct ActivityDetailView: View {
                 if let analysis, !analysis.slopes.isEmpty {
                     ActivityAnalysisSection(analysis: analysis).staggeredAppear(5)
                 }
-                if let center = plan?.center, let end = endDate {
+                if let center = plan?.center ?? fallbackCenter {
                     ActivityWeatherSection(
                         activityId: activity.id,
                         center: CLLocationCoordinate2D(latitude: center.lat, longitude: center.lon),
                         start: activity.startAt,
-                        end: end,
+                        end: endDate ?? activity.startAt.addingTimeInterval(3 * 3600),
                         summit: ascents.max { ($0.peak.ele ?? 0) < ($1.peak.ele ?? 0) }.map { (name: $0.peak.displayName, at: $0.summitedAt) }
                     )
                     .staggeredAppear(6)
