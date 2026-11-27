@@ -25,6 +25,12 @@ struct Terrain3DView: UIViewRepresentable {
     /// Encuadrar estos puntos (la ruta entera) en lugar de `center`/`distance`: Mapbox ajusta el zoom
     /// al tamaño real del mapa con la inclinación, y el eje largo de la ruta queda en horizontal.
     var fit: [CLLocationCoordinate2D] = []
+    /// No clavar las banderas al quitar la cortina: se clavan cuando cambia `plantToken` (la
+    /// celebración de cumbres decide el momento). Espera más por cada vista (máxima resolución).
+    var holdFlags = false
+    var plantToken = 0
+    /// Progreso de carga, 0…1 (1: mapa completo y a la vista).
+    var onLoad: ((Double) -> Void)?
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -57,6 +63,7 @@ struct Terrain3DView: UIViewRepresentable {
         private var revealTask: Task<Void, Never>?
         private var revealed = false
         private var flags: [SummitFlagView] = []
+        private var lastPlantToken = 0
 
         private static let routeSource = "terrain-route"
         private static let casingLayer = "terrain-casing"
@@ -85,6 +92,10 @@ struct Terrain3DView: UIViewRepresentable {
         }
 
         func update(_ view: Terrain3DView) {
+            if view.plantToken != lastPlantToken {
+                lastPlantToken = view.plantToken
+                plantFlags(start: 0)
+            }
             let moved = self.view.map { $0.center.latitude != view.center.latitude || $0.center.longitude != view.center.longitude } ?? true
             self.view = view
             drawOverlays()
@@ -125,23 +136,25 @@ struct Terrain3DView: UIViewRepresentable {
                     waited += 1
                 }
                 guard let self else { return }
+                let hold = view.holdFlags
+                let wait = hold ? 8.0 : 4.0
                 if let fitted = self.fittedCamera() {
                     mapView.mapboxMap.setCamera(to: fitted)
-                    _ = await self.loadState.settle(clock: clock, maxSeconds: 4, minRefreshes: 3)
+                    _ = await self.loadState.settle(clock: clock, maxSeconds: wait, minRefreshes: 3)
                 } else {
-                    for heading in headings {
+                    for (i, heading) in headings.enumerated() {
                         if Task.isCancelled { return }
                         self.setCamera(heading: heading)
-                        _ = await self.loadState.settle(clock: clock, maxSeconds: 4, minRefreshes: 3)
+                        _ = await self.loadState.settle(clock: clock, maxSeconds: wait, minRefreshes: 3)
+                        self.view?.onLoad?(min(0.95, Double(i + 1) / Double(headings.count)))
                     }
                 }
                 if Task.isCancelled { return }
                 self.revealed = true
                 self.cover.hide()
+                self.view?.onLoad?(1)
                 // Las banderas caen y se clavan al aparecer el relieve, una tras otra
-                if self.view?.animated != false {
-                    for (i, flag) in self.flags.enumerated() { flag.plant(delay: 0.35 + Double(i) * 0.25) }
-                }
+                if self.view?.animated != false && !hold { self.plantFlags(start: 0.35) }
                 if self.view?.orbit == true { self.startOrbit() }
             }
         }
@@ -180,9 +193,14 @@ struct Terrain3DView: UIViewRepresentable {
                 // Escondidas hasta que el relieve está cargado; entonces caen y se clavan
                 let flag = SummitFlagView(name: peak.displayName, elevation: peak.ele, scale: view.animated ? 1.25 : 1.0, planted: !view.animated)
                 mapView.viewAnnotations.add(flag.annotation(at: CLLocationCoordinate2D(latitude: peak.lat, longitude: peak.lon)))
-                if revealed && view.animated { flag.plant(delay: 0.2) }
+                if revealed && view.animated && !view.holdFlags { flag.plant(delay: 0.2) }
                 return flag
             }
+        }
+
+        /// Clava las banderas una tras otra (la primera de `summits` antes).
+        private func plantFlags(start: Double) {
+            for (i, flag) in flags.enumerated() { flag.plant(delay: start + Double(i) * 0.25) }
         }
 
         /// La ruta entera a la vista: rumbo por su eje largo (en horizontal), algo inclinada y con

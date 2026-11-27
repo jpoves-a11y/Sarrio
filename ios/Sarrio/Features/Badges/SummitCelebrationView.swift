@@ -11,13 +11,66 @@ struct SummitCelebrationView: View {
     var onNext: () -> Void = {}
 
     @Environment(LibraryStore.self) private var library
+    /// Cargando el mapa tras el logo → se ve y la bandera se clava → texto y botón.
+    @State private var loading = true
+    @State private var loadProgress: Double = 0
+    @State private var plantToken = 0
     @State private var settled = false
     @State private var shownAltitude: Double = 0
+    @State private var breathe = false
 
     private var ascents: [Ascent] { celebration.sortedAscents }
     private var top: Ascent? { ascents.first }
 
     var body: some View {
+        ZStack {
+            content
+            if loading {
+                loadingCover
+                    .transition(.opacity)
+            }
+        }
+        .task {
+            // Sin red el mapa no termina: se sigue igualmente
+            try? await Task.sleep(for: .seconds(15))
+            if loading { reveal() }
+        }
+    }
+
+    /// El logo de Sarrio mientras el mapa se carga a máxima resolución debajo (Mapbox solo dibuja en pantalla).
+    private var loadingCover: some View {
+        VStack(spacing: Theme.Spacing.m) {
+            Image("SarrioMark")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 72)
+                .scaleEffect(breathe ? 1.04 : 1)
+                .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: breathe)
+            Image("Wordmark")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 26)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Rectangle().fill(Theme.Colors.separator)
+                    Rectangle().fill(Theme.Colors.accent)
+                        .frame(width: geo.size.width * max(0.04, loadProgress))
+                        .animation(.easeOut(duration: 0.5), value: loadProgress)
+                }
+            }
+            .frame(width: 140, height: 2)
+            .padding(.top, Theme.Spacing.s)
+            Text("Preparando tu cumbre…")
+                .font(.sarrio(14, .medium))
+                .foregroundStyle(Theme.Colors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.Colors.page)
+        .accessibilityElement(children: .combine)
+        .onAppear { breathe = true }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             if let position {
                 Text("\(position.0) de \(position.1)")
@@ -33,7 +86,13 @@ struct SummitCelebrationView: View {
                     segments: [celebration.route.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) }],
                     summits: ascents.map(\.peak),
                     orbit: true,
-                    interactive: false
+                    interactive: false,
+                    holdFlags: true,
+                    plantToken: plantToken,
+                    onLoad: { fraction in
+                        loadProgress = fraction
+                        if fraction >= 1, loading { reveal() }
+                    }
                 )
                 .frame(maxWidth: .infinity)
                 .containerRelativeFrame(.vertical) { height, _ in height * 0.42 }
@@ -111,11 +170,20 @@ struct SummitCelebrationView: View {
         // Tocar: durante la animación la completa; ya asentada, avanza
         .contentShape(Rectangle())
         .onTapGesture {
+            guard !loading else { return }
             if settled { onNext() } else { finishNow() }
         }
-        .task {
-            // Las banderillas caen al aparecer el mapa; el texto llega cuando se clava la más alta
-            try? await Task.sleep(for: .milliseconds(1_300))
+    }
+
+    /// Mapa listo: se quita el logo, la bandera de la más alta cae y se clava, y luego entra el texto.
+    private func reveal() {
+        guard loading else { return }
+        withAnimation(.easeOut(duration: 0.4)) { loading = false }
+        Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            plantToken += 1
+            // La caída y el golpe duran ~1,1 s
+            try? await Task.sleep(for: .milliseconds(1_200))
             guard !settled else { return }
             withAnimation(Theme.Motion.spring) { settled = true }
             withAnimation(.easeOut(duration: 1.1)) { shownAltitude = top?.peak.ele ?? 0 }
@@ -123,6 +191,7 @@ struct SummitCelebrationView: View {
     }
 
     private func finishNow() {
+        if plantToken == 0 { plantToken += 1 }
         withAnimation(.easeOut(duration: 0.2)) {
             settled = true
             shownAltitude = top?.peak.ele ?? 0
