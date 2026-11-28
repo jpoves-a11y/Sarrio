@@ -82,19 +82,38 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         print("Push: no se pudo registrar", error)
     }
 
+    // Con completionHandler y no `async`: el puente que genera Swift para la versión async llama al
+    // completionHandler de UIKit desde un hilo cualquiera, y UIKit exige el principal (al abrir la app
+    // tocando una notificación con la app cerrada, se cerraba: NSAssert en
+    // _performBlockAfterCATransactionCommitSynchronizes).
+
     /// Con la app abierta: se enseña igual (banner y sonido) y se actualiza Amigos.
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async
-        -> UNNotificationPresentationOptions {
-        await MainActor.run { Task { await AppServices.shared.social.refresh() } }
-        return [.banner, .list, .sound, .badge]
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping @Sendable (UNNotificationPresentationOptions) -> Void
+    ) {
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                Task { await AppServices.shared.social.refresh() }
+                completionHandler([.banner, .list, .sound, .badge])
+            }
+        }
     }
 
     /// Al tocarla: a Amigos (o a las solicitudes).
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping @Sendable () -> Void
+    ) {
         let open = response.notification.request.content.userInfo["open"] as? String
-        await MainActor.run {
-            AppServices.shared.deepLinks.tab = .friends
-            if open == "friends" { AppServices.shared.deepLinks.showFriends = true }
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                AppServices.shared.deepLinks.tab = .friends
+                if open == "friends" { AppServices.shared.deepLinks.showFriends = true }
+                completionHandler()
+            }
         }
     }
 }
