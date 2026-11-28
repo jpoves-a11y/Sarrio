@@ -18,6 +18,8 @@ struct ActivityDetailView: View {
     @State private var confirmDelete = false
     @State private var errorMessage: String?
     @State private var showsMap = false
+    @State private var videoJob: ReplayVideoRenderer.Job?
+    @State private var preparingVideo = false
     /// Cumbre abierta en 3D (con la ruta encima).
     @State private var summitInMap: Ascent?
 
@@ -59,6 +61,7 @@ struct ActivityDetailView: View {
                 header.staggeredAppear(0)
                 statsCard.staggeredAppear(1)
                 mapButton.staggeredAppear(2)
+                if canShare3D { shareButton.staggeredAppear(2) }
                 summitsCard.staggeredAppear(3)
                 if let plan, plan.elevations.contains(where: { $0 != nil }) {
                     profileCard(plan).staggeredAppear(4)
@@ -88,6 +91,18 @@ struct ActivityDetailView: View {
         }
         .background(Theme.Colors.page)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if canShare3D {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { Task { await shareIn3D() } } label: { Image(systemName: "square.and.arrow.up") }
+                        .disabled(preparingVideo)
+                        .accessibilityLabel("Compartir en 3D")
+                }
+            }
+        }
+        .fullScreenCover(item: $videoJob) { job in
+            ReplayVideoScreen(job: job)
+        }
         .task { await load() }
         .fullScreenCover(isPresented: $showsMap) {
             if let detail {
@@ -170,6 +185,45 @@ struct ActivityDetailView: View {
     }
 
     /// Botón grande que abre el replay 3D: la promesa del mapa, con profundidad.
+    /// Hay ruta para hacer el vídeo 3D.
+    private var canShare3D: Bool { plan != nil && detail?.segments.isEmpty == false }
+
+    /// Compartir la salida en 3D: el vídeo del replay, a resolución nativa, para guardar o compartir.
+    private var shareButton: some View {
+        Button { Task { await shareIn3D() } } label: {
+            HStack(spacing: Theme.Spacing.s) {
+                if preparingVideo {
+                    ProgressView().tint(Theme.Colors.accent)
+                } else {
+                    Image(systemName: "square.and.arrow.up").font(.system(size: 16, weight: .semibold))
+                }
+                Text("Compartir en 3D").font(.sarrio(16, .semibold))
+            }
+            .foregroundStyle(Theme.Colors.accent)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 13)
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.Colors.accent, lineWidth: 1.2))
+        }
+        .buttonStyle(.pressableCard)
+        .disabled(preparingVideo)
+    }
+
+    private func shareIn3D() async {
+        guard let plan, !preparingVideo else { return }
+        preparingVideo = true
+        defer { preparingVideo = false }
+        let weather = await ReplayWeatherLoader.load(
+            activityId: activity.id, center: plan.center.coordinate,
+            start: activity.startAt, end: endDate ?? activity.startAt
+        )
+        let top = ascents.max { ($0.peak.ele ?? 0) < ($1.peak.ele ?? 0) }
+        videoJob = ReplayVideoRenderer.Job(
+            plan: plan, summits: ascents.map(\.peak), start: activity.startAt, end: endDate, weather: weather,
+            title: top?.peak.displayName ?? activity.displayTitle,
+            screenSize: UIScreen.main.bounds.size, screenScale: UIScreen.main.scale
+        )
+    }
+
     private var mapButton: some View {
         Button { showsMap = true } label: {
             HStack(spacing: Theme.Spacing.m) {
